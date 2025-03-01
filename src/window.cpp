@@ -2,7 +2,16 @@
 
 void Window::update()
 {
+    // Start the ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::ShowDemoWindow();   
     
+    // render imgui things
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
@@ -22,9 +31,17 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     // glfwWindowHintString(GLFW_WAYLAND_APP_ID , "DAGReader"); // this seems to be unsupported rn
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "DAGReader");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "DAGReader");
+
+    // initialize imgui
+    IMGUI_CHECKVERSION(); // check that version is compatible with what its used for
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+    ImGui::StyleColorsDark();
 }
 
 Window::~Window(){
+    ImGui::DestroyContext();
     glfwTerminate();
 }
 
@@ -70,26 +87,32 @@ void Window::run(){
 
     // TODO: add an iconification callback which prevents window from being updated when active
 
+    // Setup Platform/Renderer backends for imgui
+    ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+    ImGui_ImplOpenGL3_Init("#version 330"); //glsl version
+
+    glClearColor(0.f, 0.f, 0.f, 1.f); // default background color
+
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
     glfwFocusWindow(m_window);
 
-    glClearColor(0.f, 0.f, 0.f, 1.f); // default background color
-
-    // run the loop
-    while(!glfwWindowShouldClose(m_window))
+    while(!glfwWindowShouldClose(m_window)) // window is running
     {
+        // clear the buffer
         glClear(GL_COLOR_BUFFER_BIT	| GL_DEPTH_BUFFER_BIT);
 
+        // system events
         glfwPollEvents(); 
 
         this->update();
 
         glfwSwapBuffers(m_window);
         // TODO: consider using glfwSwapInterval
-
         glFlush();
     }
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
     glfwDestroyWindow(m_window);
 }

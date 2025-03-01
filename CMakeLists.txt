@@ -77,6 +77,7 @@ add_subdirectory("src")
 
 # add imguis code since they dont have their own (useable) cmake
 target_sources(${PROJECT_NAME} PUBLIC
+    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui.cpp"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui_draw.cpp"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui_demo.cpp"  # delete this one before moving to the main branch
@@ -93,6 +94,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/_deps/glfw-src/include/"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/backends/"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/misc/cpp"
 )
 
 # link libraries to the executable
