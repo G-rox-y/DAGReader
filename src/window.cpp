@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "backgroundWindow.hpp"
 
 void Window::update()
 {
@@ -7,6 +8,7 @@ void Window::update()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    for(auto& win:imguis) win->draw(); // draw all imgui windows
     ImGui::ShowDemoWindow();   
     
     // render imgui things
@@ -37,7 +39,11 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     ImGui::StyleColorsDark();
+
+    // add custom imgui windows
+    imguis.emplace_back(std::make_unique<backgroundWindow>());
 }
 
 Window::~Window(){
