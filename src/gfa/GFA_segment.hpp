@@ -2,17 +2,24 @@
 
 #include <vector>
 #include <string>
+#include <fstream>
+#include <filesystem>
 
 #include "GFA_virtuals.hpp"
 
 class GFA_segment : public segmentLength, public readCount, public fragmentCount, public kmerCount, public hash{
 private:
     std::string name;
-    std::vector<unsigned long long> sequence;
+
+    bool seq_exists; // is sequence defined in the file (its definition can be skipped using '*')
+    std::filesystem::path seq_file; // sequence file
+    bool seq_file_is_gfa; // sequence is stored in the orignal gfa
+    std::streampos seq_loc_gfa; // stream position inside the gfa where the sequence can be found
 
 public:
     GFA_segment(const std::string& n);
 
-    void loadSequence(const std::string& uri);
-    
+    // this input function expects ATGC characters and converts them to internal 2bit 
+    void setSequence(std::ifstream& input, const std::string& path);
+    void setSequence(const std::string& uri_path_str, const std::string& gfa_path_str);
 };
