@@ -40,9 +40,8 @@ GFA::GFA(const std::string& path) : version_string("")
         unsigned long long int val;
         try { 
             val = std::stoull(in);
-        }
-        catch(const std::exception& e){
-            parser_error("Impossible to convert VALUE to integer\n\tfull field: " + field_str, line_n);    
+        } catch(const std::exception& e){
+            parser_error("Impossible to convert VALUE to integer\n\tfull field: \n\tException: " + std::string(e.what()) + field_str, line_n);    
         }
         return val;
     };
@@ -120,7 +119,11 @@ GFA::GFA(const std::string& path) : version_string("")
         if (f.tag == "UR"){
             if (f.type == "Z"){
                 c_Z(f.value, field_str, line_n);
-                segment.setSequence(f.value, path);
+                try{
+                    segment.setSequence(f.value, path);
+                } catch (const std::exception& e) {
+                    parser_error("Wrong VALUE in field\n\tfull field: " + field_str + "\n\t" + std::string(e.what()), line_n);
+                }
             }
             else parser_error("Unrecognized TYPE for '" + f.tag + "', expected: 'Z'\n\tfull field:" + field_str, line_n);
         }
@@ -164,9 +167,14 @@ GFA::GFA(const std::string& path) : version_string("")
         {
             std::string name; // each segment has a name
             while (file.peek() != '\n' && file.peek() != '\t') name += file.get(); // load the name
-            GFA_segment segment(name); // create the segment
+            segments.emplace_back(GFA_segment(name)); // create the segment
+            GFA_segment& segment = segments.back(); // reference it
             while(file.peek() == '\t') file.get(); // remove the tab(s)
-            segment.setSequence(file, path); // input the sequence through the stream
+            try{
+                segment.setSequence(file, path); // input the sequence through the stream
+            } catch (const std::runtime_error& e) {
+                parser_error("Error while examining the sequence:\n\t" + std::string(e.what()), line_n);
+            }
             while(file.peek() == '\t') file.get(); // remove the tab(s)
 
             // now check optional fields
@@ -221,9 +229,11 @@ GFA::GFA(const std::string& path) : version_string("")
             else if (to_ori_str == "-") to_ori = false;
             else parser_error("field 'to orientation' can only be + or - however, '" + from_ori_str + "' was provided", line_n);
 
-            std::getline(ss, overlap, '\t'); // TODO: check against regex if this is ok
+            links.emplace_back(GFA_link(from, from_ori, to, to_ori));
+            GFA_link& link = links.back();
 
-            GFA_link link;
+            std::getline(ss, overlap, '\t'); // TODO: check against regex if this is ok
+            link.setOverlap(overlap);
 
             while(std::getline(ss, field_str, '\t')){
                 GFA_field f = getTTV(field_str, line_n);
@@ -252,12 +262,14 @@ GFA::GFA(const std::string& path) : version_string("")
             if (contained_ori_str == "+") contained_ori = true;
             else if (contained_ori_str == "-") contained_ori = false;
             else parser_error("field 'to orientation' can only be + or - however, '" + contained_ori_str + "' was provided", line_n);
-
-            std::getline(ss, overlap, '\t'); // TODO: check against regex if this is ok
-
+            
             pos = cnc_i(pos_str, ln, line_n);
 
-            GFA_containment containment;
+            containments.emplace_back(GFA_containment(container, container_ori, contained, contained_ori, pos));
+            GFA_containment& containment = containments.back();
+
+            std::getline(ss, overlap, '\t'); // TODO: check against regex if this is ok
+            containment.setOverlap(overlap);
 
             while(std::getline(ss, field_str, '\t')){
                 GFA_field f = getTTV(field_str, line_n);
@@ -270,10 +282,14 @@ GFA::GFA(const std::string& path) : version_string("")
         {
             std::string name, segments, overlaps; // consider using the pipe for this, not a saving it all in ram (like you avoid saving sequences)
             std::getline(ss, name, '\t'); // TODO: check against regex if this is ok
-            std::getline(ss, segments, '\t'); // TODO: check against regex if this is ok
-            std::getline(ss, overlaps, '\t'); // TODO: check against regex if this is ok
-
-            GFA_path path;
+            paths.emplace_back(GFA_path(name));
+            GFA_path& path = paths.back();
+            try{
+                path.setSegments(file);
+            } catch(const std::exception& e){
+                parser_error("Error while parsing path segments:\n\t" + std::string(e.what()));
+            }
+            path.setOverlaps(file);
         }
         else parser_error("Unrecognized record type: " + std::string(1, first_char) + "\n", line_n);
     }

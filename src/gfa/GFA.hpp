@@ -19,6 +19,11 @@ class GFA {
 private:
     std::string version_string;
 
+    std::vector<GFA_segment> segments;
+    std::vector<GFA_link> links;
+    std::vector<GFA_containment> containments;
+    std::vector<GFA_path> paths;
+
     // this function handles errors coming from GFA class
     void parser_error(const std::string& description, const int line_n) const;
     void parser_error(const std::string& description) const;

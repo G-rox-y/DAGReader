@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <exception>
 
 #include "GFA_virtuals.hpp"
 
@@ -19,7 +20,8 @@ private:
 public:
     GFA_segment(const std::string& n);
 
-    // this input function expects ATGC characters and converts them to internal 2bit 
     void setSequence(std::ifstream& input, const std::string& path);
+
+    // this function will throw an std::runtime_error if the path provided doesnt work
     void setSequence(const std::string& uri_path_str, const std::string& gfa_path_str);
 };

@@ -26,7 +26,7 @@ void GFA_segment::setSequence(const std::string& uri_path_str, const std::string
         seq_file = local_path;
 
     if (!std::filesystem::exists(seq_file)){
-        // TODO: throw an error here to be caught by the parser
+        throw std::runtime_error("The provided path is invalid\n\tpath: " + seq_file.string());
     }
     
     seq_exists = true;
