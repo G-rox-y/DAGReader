@@ -24,4 +24,6 @@ public:
 
     // this function will throw an std::runtime_error if the path provided doesnt work
     void setSequence(const std::string& uri_path_str, const std::string& gfa_path_str);
+
+    const std::string& getName() const { return name; };
 };

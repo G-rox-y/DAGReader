@@ -3,6 +3,10 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <string_view>
+#include <map>
+
+#include "GFA_link.hpp"
 
 class GFA_path {
 private:
@@ -14,5 +18,7 @@ public:
     GFA_path(const std::string& n);
 
     void setSegments(std::ifstream& input);
-    void setOverlaps(std::ifstream& input);
+
+    // setOverlaps must not be run before setSegments had been ran
+    void setOverlaps(std::ifstream& input, const std::vector<GFA_link>& links, const std::map<std::pair<std::string_view, std::string_view>, int> link_lookup);
 };

@@ -12,4 +12,7 @@ private:
 public:
     GFA_link(const std::string& fn, bool fo, const std::string& tn, bool to)
     : from_name(fn), to_name(tn), from_orientation(fo), to_orientation(to) {};
+
+    const std::string& getFromName() const { return from_name; }
+    const std::string& getToName() const { return to_name; }
 };

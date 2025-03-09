@@ -166,9 +166,10 @@ GFA::GFA(const std::string& path) : version_string("")
         if (first_char == 'S')
         {
             std::string name; // each segment has a name
-            while (file.peek() != '\n' && file.peek() != '\t') name += file.get(); // load the name
+            while (file.good() && file.peek() != '\n' && file.peek() != '\t') name += file.get(); // load the name
             segments.emplace_back(GFA_segment(name)); // create the segment
             GFA_segment& segment = segments.back(); // reference it
+            segment_lookup.emplace(segment.getName(), segments.size()-1);
             while(file.peek() == '\t') file.get(); // remove the tab(s)
             try{
                 segment.setSequence(file, path); // input the sequence through the stream
@@ -178,9 +179,7 @@ GFA::GFA(const std::string& path) : version_string("")
             while(file.peek() == '\t') file.get(); // remove the tab(s)
 
             // now check optional fields
-            char c = '0'; // dont set it to file.peek() to make sure the '\n' character gets cleared from the stream 
-            while(c != '\n'){
-                c = file.get();
+            for(char c = file.get(); file.good() && c != '\n'; c = file.get()){
                 if (c != '\t' && c != '\n') field_str += c;
                 else{
                     GFA_field f = getTTV(field_str, line_n);
@@ -195,7 +194,21 @@ GFA::GFA(const std::string& path) : version_string("")
             }
             continue;
         }
-        
+        else if (first_char == 'P')
+        {
+            std::string name;
+            while (file.good() && file.peek() != '\n' && file.peek() != '\t') name += file.get(); // load the name
+            paths.emplace_back(GFA_path(name));
+            GFA_path& path = paths.back();
+            try{
+                path.setSegments(file);
+            } catch(const std::exception& e){
+                parser_error("Error while parsing path segments:\n\t" + std::string(e.what()));
+            }
+            path.setOverlaps(file, links, link_lookup);
+            continue;
+        }
+
         // for any other type we aren't expected to parse such a long input string so getlines and stringstreams can be used for simplifying the code
         // TODO: however switching from getline to character by character input may be a good idea performance-wise, but its not an urgent one
 
@@ -231,6 +244,7 @@ GFA::GFA(const std::string& path) : version_string("")
 
             links.emplace_back(GFA_link(from, from_ori, to, to_ori));
             GFA_link& link = links.back();
+            link_lookup.emplace(make_pair(link.getFromName(), link.getToName()), links.size()-1);
 
             std::getline(ss, overlap, '\t'); // TODO: check against regex if this is ok
             link.setOverlap(overlap);
@@ -277,19 +291,6 @@ GFA::GFA(const std::string& path) : version_string("")
                 check_nm(f, containment, field_str, line_n);
                 check_id(f, containment, field_str, line_n);
             }
-        }
-        else if (first_char == 'P')
-        {
-            std::string name, segments, overlaps; // consider using the pipe for this, not a saving it all in ram (like you avoid saving sequences)
-            std::getline(ss, name, '\t'); // TODO: check against regex if this is ok
-            paths.emplace_back(GFA_path(name));
-            GFA_path& path = paths.back();
-            try{
-                path.setSegments(file);
-            } catch(const std::exception& e){
-                parser_error("Error while parsing path segments:\n\t" + std::string(e.what()));
-            }
-            path.setOverlaps(file);
         }
         else parser_error("Unrecognized record type: " + std::string(1, first_char) + "\n", line_n);
     }

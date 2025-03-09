@@ -5,14 +5,14 @@ GFA_segment::GFA_segment(const std::string& n) : name(n), seq_exists(false), seq
 void GFA_segment::setSequence(std::ifstream& input, const std::string& path){
     // the program doesnt need to store an entire sequence in ram
     // it can just store a reference to where it can find it if needed and get the data at the moment it gets requested
-    if (input.peek() != '*'){
+    if (input.good() && input.peek() != '*'){
         seq_file = path;
         seq_loc_gfa = input.tellg();
         seq_exists = seq_file_is_gfa = true;
     }
 
     // advance the stream over the sequence fragment
-    for (char c = '0'; c != '\t' ; input.get(c)) continue;
+    for (char c = '0'; input.good() && c != '\t' ; input.get(c)) continue;
 }
 
 void GFA_segment::setSequence(const std::string& uri_path_str, const std::string& gfa_path_str)

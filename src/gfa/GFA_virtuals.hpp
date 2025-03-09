@@ -79,4 +79,5 @@ private:
 public:
     virtual ~overlap() = default;
     void setOverlap(const std::string& ov) { overlap = (ov == "*") ? "" : ov; } // if ov is '*' that means no CIGAR string is provided
+    const std::string& getOverlap() const { return overlap; }
 };
