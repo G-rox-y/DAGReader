@@ -1,6 +1,7 @@
 target_sources(${PROJECT_NAME} PUBLIC
     "main.cpp"
     "window.cpp"
+    "controller.cpp"
     "imgui_windows/backgroundWindow.cpp"
     "gfa/GFA.cpp"
     "gfa/GFA_segment.cpp"

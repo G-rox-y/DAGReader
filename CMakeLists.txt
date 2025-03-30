@@ -3,13 +3,23 @@ cmake_minimum_required(VERSION 3.24)
 # project init
 project(DAGReader VERSION 0.1)
 
+# default build type is debug
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "No build type specified. Defaulting to Debug.")
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+
 # set important vars
 set(BUILD_SHARED_LIBS OFF)
 set(BUILD_TESTING OFF)
-set(CMAKE_BUILD_FLAGS "-O3")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+endif()
 
 # -------------------- DEPENDENCIES
 
@@ -67,6 +77,21 @@ if(NOT imgui-docking_POPULATED)
     FetchContent_Populate(imgui-docking)
 endif()
 
+# add nfd-extended
+# TODO: test for dependencies and their availlability (same goes for other packages)
+FetchContent_Declare(nfd
+    GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
+    GIT_TAG v1.2.1
+)
+
+FetchContent_GetProperties(nfd)
+if(NOT nfd_POPULATED)
+    FetchContent_Populate(nfd)
+endif()
+
+# nfd is needed as a subdirectory
+add_subdirectory("${PROJECT_BINARY_DIR}/_deps/nfd-src/")
+
 # -------------------- END OF DEPENDENCIES
 
 # create executable
@@ -95,9 +120,15 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/backends/"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/misc/cpp"
+    "${PROJECT_BINARY_DIR}/_deps/nfd-src/src/include"
 )
 
 # link libraries to the executable
-target_link_libraries(${PROJECT_NAME}
-    "glfw;libglew_static;glm"
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    "glfw;libglew_static;glm;nfd"
+)
+
+# add definitions
+target_compile_definitions(${PROJECT_NAME} PUBLIC
+    NFD_THROWS_EXCEPTIONS # for the nfd-extended library
 )

@@ -1,5 +1,6 @@
 #include <thread>
 #include "window.hpp"
+#include "controller.hpp"
 
 int main()
 {
@@ -11,5 +12,12 @@ int main()
         window.run();
     }); // run the window in a thread
 
+    std::thread t_controller([](){
+        Controller controller;
+        controller.run();
+    }); // run the controller in a thread
+
     t_window.join(); // wait for the window to close before ending the program
+    tasks::addFileControllerTask(tasks::CT_EXIT); // signal the controller to exit
+    t_controller.join(); // wait for the controller to exit
 }

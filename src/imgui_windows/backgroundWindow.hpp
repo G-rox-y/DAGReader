@@ -1,5 +1,7 @@
 #pragma once
+
 #include "imguiWindow.hpp"
+#include "controller.hpp"
 
 class backgroundWindow : public imguiWindow{
 private:
