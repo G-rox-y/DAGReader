@@ -92,6 +92,13 @@ endif()
 # nfd is needed as a subdirectory
 add_subdirectory("${PROJECT_BINARY_DIR}/_deps/nfd-src/")
 
+# add speedlog (header only)
+FetchContent_Declare(spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog
+    GIT_TAG v1.15.2
+)
+FetchContent_MakeAvailable(spdlog)
+
 # -------------------- END OF DEPENDENCIES
 
 # create executable
@@ -121,6 +128,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/backends/"
     "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/misc/cpp"
     "${PROJECT_BINARY_DIR}/_deps/nfd-src/src/include"
+    "${PROJECT_BINARY_DIR}/_deps/spdlog-src/include"
 )
 
 # link libraries to the executable
@@ -132,3 +140,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     NFD_THROWS_EXCEPTIONS # for the nfd-extended library
 )
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(${PROJECT_NAME} PUBLIC DEBUG_LOGGING)
+endif()

@@ -8,6 +8,8 @@
 #include <string_view>
 #include <map>
 
+#include <spdlog/spdlog.h>
+
 #include "GFA_link.hpp"
 #include "GFA_segment.hpp"
 #include "GFA_containment.hpp"

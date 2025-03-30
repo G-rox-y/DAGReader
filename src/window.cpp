@@ -20,9 +20,12 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
 {
     // init glfw library
     if (!glfwInit()){
-        // TODO: Add error handling for this case
+        spdlog::error("GLFW init failed!");
+        throw std::runtime_error("GLFW init failed!");
     }
 
+    spdlog::info("GLFW version: {}.{}.{}", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION);
+    
     // add window hints
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_VERSION_MAJOR, 3);
@@ -33,7 +36,7 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     // glfwWindowHintString(GLFW_WAYLAND_APP_ID , "DAGReader"); // this seems to be unsupported rn
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "DAGReader");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "DAGReader");
-
+    
     // initialize imgui
     IMGUI_CHECKVERSION(); // check that version is compatible with what its used for
     ImGui::CreateContext();
@@ -42,6 +45,8 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     ImGui::StyleColorsDark();
 
+    spdlog::info("Info: IMGUI version: {}", IMGUI_VERSION);
+    
     // add custom imgui windows
     imguis.emplace_back(std::make_unique<backgroundWindow>());
 }
@@ -55,10 +60,15 @@ void Window::run(){
     // create the window
     m_window = glfwCreateWindow(m_w_width, m_w_height, "DAGReader", NULL, NULL);
     if (!m_window){
-        // TODO: Add error handling for this case
+        spdlog::error("Window init failed!");
+        throw std::runtime_error("Window init failed!");
     }
     
     glfwMakeContextCurrent(m_window);
+    
+    spdlog::info("OPENGL version: {}", (char*)glGetString(GL_VERSION));
+    spdlog::info("Info: Vendor: {}", (char*)glGetString(GL_VENDOR));
+    spdlog::info("Info: Renderer name: {}", (char*)glGetString(GL_RENDERER));
 
     // set icon
     glfwSetWindowIcon(m_window, 0, NULL); // TODO: make an icon
@@ -102,7 +112,7 @@ void Window::run(){
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
     glfwFocusWindow(m_window);
-
+    spdlog::info("Starting the window loop");
     while(!glfwWindowShouldClose(m_window)) // window is running
     {
         // clear the buffer
@@ -117,7 +127,7 @@ void Window::run(){
         // TODO: consider using glfwSwapInterval
         glFlush();
     }
-
+    spdlog::info("Window Closed");
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     glfwDestroyWindow(m_window);

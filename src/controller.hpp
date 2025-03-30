@@ -7,7 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
-
+#include <spdlog/spdlog.h>
 
 namespace tasks{
     // tasks that the fileController could have

@@ -2,7 +2,9 @@
 
 
 void GFA::parser_error(const std::string& description, const int line_n) const {
-    // TODO: add this
+    if (line_n != -1) spdlog::error("GFA Parser error [at line {}]: {}", line_n, description);
+    else spdlog::error("GFA Parser error: {}", description);
+    throw std::runtime_error("GFA Parser error (check logs)");
 }
 void GFA::parser_error(const std::string& description) const {
     parser_error(description, -1);

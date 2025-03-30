@@ -9,6 +9,7 @@ std::queue<std::filesystem::path> tasks::ct_paths;
 std::condition_variable tasks::ct_cv;
 
 void tasks::addFileControllerTask(controllerTask task){
+    spdlog::info("Sending a task to the controller");
     {
         std::scoped_lock lk(ct_mutex);
         ct.push(task);
@@ -29,15 +30,24 @@ void Controller::run()
 {
     bool shouldExit = false;
     while(!shouldExit){
+        spdlog::info("Controller waiting for a task...");
         std::unique_lock lk(tasks::ct_mutex);
         tasks::ct_cv.wait(lk, [&](){ return !tasks::ct.empty(); });
         auto t = tasks::ct.front();
         tasks::ct.pop();
         lk.unlock();
 
-        if (t == tasks::CT_OPEN_NFD) getPathNFD();
+        spdlog::info("Controller recieved a task");
+
+        if (t == tasks::CT_OPEN_NFD){
+            spdlog::info("Task: OPEN_NFD");
+            getPathNFD();
+        }
         
-        else if (t == tasks::CT_EXIT) shouldExit = true;
+        else if (t == tasks::CT_EXIT){
+            spdlog::info("Task: EXIT");
+            shouldExit = true;
+        }
     }
 }
 
@@ -51,17 +61,14 @@ std::string Controller::getPathNFD()
     args.filterList = filters;
     args.filterCount = 1;
     nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
-    if (result == NFD_OKAY)
-    {
+    if (result == NFD_OKAY){
+        spdlog::info("NFD path fetched: {}", outPath);
         NFD_FreePathU8(outPath);
     }
     else if (result == NFD_CANCEL)
-    {
-    }
+        spdlog::info("NFD cancelled");
     else 
-    {
-        printf("Error: %s\n", NFD_GetError());
-    }
+        spdlog::error("NFD Error: {}", NFD_GetError());
 
     NFD_Quit();
     return "";
