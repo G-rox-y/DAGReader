@@ -9,6 +9,8 @@
 #include <queue>
 #include <spdlog/spdlog.h>
 
+#include "GFA.hpp"
+
 namespace tasks{
     // tasks that the fileController could have
     enum controllerTask {
@@ -29,6 +31,7 @@ namespace tasks{
 // this class contols file input output and data manipilation
 class Controller {
 private:
+    std::unique_ptr<GFA> graphPtr;
 public:
     Controller() = default;
     ~Controller() = default;
@@ -37,5 +40,5 @@ public:
     // when it doesnt need to do anything it is automatically blocked (waiting but not running)
     void run();
 
-    std::string getPathNFD();
+    void getPathNFD(std::filesystem::path& path) const;
 };

@@ -39,4 +39,9 @@ private:
 public:
     // the constructor of this class parses a GFA file from the path provided
     GFA(const std::string& path);
+
+    const int segmentNum() const { return segments.size(); }
+    const int containmentNum() const { return containments.size(); }
+    const int linkNum() const { return links.size(); }
+    const int pathNum() const { return paths.size(); }
 };

@@ -41,7 +41,18 @@ void Controller::run()
 
         if (t == tasks::CT_OPEN_NFD){
             spdlog::info("Task: OPEN_NFD");
-            getPathNFD();
+            fs::path path;
+            getPathNFD(path);
+            if (path.empty()){
+                spdlog::info("NFD returned an empty path");
+                continue;
+            }
+            if (!fs::exists(path)){
+                spdlog::warn("NFD returned a path that doesnt exist!");
+                continue;
+            }
+            spdlog::info("Running the parser on the file");
+            graphPtr = std::make_unique<GFA>(path.string());
         }
         
         else if (t == tasks::CT_EXIT){
@@ -51,7 +62,7 @@ void Controller::run()
     }
 }
 
-std::string Controller::getPathNFD()
+void Controller::getPathNFD(std::filesystem::path& path) const
 {
     NFD_Init();
 
@@ -63,6 +74,7 @@ std::string Controller::getPathNFD()
     nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
     if (result == NFD_OKAY){
         spdlog::info("NFD path fetched: {}", outPath);
+        path = outPath;
         NFD_FreePathU8(outPath);
     }
     else if (result == NFD_CANCEL)
@@ -71,5 +83,4 @@ std::string Controller::getPathNFD()
         spdlog::error("NFD Error: {}", NFD_GetError());
 
     NFD_Quit();
-    return "";
 }
