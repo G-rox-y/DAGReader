@@ -38,6 +38,8 @@ int main()
         spdlog::info("Controller thread exiting");
     }); // run the controller in a thread
 
+    // TODO: add sigint and sigterm handling
+
     t_window.join(); // wait for the window to close before ending the program
     spdlog::info("Window closure signal detected, sending exit commands...");
     tasks::addFileControllerTask(tasks::CT_EXIT); // signal the controller to exit

@@ -14,7 +14,7 @@
 class Window{
 private:
     GLFWwindow* m_window; // window pointer
-
+    
     std::vector<std::unique_ptr<imguiWindow>> imguis; // list of imgui windows
 
     int m_w_width, m_w_height; // window width and height

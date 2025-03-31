@@ -3,10 +3,9 @@
 #include "imguiWindow.hpp"
 #include "controller.hpp"
 
-class backgroundWindow : public imguiWindow{
+class menuBar : public imguiWindow{
 private:
-    void drawMenu();
 public:
-    backgroundWindow() = default;
+    menuBar() = default;
     void draw() override;
 };

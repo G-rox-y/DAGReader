@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # project init
-project(DAGReader VERSION 0.1)
+project(DAGReader VERSION 1.0)
 
 # default build type is debug
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)

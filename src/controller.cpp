@@ -43,18 +43,13 @@ void Controller::run()
             spdlog::info("Task: OPEN_NFD");
             fs::path path;
             getPathNFD(path);
-            if (path.empty()){
-                spdlog::info("NFD returned an empty path");
-                continue;
+            if (path.empty()) spdlog::info("NFD returned an empty path");
+            if (!fs::exists(path)) spdlog::warn("NFD returned a path that doesnt exist!");
+            else{
+                spdlog::info("Running the parser on the file");
+                graphPtr = std::make_unique<GFA>(path.string());
             }
-            if (!fs::exists(path)){
-                spdlog::warn("NFD returned a path that doesnt exist!");
-                continue;
-            }
-            spdlog::info("Running the parser on the file");
-            graphPtr = std::make_unique<GFA>(path.string());
         }
-        
         else if (t == tasks::CT_EXIT){
             spdlog::info("Task: EXIT");
             shouldExit = true;

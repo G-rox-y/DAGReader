@@ -1,5 +1,6 @@
 #include "window.hpp"
-#include "backgroundWindow.hpp"
+#include "menuBar.hpp"
+#include "sidePanel.hpp"
 
 void Window::update()
 {
@@ -40,15 +41,16 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     // initialize imgui
     IMGUI_CHECKVERSION(); // check that version is compatible with what its used for
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     ImGui::StyleColorsDark();
 
     spdlog::info("Info: IMGUI version: {}", IMGUI_VERSION);
     
     // add custom imgui windows
-    imguis.emplace_back(std::make_unique<backgroundWindow>());
+    imguis.emplace_back(std::make_unique<menuBar>());
+    imguis.emplace_back(std::make_unique<sidePanel>(300.f));
 }
 
 Window::~Window(){
