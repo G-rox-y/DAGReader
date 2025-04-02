@@ -28,7 +28,7 @@ include(FetchContent)
 # add glfw
 FetchContent_Declare(glfw
     GIT_REPOSITORY https://github.com/glfw/glfw
-    GIT_TAG 3.4
+    GIT_TAG 3.3.8
 )
 
 FetchContent_GetProperties(glfw)
@@ -67,14 +67,14 @@ FetchContent_Declare(glm
 FetchContent_MakeAvailable(glm)
 
 # add imgui
-FetchContent_Declare(imgui-docking
+FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
-    GIT_TAG v1.89.9-docking
+    GIT_TAG v1.91.9
 )
 
-FetchContent_GetProperties(imgui-docking)
-if(NOT imgui-docking_POPULATED)
-    FetchContent_Populate(imgui-docking)
+FetchContent_GetProperties(imgui)
+if(NOT imgui_POPULATED)
+    FetchContent_Populate(imgui)
 endif()
 
 # add nfd-extended
@@ -109,14 +109,14 @@ add_subdirectory("src")
 
 # add imguis code since they dont have their own (useable) cmake
 target_sources(${PROJECT_NAME} PUBLIC
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui_draw.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui_demo.cpp"  # delete this one before moving to the main branch
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui_tables.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/imgui_widgets.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/backends/imgui_impl_glfw.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/backends/imgui_impl_opengl3.cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui.cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_draw.cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_demo.cpp"  # delete this one before moving to the main branch
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_tables.cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_widgets.cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/imgui_impl_glfw.cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/imgui_impl_opengl3.cpp"
 )
 
 # include dependencies
@@ -124,9 +124,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/_deps/glm-src/"
     "${PROJECT_BINARY_DIR}/_deps/glew-src/include/"
     "${PROJECT_BINARY_DIR}/_deps/glfw-src/include/"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/backends/"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-docking-src/misc/cpp"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/"
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/misc/cpp"
     "${PROJECT_BINARY_DIR}/_deps/nfd-src/src/include"
     "${PROJECT_BINARY_DIR}/_deps/spdlog-src/include"
 )

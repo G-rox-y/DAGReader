@@ -6,6 +6,8 @@
 #include <spdlog/spdlog.h>
 
 #include "imguiWindow.hpp"
+#include "menuBar.hpp"
+#include "sidePanel.hpp"
 
 #include <vector>
 #include <memory>
