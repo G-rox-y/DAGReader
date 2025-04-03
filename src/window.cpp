@@ -7,9 +7,9 @@ void Window::update()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    for(auto& q:quads) q.draw(); // draw quads
+    for(auto& q:m_quads) q.draw(); // draw quads
     for(auto& win:imguis) win->draw(); // draw all imgui windows
-    //ImGui::ShowDemoWindow();   
+    // ImGui::ShowDemoWindow();   
     
     // render imgui things
     ImGui::Render();
@@ -30,6 +30,9 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
@@ -146,6 +149,8 @@ void Window::run()
     // set background color
     glClearColor(0.f, 0.f, 0.f, 1.f);
 
+    // make the quad vector to load quads from
+    m_quads.emplace_back(glm::vec2(0.f, 0.f), 0.5f, 0.5f, 0.f);
 
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);

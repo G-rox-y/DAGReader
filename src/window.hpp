@@ -4,10 +4,12 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
+#include <glm/glm.hpp>
 
 #include "imguiWindow.hpp"
 #include "menuBar.hpp"
 #include "sidePanel.hpp"
+#include "quad.hpp"
 #include "GLProgram.hpp"
 
 #include <vector>
@@ -22,6 +24,8 @@ private:
 
     int m_w_width, m_w_height; // window width and height
     int m_fb_width, m_fb_height; // framebuffer width and height
+
+    std::vector<Quad> m_quads; // make this a vector of drawables
 
     void update();
 public:
