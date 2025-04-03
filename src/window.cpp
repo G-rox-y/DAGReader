@@ -52,16 +52,27 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     glewExperimental = true;
     GLenum err = glewInit();
     if(err != GLEW_OK){
-        spdlog::error("Error: GLEW init failed:\n{}", (char*)glewGetErrorString(err));
+        spdlog::error("GLEW init failed:\n{}", (char*)glewGetErrorString(err));
         glfwDestroyWindow(m_window);
         glfwTerminate();
-        throw std::runtime_error("Error: GLEW init failed (check logs)");
+        throw std::runtime_error("GLEW init failed (check logs)");
     }
+
+    // this requires GL version 4.3+
+#ifdef DEBUG_LOGGING
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // ensures callbacks are synchronous
+    glDebugMessageCallback(
+        [](GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam){
+            spdlog::warn("[OpenGL Debug]: {}", message);
+    }, nullptr);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+#endif
 
     // loging version info
     spdlog::info("OPENGL version: {}", (char*)glGetString(GL_VERSION));
-    spdlog::info("Info: Vendor: {}", (char*)glGetString(GL_VENDOR));
-    spdlog::info("Info: Renderer name: {}", (char*)glGetString(GL_RENDERER));
+    spdlog::info("Vendor: {}", (char*)glGetString(GL_VENDOR));
+    spdlog::info("Renderer name: {}", (char*)glGetString(GL_RENDERER));
 
     // set icon
     glfwSetWindowIcon(m_window, 0, NULL); // TODO: make an icon
@@ -102,10 +113,9 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
     ImGui::StyleColorsDark();
     
-    spdlog::info("Info: IMGUI version: {}", IMGUI_VERSION);
+    spdlog::info("IMGUI version: {}", IMGUI_VERSION);
     
     // Setup Platform/Renderer backends for imgui
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
@@ -127,6 +137,9 @@ Window::~Window()
 
 void Window::run()
 {
+    // load the shader
+    GLProgram program("./src/shaders/vertex.glsl", "./src/shaders/fragment.glsl");
+
     // fetch framebuffer dimensions
     glfwGetFramebufferSize(m_window, &m_fb_width, &m_fb_height);
 

@@ -8,6 +8,7 @@
 #include "imguiWindow.hpp"
 #include "menuBar.hpp"
 #include "sidePanel.hpp"
+#include "GLProgram.hpp"
 
 #include <vector>
 #include <memory>

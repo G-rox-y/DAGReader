@@ -7,10 +7,12 @@ target_sources(${PROJECT_NAME} PUBLIC
     "gfa/GFA.cpp"
     "gfa/GFA_segment.cpp"
     "gfa/GFA_path.cpp"
+    "graphics/GLProgram.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     "imgui_windows"
+    "graphics"
     "gfa"
     "."
 )
