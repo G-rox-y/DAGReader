@@ -30,16 +30,13 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     // glfwWindowHintString(GLFW_WAYLAND_APP_ID , "DAGReader"); // this seems to be unsupported rn
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "DAGReader");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "DAGReader");
-    
+
     // create the window
     m_window = glfwCreateWindow(m_w_width, m_w_height, "DAGReader", NULL, NULL);
     if (!m_window){
@@ -71,6 +68,10 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     }, nullptr);
     glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 #endif
+
+    glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
+    glCullFace(GL_BACK); // the back side cant be seen
+    glFrontFace(GL_CCW); // front is where the points of a triangle are connected counterclockwise
 
     // loging version info
     spdlog::info("OPENGL version: {}", (char*)glGetString(GL_VERSION));

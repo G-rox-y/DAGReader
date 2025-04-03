@@ -2,10 +2,8 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <spdlog/spdlog.h>
-#include <glm/glm.hpp>
+#include "pch.hpp"
 #include <glm/gtx/rotate_vector.hpp>
-#include <array>
 
 #include "drawable.hpp"
 

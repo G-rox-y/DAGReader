@@ -3,17 +3,14 @@
 #include "imguiIncludes.hpp"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <spdlog/spdlog.h>
-#include <glm/glm.hpp>
+
+#include "pch.hpp"
 
 #include "imguiWindow.hpp"
 #include "menuBar.hpp"
 #include "sidePanel.hpp"
 #include "quad.hpp"
 #include "GLProgram.hpp"
-
-#include <vector>
-#include <memory>
 
 // the class that controls the graphical window of the program
 class Window{

@@ -1,14 +1,7 @@
 #pragma once
 
 #include <nfd.hpp>
-#include <array>
-#include <filesystem>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <queue>
-#include <spdlog/spdlog.h>
-
+#include "pch.hpp"
 #include "GFA.hpp"
 
 namespace tasks{

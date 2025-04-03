@@ -1,6 +1,4 @@
-#include <thread>
-
-#include <spdlog/spdlog.h>
+#include "pch.hpp"
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 

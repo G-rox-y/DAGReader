@@ -1,11 +1,7 @@
 #pragma once
 
 #include <GL/glew.h>
-#include <string>
-#include <unordered_map>
-#include <glm/glm.hpp>
-#include <fstream>
-#include <spdlog/spdlog.h>
+#include "pch.hpp"
 
 
 // class used to manage gl programs (shaders)
