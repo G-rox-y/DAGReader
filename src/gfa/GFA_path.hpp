@@ -1,10 +1,6 @@
 #pragma once
 
-#include <fstream>
-#include <string>
-#include <vector>
-#include <string_view>
-#include <map>
+#include "pch.hpp"
 
 #include "GFA_link.hpp"
 

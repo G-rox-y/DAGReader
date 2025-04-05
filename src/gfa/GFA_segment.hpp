@@ -1,10 +1,6 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <fstream>
-#include <filesystem>
-#include <exception>
+#include "pch.hpp"
 
 #include "GFA_virtuals.hpp"
 

@@ -18,14 +18,16 @@ void Window::update()
 
 Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
 {
+    spdlog::info("GLFW version: {}.{}.{}", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION);
+    spdlog::info("GLEW version: {}.{}.{}", GLEW_VERSION_MAJOR, GLEW_VERSION_MINOR, GLEW_VERSION_MICRO);
+    spdlog::info("IMGUI version: {}", IMGUI_VERSION);
+
     // init glfw library
     if (!glfwInit()){
         spdlog::error("GLFW init failed!");
         throw std::runtime_error("GLFW init failed!");
     }
 
-    spdlog::info("GLFW version: {}.{}.{}", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION);
-    
     // add window hints
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_VERSION_MAJOR, 3);
@@ -118,8 +120,6 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
     ImGui::StyleColorsDark();
-    
-    spdlog::info("IMGUI version: {}", IMGUI_VERSION);
     
     // Setup Platform/Renderer backends for imgui
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);

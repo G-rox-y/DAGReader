@@ -1,14 +1,7 @@
 #pragma once
 
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <string>
-#include <tuple>
-#include <string_view>
-#include <map>
+#include "pch.hpp"
 
-#include <spdlog/spdlog.h>
 
 #include "GFA_link.hpp"
 #include "GFA_segment.hpp"
