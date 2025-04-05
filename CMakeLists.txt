@@ -6,7 +6,7 @@ project(DAGReader VERSION 1.0)
 # default build type is debug
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(STATUS "No build type specified. Defaulting to Debug.")
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()
 
 # set important vars
@@ -22,6 +22,14 @@ else()
 endif()
 
 # -------------------- DEPENDENCIES
+
+# i want dependencies to be built as release, so i will just change the build type not to interfere
+set(root_build_type "${CMAKE_BUILD_TYPE}")
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+
+# some also throw so many compiler warnings, they are not related to this project so best to silence them
+set(root_cxx_flags "${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w") 
 
 include(FetchContent)
 
@@ -54,6 +62,11 @@ FetchContent_GetProperties(glew)
 if(NOT glew_POPULATED)
     FetchContent_Populate(glew)
 
+    # if no debugging is happening i can turn off the building of utility programs (glewinfo and visualinfo)
+    # this is because glewinfo is used to list extensions and visualinfo to list visual/pixel formats
+    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(BUILD_UTILS OFF CACHE BOOL "")
+    endif()
     set(glew-cmake_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
 
     add_subdirectory(${glew_SOURCE_DIR} ${glew_BINARY_DIR})
@@ -87,10 +100,12 @@ FetchContent_Declare(nfd
 FetchContent_GetProperties(nfd)
 if(NOT nfd_POPULATED)
     FetchContent_Populate(nfd)
-endif()
 
-# nfd is needed as a subdirectory
-add_subdirectory("${PROJECT_BINARY_DIR}/_deps/nfd-src/")
+    # Disable installation of NFD library to the system
+    set(NFD_INSTALL OFF CACHE BOOL "")
+
+    add_subdirectory(${nfd_SOURCE_DIR} ${nfd_BINARY_DIR})
+endif()
 
 # add speedlog (header only)
 FetchContent_Declare(spdlog
@@ -98,6 +113,17 @@ FetchContent_Declare(spdlog
     GIT_TAG v1.15.2
 )
 FetchContent_MakeAvailable(spdlog)
+
+# add ogdf
+FetchContent_Declare(ogdf
+    GIT_REPOSITORY https://github.com/ogdf/ogdf
+    GIT_TAG elderberry-202309
+)
+FetchContent_MakeAvailable(ogdf)
+
+# and return stuff to normal
+set(CMAKE_BUILD_TYPE "${root_build_type}" CACHE STRING "Build type" FORCE)
+set(CMAKE_CXX_FLAGS "${root_cxx_flags}")
 
 # -------------------- END OF DEPENDENCIES
 
@@ -129,12 +155,17 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/misc/cpp"
     "${PROJECT_BINARY_DIR}/_deps/nfd-src/src/include"
     "${PROJECT_BINARY_DIR}/_deps/spdlog-src/include"
+    "${PROJECT_BINARY_DIR}/_deps/ogdf-src/include"
 )
 
 # link libraries to the executable
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    "glfw;libglew_static;glm;nfd"
+    "glfw;libglew_static;nfd;OGDF"
 )
+
+# remove this warning for ogdf since it uses a lot of non standard pragmas
+# so if you dont use clang it will fill up the terminal with a bunch of warnings
+target_compile_options(OGDF PRIVATE -Wno-unknown-pragmas)
 
 # add definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC

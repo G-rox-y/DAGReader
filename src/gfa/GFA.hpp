@@ -2,6 +2,11 @@
 
 #include "pch.hpp"
 
+#include <ogdf/basic/Graph.h>
+#include <ogdf/basic/graph_generators.h>
+#include <ogdf/planarity/PlanarizationLayout.h>
+#include <ogdf/orthogonal/OrthoLayout.h>
+#include <ogdf/fileformats/GraphIO.h>
 
 #include "GFA_link.hpp"
 #include "GFA_segment.hpp"
@@ -32,6 +37,8 @@ private:
 public:
     // the constructor of this class parses a GFA file from the path provided
     GFA(const std::string& path);
+
+    bool computeGraph();
 
     const int segmentNum() const { return segments.size(); }
     const int containmentNum() const { return containments.size(); }

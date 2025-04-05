@@ -299,3 +299,8 @@ GFA::GFA(const std::string& path) : version_string("")
 
     file.close();
 }
+
+bool GFA::computeGraph()
+{
+    
+}
