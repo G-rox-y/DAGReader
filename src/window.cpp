@@ -1,6 +1,28 @@
 #include "window.hpp"
 
-void Window::update()
+void Window::manageInputs()
+{
+    glfwPollEvents(); // poll inputs
+
+    if (glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
+        m_cam->setPosition(glm::vec3(0.f, 0.f, 0.f));
+    
+    bool panUp = false, panLeft = false, panDown = false, panRight = false;
+    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) panUp = true;
+    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) panLeft = true;
+    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) panDown = true;
+    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) panRight = true;
+    if (panUp || panLeft || panDown || panRight)
+        m_cam->pan(panUp, panLeft, panDown, panRight);
+
+    bool zoomIn = false, zoomOut = false;
+    if (glfwGetKey(m_window, GLFW_KEY_I) == GLFW_PRESS) zoomIn = true;
+    if (glfwGetKey(m_window, GLFW_KEY_O) == GLFW_PRESS) zoomOut = true;
+    if (zoomIn || zoomOut)
+        m_cam->zoom(zoomIn, zoomOut);
+}
+
+void Window::drawStuff()
 {
     // Start the ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
@@ -8,7 +30,7 @@ void Window::update()
     ImGui::NewFrame();
 
     for(auto& q:m_quads) q.draw(); // draw quads
-    for(auto& win:imguis) win->draw(); // draw all imgui windows
+    for(auto& win:m_imguis) win->draw(); // draw all imgui windows
     // ImGui::ShowDemoWindow();   
     
     // render imgui things
@@ -83,35 +105,6 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     // set icon
     glfwSetWindowIcon(m_window, 0, NULL); // TODO: make an icon
 
-    // ===== CALLBACKS =====
-
-    // create a structure for data passthrough in callbacks
-    struct CallbackData {
-        int* p_w_width;
-        int* p_w_height;
-        int* p_fb_width;
-        int* p_fb_height;
-    } callbackData;
-    callbackData.p_w_width = &m_w_width;
-    callbackData.p_w_height = &m_w_height;
-    callbackData.p_fb_width = &m_fb_width;
-    callbackData.p_fb_height = &m_fb_height;
-    glfwSetWindowUserPointer(m_window, &callbackData);
-
-    // set resize actions
-    glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height){
-        CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window)); // retrieve callback data
-        *data->p_w_width = width;
-        *data->p_w_height = height;
-    });
-    glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height){
-        CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window)); // retrieve callback data
-        *data->p_fb_width = width;
-        *data->p_fb_height = height;
-    });
-
-    // ==========
-
     // TODO: add an iconification callback which prevents window from being updated when active
     
     // initialize imgui
@@ -126,8 +119,8 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     ImGui_ImplOpenGL3_Init("#version 330"); //glsl version
     
     // add custom imgui windows
-    imguis.emplace_back(std::make_unique<menuBar>());
-    imguis.emplace_back(std::make_unique<sidePanel>(300.f));    
+    m_imguis.emplace_back(std::make_unique<menuBar>());
+    m_imguis.emplace_back(std::make_unique<sidePanel>(300.f));    
 }
 
 Window::~Window()
@@ -141,6 +134,42 @@ Window::~Window()
 
 void Window::run()
 {
+    // create the camera object
+    m_cam = std::make_unique<Camera>();
+
+    // ===== CALLBACKS =====
+
+    // create a structure for data passthrough in callbacks
+    struct CallbackData {
+        int* p_w_width;
+        int* p_w_height;
+        int* p_fb_width;
+        int* p_fb_height;
+        bool* cam_recalc;
+    } callbackData;
+    callbackData.p_w_width = &m_w_width;
+    callbackData.p_w_height = &m_w_height;
+    callbackData.p_fb_width = &m_fb_width;
+    callbackData.p_fb_height = &m_fb_height;
+    callbackData.cam_recalc = &m_cam->getRecalc();
+    glfwSetWindowUserPointer(m_window, &callbackData);
+
+    // set resize actions
+    glfwSetWindowSizeCallback(m_window, [](GLFWwindow* window, int width, int height){
+        CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window)); // retrieve callback data
+        *data->p_w_width = width;
+        *data->p_w_height = height;
+    });
+    glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height){
+        CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window)); // retrieve callback data
+        *data->p_fb_width = width;
+        *data->p_fb_height = height;
+        glViewport(0, 0, width, height);
+        *data->cam_recalc = true;
+    });
+
+    // ==========
+
     // load the shader
     GLProgram program("./src/shaders/vertex.glsl", "./src/shaders/fragment.glsl");
 
@@ -163,9 +192,15 @@ void Window::run()
         glClear(GL_COLOR_BUFFER_BIT	| GL_DEPTH_BUFFER_BIT);
 
         // system events
-        glfwPollEvents(); 
+        this->manageInputs();
 
-        this->update();
+        // we should update the camera before drawing;
+        m_cam->update(m_fb_width, m_fb_height);
+
+        // pass the camera view matrix through uniform
+        program.setUniformMat4f("MVP", m_cam->getMat());
+
+        this->drawStuff();
 
         glfwSwapBuffers(m_window);
         // TODO: consider using glfwSwapInterval

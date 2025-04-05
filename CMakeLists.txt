@@ -146,7 +146,7 @@ target_sources(${PROJECT_NAME} PUBLIC
 )
 
 # include dependencies
-target_include_directories(${PROJECT_NAME} PUBLIC
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     "${PROJECT_BINARY_DIR}/_deps/glm-src/"
     "${PROJECT_BINARY_DIR}/_deps/glew-src/include/"
     "${PROJECT_BINARY_DIR}/_deps/glfw-src/include/"
@@ -162,10 +162,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "glfw;libglew_static;nfd;OGDF"
 )
-
-# remove this warning for ogdf since it uses a lot of non standard pragmas
-# so if you dont use clang it will fill up the terminal with a bunch of warnings
-target_compile_options(OGDF PRIVATE -Wno-unknown-pragmas)
 
 # add definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC
