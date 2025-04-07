@@ -5,13 +5,13 @@
 #include <ogdf/basic/Graph.h>
 #include <ogdf/basic/graph_generators.h>
 #include <ogdf/planarity/PlanarizationLayout.h>
-#include <ogdf/orthogonal/OrthoLayout.h>
 #include <ogdf/fileformats/GraphIO.h>
 
 #include "GFA_link.hpp"
 #include "GFA_segment.hpp"
 #include "GFA_containment.hpp"
 #include "GFA_path.hpp"
+#include "quad.hpp"
 
 struct GFA_field{
     std::string tag, type, value;
@@ -30,6 +30,10 @@ private:
     std::map<std::pair<std::string_view, std::string_view>, int> link_lookup;
     // TODO: implement a custom hashing function to be able to relpace map with unordered_map
 
+    // save ogdf graph structures
+    ogdf::Graph m_graph;
+    ogdf::GraphAttributes m_graphAttr;
+
     // this function handles errors coming from GFA class
     void parser_error(const std::string& description, const int line_n) const;
     void parser_error(const std::string& description) const;
@@ -38,7 +42,8 @@ public:
     // the constructor of this class parses a GFA file from the path provided
     GFA(const std::string& path);
 
-    bool computeGraph();
+    void computeGraph();
+    void insertGraph(const std::shared_ptr<std::vector<std::unique_ptr<drawable>>>& datastructure) const;
 
     const int segmentNum() const { return segments.size(); }
     const int containmentNum() const { return containments.size(); }

@@ -29,12 +29,13 @@ void Quad::initBuffers()
     // fill the index buffer
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EB);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices.data(), GL_STATIC_DRAW); 
+
+    m_didInit = true;
 }
 
-Quad::Quad(const std::array<float, 8>& pts) : m_pts(pts){
-    initBuffers();
-}
-Quad::Quad(glm::vec2 center, float length, float width, float angle) // note: float angle is expected to be in radians
+Quad::Quad(const std::array<float, 8>& pts) : drawable(false), m_pts(pts)
+{}
+Quad::Quad(glm::vec2 center, float length, float width, float angle) : drawable(false) // note: float angle is expected to be in radians
 {
     // points of the quad
     glm::vec2 p1(center.x - length, center.y - width), p2(center.x + length, center.y - width),
@@ -53,17 +54,18 @@ Quad::Quad(glm::vec2 center, float length, float width, float angle) // note: fl
     };
 
     // and now init the buffers and the vertex array
-    initBuffers(); 
 }
 
 Quad::~Quad()
 {
-    glDeleteBuffers(1, &m_VB);
-    glDeleteBuffers(1, &m_EB);
-    glDeleteVertexArrays(1, &m_VA);
+    if (m_didInit){
+        glDeleteBuffers(1, &m_VB);
+        glDeleteBuffers(1, &m_EB);
+        glDeleteVertexArrays(1, &m_VA);
+    }
 }
 
-void Quad::draw()
+void Quad::draw() const
 {
     glBindVertexArray(m_VA);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // 6 because i use 6 indices (hardcoded)

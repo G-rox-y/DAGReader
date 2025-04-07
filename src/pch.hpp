@@ -5,6 +5,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+#include "drawable.hpp"
+
 #include <mutex>
 #include <thread>
 #include <condition_variable>

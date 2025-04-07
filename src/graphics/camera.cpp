@@ -10,10 +10,10 @@ void Camera::pan(bool up, bool left, bool down, bool right){
     if (up && down) up = down = false;
     if (left && right) left = right = false;
 
-    if (up) m_position += glm::vec3(0.f, -m_position.z / 100.f, 0.f);
-    if (left) m_position += glm::vec3(m_position.z / 100.f, 0.f, 0.f);
-    if (down) m_position += glm::vec3(0.f, m_position.z / 100.f, 0.f);
-    if (right) m_position += glm::vec3(-m_position.z / 100.f, 0.f, 0.f);
+    if (up) m_position += glm::vec3(0.f, m_position.z / 100.f, 0.f);
+    if (left) m_position += glm::vec3(-m_position.z / 100.f, 0.f, 0.f);
+    if (down) m_position += glm::vec3(0.f, -m_position.z / 100.f, 0.f);
+    if (right) m_position += glm::vec3(m_position.z / 100.f, 0.f, 0.f);
 
     m_shouldRecalculate = true;
 }
@@ -21,8 +21,8 @@ void Camera::pan(bool up, bool left, bool down, bool right){
 void Camera::zoom(bool in, bool out){
     if (in && out) return;
 
-    if (in && m_position.z < -0.1f) m_position += glm::vec3(0.f, 0.f, m_position.z / 50.f);
-    if (out) m_position += glm::vec3(0.f, 0.f, -m_position.z / 50.f);
+    if (out && m_position.z < -0.1f) m_position += glm::vec3(0.f, 0.f, m_position.z / 50.f);
+    if (in) m_position += glm::vec3(0.f, 0.f, -m_position.z / 50.f);
 
     m_shouldRecalculate = true;
 }

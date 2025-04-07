@@ -15,10 +15,15 @@ void sidePanel::draw()
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
         | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-    if (ImGui::Begin("Side Panel", NULL, flags)){
-        ImGui::Text("Yo");        
-
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.f, 0.f, 0.f, 0.6f));
+    if (ImGui::Begin("Side Panel", NULL, flags))
+    {
+        ImGui::Text("Hi :D");
+        if (ImGui::Button("Layout the graph!")){
+            tasks::addFileControllerTask(tasks::CT_LAYOUT_GRAPH);
+        }
+        ImGui::SameLine();
+        HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
     }
     ImGui::End();
     ImGui::PopStyleColor();

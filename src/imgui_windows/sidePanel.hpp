@@ -1,6 +1,7 @@
 #pragma once
 
 #include "imguiWindow.hpp"
+#include "controller.hpp"
 
 class sidePanel : public imguiWindow{
 private:

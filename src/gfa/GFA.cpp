@@ -300,7 +300,56 @@ GFA::GFA(const std::string& path) : version_string("")
     file.close();
 }
 
-bool GFA::computeGraph()
-{
+void GFA::computeGraph()
+{ using namespace ogdf;
+    m_graph.clear();
+    m_graphAttr = GraphAttributes(m_graph, GraphAttributes::nodeGraphics | GraphAttributes::edgeGraphics | GraphAttributes::nodeLabel 
+        | GraphAttributes::nodeLabelPosition | GraphAttributes::edgeArrow);
+    std::unordered_map<std::string, node> nodes; // lookup map to find nodes by name
+
+    // add segments as graph nodes
+    for (auto& seg:segments){
+        const std::string& name = seg.getName();
+        nodes.emplace(std::make_pair(name, m_graph.newNode()));
+        m_graphAttr.label(nodes.at(name)) = name;
+    }
+
+    // use links as graph edges
+    for (auto& lnk:links)
+        m_graph.newEdge(nodes.at(lnk.getFromName()), nodes.at(lnk.getToName()));
     
+    // Use a layout algorithm
+    PlanarizationLayout pl;
+    pl.call(m_graphAttr);
+
+    // normalize the coordinates to be in the [-1,1] range
+    double minX = 1e308, maxX = -1e308, minY = 1e308, maxY = -1e308; // e308 is an approx that will work just fine
+    for (auto n:m_graph.nodes){ // first calculate the bounding box and the scale factor
+        if (m_graphAttr.x(n) < minX) minX = m_graphAttr.x(n);
+        if (m_graphAttr.x(n) > maxX) maxX = m_graphAttr.x(n);
+        if (m_graphAttr.y(n) < minY) minY = m_graphAttr.y(n);
+        if (m_graphAttr.y(n) > maxY) maxY = m_graphAttr.y(n);
+    }
+    double centerX = (minX+maxX)/2.0, centerY = (minY+maxY)/2.0, scale = std::max(maxX-minX, maxY-minY) / 2.0;
+    for (auto n:m_graph.nodes){ // now normalize
+        m_graphAttr.x(n) = (m_graphAttr.x(n) - centerX) / scale;
+        m_graphAttr.y(n) = (m_graphAttr.y(n) - centerY) / scale;
+        m_graphAttr.width(n) = m_graphAttr.width(n) / scale / 4.0;
+        m_graphAttr.height(n) = m_graphAttr.height(n) / scale / 4.0;
+    }
+
+    // print graph data
+    // std::stringstream ss;
+    // GraphIO::writeDOT(m_graphAttr, ss);
+    // spdlog::info("{}", ss.str());
+}
+
+void GFA::insertGraph(const std::shared_ptr<std::vector<std::unique_ptr<drawable>>>& datastructure) const 
+{
+    // TODO: this whole thing with quads being constructed in this thread seems overcomplicated, consider simplifiying it, maybe send a graph to the window?
+    for(auto n:m_graph.nodes)
+        datastructure->emplace_back(std::make_unique<Quad>(
+            glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f
+        ))
+    ;
 }

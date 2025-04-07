@@ -5,6 +5,9 @@
 #include "window.hpp"
 #include "controller.hpp"
 
+// TODO: at this stage, the code is poorly commented, that should be fixed
+// TODO: at some later stages code structure should also be modified to be more readable to an outsider (especially the gfa parser)
+
 int main()
 {
     // file logger init, this can, in theory, create an exception
@@ -22,6 +25,7 @@ int main()
     // TODO: Add some .ini file to read starting dimensions from, and save them to
     int window_w = 1080, window_h = 920;
 
+    // TODO: if the main function keeps not doing anything later on in the project, the window can run here rather than in its own thread
     std::thread t_window([window_w, window_h](){
         spdlog::info("Window thread started");
         Window window(window_w, window_h);

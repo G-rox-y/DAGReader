@@ -29,9 +29,22 @@ void Window::drawStuff()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    for(auto& q:m_quads) q.draw(); // draw quads
+    // we try to lock the s_drawables and draw them (since the vector is shared between threads)
+    // this will work always, except when the file controller is writing to s_drawables, which is rare
+    std::unique_lock lk(*s_drawables_mutex, std::try_to_lock);
+    if (lk.owns_lock()){
+        for(auto& dr:*s_drawables){
+            if (!dr->getDidInit()) dr->initBuffers(); // if drawables havent been initialized, initialize
+            dr->draw();
+        }
+        lk.unlock(); // release the lock early so it can be used by other threads
+    }
+    else{ // if the lock isnt available, it means that graph data is being loaded
+        ImGui::Text("Loading..."); // TODO: add better loading, this one will create a window titled debug with the text "loading"
+    }
+    
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
-    // ImGui::ShowDemoWindow();   
+    // ImGui::ShowDemoWindow();
     
     // render imgui things
     ImGui::Render();
@@ -120,7 +133,15 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     
     // add custom imgui windows
     m_imguis.emplace_back(std::make_unique<menuBar>());
-    m_imguis.emplace_back(std::make_unique<sidePanel>(300.f));    
+    m_imguis.emplace_back(std::make_unique<sidePanel>(300.f));
+
+    // create shared variables on the heap
+    s_drawables = std::make_shared<std::vector<std::unique_ptr<drawable>>>();
+    s_drawables_mutex = std::make_shared<std::mutex>();
+
+    // exchange shared data with the file controller thread
+    tasks::addFileControllerDrawables(s_drawables, s_drawables_mutex);
+    tasks::addFileControllerTask(tasks::CT_SET_DRAWABLES);
 }
 
 Window::~Window()
@@ -135,7 +156,7 @@ Window::~Window()
 void Window::run()
 {
     // create the camera object
-    m_cam = std::make_unique<Camera>();
+    m_cam = std::make_unique<Camera>(glm::vec3(0.f, 0.f, -3.f));
 
     // ===== CALLBACKS =====
 
@@ -178,9 +199,6 @@ void Window::run()
 
     // set background color
     glClearColor(0.f, 0.f, 0.f, 1.f);
-
-    // make the quad vector to load quads from
-    m_quads.emplace_back(glm::vec2(0.f, 0.f), 0.5f, 0.5f, 0.f);
 
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
