@@ -156,7 +156,7 @@ Window::~Window()
 void Window::run()
 {
     // create the camera object
-    m_cam = std::make_unique<Camera>(glm::vec3(0.f, 0.f, -3.f));
+    m_cam = std::make_unique<Camera>(glm::vec3(0.f, 0.f, -1.f));
 
     // ===== CALLBACKS =====
 

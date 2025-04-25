@@ -330,26 +330,33 @@ void GFA::computeGraph()
         if (m_graphAttr.y(n) < minY) minY = m_graphAttr.y(n);
         if (m_graphAttr.y(n) > maxY) maxY = m_graphAttr.y(n);
     }
-    double centerX = (minX+maxX)/2.0, centerY = (minY+maxY)/2.0, scale = std::max(maxX-minX, maxY-minY) / 2.0;
-    for (auto n:m_graph.nodes){ // now normalize
-        m_graphAttr.x(n) = (m_graphAttr.x(n) - centerX) / scale;
-        m_graphAttr.y(n) = (m_graphAttr.y(n) - centerY) / scale;
-        m_graphAttr.width(n) = m_graphAttr.width(n) / scale / 4.0;
-        m_graphAttr.height(n) = m_graphAttr.height(n) / scale / 4.0;
-    }
+    double scale = 1.0 / std::max(maxX-minX, maxY-minY) / 2.0;
+    double centerX = -(minX+maxX) * scale / 2.0;
+    double centerY = -(minY+maxY) * scale / 2.0;
+    m_graphAttr.scaleAndTranslate(scale, centerX, centerY);
+    for (auto n:m_graph.nodes){ // reduce width a bit
+        m_graphAttr.width(n) = m_graphAttr.width(n) / 2.0;
+        m_graphAttr.height(n) = m_graphAttr.height(n) / 2.0;
+    }    
 
     // print graph data
-    // std::stringstream ss;
-    // GraphIO::writeDOT(m_graphAttr, ss);
-    // spdlog::info("{}", ss.str());
+    std::stringstream ss;
+    GraphIO::writeDOT(m_graphAttr, ss);
+    spdlog::info("{}", ss.str());
 }
 
 void GFA::insertGraph(const std::shared_ptr<std::vector<std::unique_ptr<drawable>>>& datastructure) const 
 {
     // TODO: this whole thing with quads being constructed in this thread seems overcomplicated, consider simplifiying it, maybe send a graph to the window?
+    // or maybe just have this function inside of the file controller
     for(auto n:m_graph.nodes)
         datastructure->emplace_back(std::make_unique<Quad>(
             glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f
         ))
     ;
+    for(auto e:m_graph.edges){
+        std::vector<glm::vec2> pts;
+        for(auto& b:m_graphAttr.bends(e)) pts.emplace_back(b.m_x, b.m_y);
+        datastructure->emplace_back(std::make_unique<Line>(pts));
+    }
 }

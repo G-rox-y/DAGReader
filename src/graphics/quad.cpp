@@ -52,8 +52,6 @@ Quad::Quad(glm::vec2 center, float length, float width, float angle) : drawable(
         p3_rot.x, p3_rot.y,
         p4_rot.x, p4_rot.y
     };
-
-    // and now init the buffers and the vertex array
 }
 
 Quad::~Quad()

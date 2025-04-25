@@ -10,6 +10,7 @@ target_sources(${PROJECT_NAME} PUBLIC
     "graphics/quad.cpp"
     "graphics/GLProgram.cpp"
     "graphics/camera.cpp"
+    "graphics/line.cpp"
 )
 
 # add the precompiled header

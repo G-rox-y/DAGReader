@@ -5,8 +5,6 @@
 #include "pch.hpp"
 #include <glm/gtx/rotate_vector.hpp>
 
-#include "drawable.hpp"
-
 class Quad : public drawable{
 private:
     std::array<float, 8> m_pts; // xy coordinates of 4 points that describe it
@@ -16,7 +14,6 @@ private:
     GLuint m_EB; // id of the element buffer (for indexing triangle edges into triangles)
 
 public:
-    // standard constructor
     Quad(const std::array<float, 8>& pts);
     Quad(glm::vec2 center, float length, float width, float angle);
     ~Quad();
