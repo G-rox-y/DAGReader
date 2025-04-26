@@ -340,9 +340,9 @@ void GFA::computeGraph()
     }    
 
     // print graph data
-    std::stringstream ss;
-    GraphIO::writeDOT(m_graphAttr, ss);
-    spdlog::info("{}", ss.str());
+    // std::stringstream ss;
+    // GraphIO::writeDOT(m_graphAttr, ss);
+    // spdlog::info("{}", ss.str());
 }
 
 void GFA::insertGraph(const std::shared_ptr<std::vector<std::unique_ptr<drawable>>>& datastructure) const 

@@ -1,15 +1,28 @@
 #include "controller.hpp"
 
-#include <iostream>
+// the includes below will be used for determining what is the path of the binary
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#else
+#include <unistd.h>
+#include <limits.h>
+#endif
+
 namespace fs = std::filesystem;
 
+// define all of the extern variables for the .hpp
 std::mutex tasks::ct_mutex;
 std::queue<tasks::controllerTask> tasks::ct;
 std::queue<std::filesystem::path> tasks::ct_paths;
 std::condition_variable tasks::ct_cv;
 std::shared_ptr<std::vector<std::unique_ptr<drawable>>> tasks::ct_ptr = nullptr;
 std::shared_ptr<std::mutex> tasks::ct_ptr_mut;
+std::vector<std::filesystem::path> tasks::ct_recent_paths;
+std::mutex tasks::ct_recent_paths_mut;
 
+// define the functions for manipulating the variables
 void tasks::addFileControllerTask(controllerTask task){
     spdlog::info("Sending a task to the controller");
     {
@@ -32,6 +45,77 @@ void tasks::addFileControllerDrawables(const std::shared_ptr<std::vector<std::un
     ct_ptr_mut = mut;
 }
 
+
+// controller functions
+Controller::Controller()
+{   // Get the path of the DAGReader executable
+#if defined(_WIN32)
+    std::string buffer(MAX_PATH, '\0');
+    DWORD size = GetModuleFileNameA(NULL, buffer.data(), static_cast<DWORD>(buffer.size()));
+    if (size == 0){
+        spdlog::error("Controller error: GerModuleFileName failed");
+        throw std::system_error(GetLastError(), std::system_category(), "GetModuleFileName failed");
+    }
+    buffer.resize(size);
+#elif defined(__APPLE__)
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size); // Get required size
+    std::string buffer(size, '\0');
+    _NSGetExecutablePath(buffer.data(), &size);
+#else // Linux
+    std::string buffer(PATH_MAX, '\0');
+    ssize_t size = readlink("/proc/self/exe", buffer.data(), buffer.size());
+    if (size == -1){
+        spdlog::error("Controller error: readlink failed");
+        throw std::system_error(errno, std::system_category(), "readlink failed");
+    }
+    buffer.resize(size);
+#endif
+    m_binaryPath = buffer;
+    spdlog::info("Executable ran from: {}", m_binaryPath.c_str());
+
+    iniPath = m_binaryPath.parent_path() / "DAGReader.ini";
+    
+    // check if .ini file exists, if not, create it
+    if (!fs::exists(iniPath)){
+        std::ofstream create(iniPath, std::ios::out);
+        create.close();
+    }
+    
+    // Now we load the .ini file
+    spdlog::info("Loading the .ini file from {}", iniPath.c_str());
+	std::ifstream iniFile(iniPath);
+    if (!iniFile.is_open()){
+        spdlog::error("Controller error: failed to open the .ini file");
+        throw std::runtime_error("failed to open the .ini file");
+    }
+
+	ini.parse(iniFile);
+    iniFile.close();
+
+    // if the recentPaths section doesnt exist, create it
+    if (ini.sections.find("recentPaths") == ini.sections.end())
+        ini.sections["recentPaths"];
+
+    auto& section = ini.sections.at("recentPaths");
+    {   // now lets load those paths in
+        std::scoped_lock lk(tasks::ct_recent_paths_mut);
+        for(int i = 4; i >= 0; i--){ // there should be max 5 entries here
+            if (section.find(std::to_string(i)) == section.end()) // if there is less, skip
+                continue;
+            tasks::ct_recent_paths.emplace_back(section.at(std::to_string(i)));
+            // the entries are loaded backwards, this is so that upon adding a path (with push_back)
+            // the paths get a new order, and only the last 5 paths get saved so new ones get saved as first (most recent)
+        }
+    }
+
+    // update the ini file and close
+    std::ofstream iniFileOut(iniPath, std::ios::trunc);
+    if (iniFileOut.is_open()) ini.generate(iniFileOut);
+    else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.c_str());
+    iniFileOut.close();
+}
+
 void Controller::run()
 {
     bool shouldExit = false;
@@ -45,18 +129,55 @@ void Controller::run()
 
         spdlog::info("Controller recieved a task");
 
-        if (t == tasks::CT_OPEN_NFD){
-            spdlog::info("Task: OPEN_NFD");
+        if (t == tasks::CT_OPEN_NFD || t == tasks::CT_OPEN_PATH)
+        {
             fs::path path;
-            getPathNFD(path);
-            if (path.empty()) spdlog::info("NFD returned an empty path");
-            if (!fs::exists(path)) spdlog::warn("NFD returned a path that doesnt exist!");
+            if (t == tasks::CT_OPEN_NFD){
+                spdlog::info("Task: OPEN_NFD");
+                getPathNFD(path);
+            }
             else{
+                spdlog::info("Task: OPEN_PATH");
+                lk.lock();
+                path = tasks::ct_paths.front();
+                tasks::ct_paths.pop();
+                lk.unlock();
+            }
+            if (path.empty()) spdlog::info("Recieved an empty path");
+            if (!fs::exists(path)) spdlog::warn("Recieved a path that doesnt exist: {}", path.c_str());
+            else{
+                // save the path to the recently used paths
+                spdlog::info("Updating the .ini ...");
+                {   // now we need to use recent_paths data
+                    std::scoped_lock lk2(tasks::ct_recent_paths_mut);
+                    
+                    // remove previous occurences
+                    tasks::ct_recent_paths.erase(
+                        std::remove(tasks::ct_recent_paths.begin(), tasks::ct_recent_paths.end(), path),
+                        tasks::ct_recent_paths.end()
+                    );
+
+                    // then add our path
+                    tasks::ct_recent_paths.push_back(path);
+                    
+                    // update the ini file
+                    auto& section = ini.sections.at("recentPaths");
+                    
+                    // save 5 (or less) elements from the back
+                    for(int i = (int)tasks::ct_recent_paths.size() - 1; i >= 0 && (int)tasks::ct_recent_paths.size() - i <= 5; i--)
+                        section[std::to_string((int)tasks::ct_recent_paths.size() - i - 1)] = tasks::ct_recent_paths[i].c_str();
+                }
+                std::ofstream iniFileOut(iniPath, std::ios::trunc);
+                if (iniFileOut.is_open()) ini.generate(iniFileOut);
+                else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.c_str());
+                iniFileOut.close();
+
                 spdlog::info("Running the parser on the file");
                 graphPtr = std::make_unique<GFA>(path.string());
             }
         }
-        else if (t == tasks::CT_LAYOUT_GRAPH){
+        else if (t == tasks::CT_LAYOUT_GRAPH)
+        {
             spdlog::info("Task: LAYOUT_GRAPH");
             if (graphPtr){
                 spdlog::info("Laying out a graph");
@@ -71,7 +192,8 @@ void Controller::run()
             }
             else spdlog::warn("No graph found!");
         }
-        else if (t == tasks::CT_SET_DRAWABLES){
+        else if (t == tasks::CT_SET_DRAWABLES)
+        {
             spdlog::info("Task: Set Drawables (shared datastructure)");
             lk.lock();
             s_drawables = tasks::ct_ptr;
@@ -80,7 +202,8 @@ void Controller::run()
             if (s_drawables) spdlog::info("Shared dastructure pointer set");
             else spdlog::warn("Shared datastructure pointer not specified!");
         }
-        else if (t == tasks::CT_EXIT){
+        else if (t == tasks::CT_EXIT)
+        {
             spdlog::info("Task: EXIT");
             shouldExit = true;
         }

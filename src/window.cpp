@@ -40,7 +40,7 @@ void Window::drawStuff()
         lk.unlock(); // release the lock early so it can be used by other threads
     }
     else{ // if the lock isnt available, it means that graph data is being loaded
-        ImGui::Text("Loading..."); // TODO: add better loading, this one will create a window titled debug with the text "loading"
+        ImGui::TextDisabled("Loading..."); // TODO: add better loading, this one will create a window titled debug with the text "loading"
     }
     
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
@@ -224,5 +224,6 @@ void Window::run()
         // TODO: consider using glfwSwapInterval
         glFlush();
     }
-    spdlog::info("Window Closed");
+    spdlog::info("Window Closed, notifiyng file controller to close...");
+    tasks::addFileControllerTask(tasks::CT_EXIT);
 }

@@ -22,31 +22,27 @@ int main()
 #endif
     spdlog::info("Starting the program!");
 
+    // initialize the controller, this class mostly handles files
+    Controller controller;
+
     // TODO: Add some .ini file to read starting dimensions from, and save them to
     int window_w = 1080, window_h = 920;
 
     // TODO: if the main function keeps not doing anything later on in the project, the window can run here rather than in its own thread
     std::thread t_window([window_w, window_h](){
-        spdlog::info("Window thread started");
+        spdlog::info("Window thread starting");
         Window window(window_w, window_h);
         window.run();
         spdlog::info("Window thread exiting");
     }); // run the window in a thread
 
-    std::thread t_controller([](){
-        spdlog::info("Controller thread started");
-        Controller controller;
-        controller.run();
-        spdlog::info("Controller thread exiting");
-    }); // run the controller in a thread
+    // run the controller
+    spdlog::info("Controller starting");
+    controller.run();
 
     // TODO: add sigint and sigterm handling
 
     t_window.join(); // wait for the window to close before ending the program
-    spdlog::info("Window closure signal detected, sending exit commands...");
-    tasks::addFileControllerTask(tasks::CT_EXIT); // signal the controller to exit
-    t_controller.join(); // wait for the controller to exit
-
-    spdlog::info("All threads joined, exiting the program!");
+    spdlog::info("Progeam exiting...");
     spdlog::shutdown();
 }
