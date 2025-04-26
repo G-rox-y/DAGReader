@@ -192,7 +192,7 @@ void Window::run()
     // ==========
 
     // load the shader
-    GLProgram program("./src/shaders/vertex.glsl", "./src/shaders/fragment.glsl");
+    GLProgram program;
 
     // fetch framebuffer dimensions
     glfwGetFramebufferSize(m_window, &m_fb_width, &m_fb_height);

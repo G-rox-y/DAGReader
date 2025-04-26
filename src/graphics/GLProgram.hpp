@@ -2,23 +2,21 @@
 
 #include <GL/glew.h>
 #include "pch.hpp"
-
+#include "shaders/shaderEmbed.hpp"
 
 // class used to manage gl programs (shaders)
 class GLProgram{
 private:
-    std::string pathVertex, pathFragment;
     GLuint id;
 
     // remember where uniforms are stored so they dont need to be fetched every time
     std::unordered_map<std::string, int> uniformLocationCache;
 
     // loads a shader into a program
-    GLuint loadShader(std::string& path, const GLuint type);
+    GLuint loadShader(const GLuint type);
 
 public:
-    // constructor loads and compiles shaders into a program
-    GLProgram(std::string vertex, std::string fragment);
+    GLProgram(); // constructor loads and compiles shaders into the program
     ~GLProgram();
 
     int getUniformLocation(const std::string& param);

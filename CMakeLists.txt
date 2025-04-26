@@ -140,16 +140,31 @@ add_executable(${PROJECT_NAME})
 # add code
 add_subdirectory("src")
 
+# add shaders
+add_custom_command(
+    OUTPUT
+        ${CMAKE_BINARY_DIR}/shaderEmbed.cpp
+    COMMAND ${CMAKE_COMMAND} 
+        -DINPUT_VERT=${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
+        -DINPUT_FRAG=${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
+        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/shaderEmbed.cpp
+        -P ${CMAKE_SOURCE_DIR}/src/shaders/shaderEmbed.cmake
+    DEPENDS 
+        ${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
+        ${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
+)
+
 # add imguis code since they dont have their own (useable) cmake
 target_sources(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui.cpp"
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_draw.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_demo.cpp"  # delete this one before moving to the main branch
+    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_demo.cpp"  # imgui demo (optional)
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_tables.cpp"
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_widgets.cpp"
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/imgui_impl_glfw.cpp"
     "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/imgui_impl_opengl3.cpp"
+    "${PROJECT_BINARY_DIR}/shaderEmbed.cpp" # this is where the shaders get added to
 )
 
 # include dependencies

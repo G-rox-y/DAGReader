@@ -1,21 +1,18 @@
 #include "GLProgram.hpp"
 
-GLuint GLProgram::loadShader(std::string& path, const GLuint type)
-{
-    std::ifstream code(path);
-
-    if (!code.is_open())
-        spdlog::warn("No shader at {}", path);
+GLuint GLProgram::loadShader(const GLuint type)
+{   
+    const char* code;
     
-    std::string src = "", temp = "";
-    while(std::getline(code, temp)) src += temp + '\n';
+    if (type == GL_VERTEX_SHADER) code = vertexShaderSource;
+    else if (type == GL_FRAGMENT_SHADER) code = fragmentShaderSource;
+    else spdlog::warn("Shader type '{}' is not allowed", type);
 
     GLuint shader = glCreateShader(type);
     if (shader == GL_INVALID_ENUM)
-        spdlog::warn("shader at {} is called with a wrong type", path);
+        spdlog::warn("Shader type '{}' is invalid", type);
 
-    const GLchar* shaderSrc = src.c_str();
-    glShaderSource(shader, 1, &shaderSrc, NULL);
+    glShaderSource(shader, 1, &code, NULL);
     glCompileShader(shader);
 
     GLint success;
@@ -26,19 +23,17 @@ GLuint GLProgram::loadShader(std::string& path, const GLuint type)
         spdlog::error("Shader fail: {}", infolog.data());
     }
 
-    code.close();
     return shader;
 }
 
-GLProgram::GLProgram(std::string vertex, std::string fragment)
-: pathVertex(vertex), pathFragment(fragment)
+GLProgram::GLProgram()
 {
     id = glCreateProgram();
     
-    GLuint vert = loadShader(vertex, GL_VERTEX_SHADER);
+    GLuint vert = loadShader(GL_VERTEX_SHADER);
     glAttachShader(id, vert);
     
-    GLuint frag = loadShader(fragment, GL_FRAGMENT_SHADER);
+    GLuint frag = loadShader(GL_FRAGMENT_SHADER);
     glAttachShader(id, frag);
 
     glLinkProgram(id);
