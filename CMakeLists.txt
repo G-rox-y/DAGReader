@@ -121,6 +121,13 @@ FetchContent_Declare(ogdf
 )
 FetchContent_MakeAvailable(ogdf)
 
+# add inipp
+FetchContent_Declare(inipp
+    GIT_REPOSITORY https://github.com/mcmtroffaes/inipp
+    GIT_TAG 46248e4e93a2e63f9a1d0d8d9ad40bd6b3725df5 # develop branch 12 Oct 2021
+)
+FetchContent_MakeAvailable(inipp)
+
 # and return stuff to normal
 set(CMAKE_BUILD_TYPE "${root_build_type}" CACHE STRING "Build type" FORCE)
 set(CMAKE_CXX_FLAGS "${root_cxx_flags}")
@@ -156,11 +163,12 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     "${PROJECT_BINARY_DIR}/_deps/nfd-src/src/include"
     "${PROJECT_BINARY_DIR}/_deps/spdlog-src/include"
     "${PROJECT_BINARY_DIR}/_deps/ogdf-src/include"
+    "${PROJECT_BINARY_DIR}/_deps/inipp-src"
 )
 
 # link libraries to the executable
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    "glfw;libglew_static;nfd;OGDF"
+    "glfw;libglew_static;nfd;OGDF;inipp"
 )
 
 # add definitions
