@@ -4,6 +4,7 @@
 
 #include "window.hpp"
 #include "controller.hpp"
+#include "infoExchange.hpp"
 
 // TODO: at this stage, the code is poorly commented, that should be fixed
 // TODO: at some later stages code structure should also be modified to be more readable to an outsider (especially the gfa parser)
@@ -22,16 +23,19 @@ int main()
 #endif
     spdlog::info("Starting the program!");
 
+    // initialize the communication channel for threads
+    infoExchange channel;
+
     // initialize the controller, this class mostly handles files
-    Controller controller;
+    Controller controller(&channel);
 
     // TODO: Add some .ini file to read starting dimensions from, and save them to
     int window_w = 1080, window_h = 920;
 
     // TODO: if the main function keeps not doing anything later on in the project, the window can run here rather than in its own thread
-    std::thread t_window([window_w, window_h](){
+    std::thread t_window([window_w, window_h, &channel](){
         spdlog::info("Window thread starting");
-        Window window(window_w, window_h);
+        Window window(&channel, window_w, window_h);
         window.run();
         spdlog::info("Window thread exiting");
     }); // run the window in a thread

@@ -12,42 +12,7 @@
 
 namespace fs = std::filesystem;
 
-// define all of the extern variables for the .hpp
-std::mutex tasks::ct_mutex;
-std::queue<tasks::controllerTask> tasks::ct;
-std::queue<std::filesystem::path> tasks::ct_paths;
-std::condition_variable tasks::ct_cv;
-std::shared_ptr<std::vector<std::unique_ptr<drawable>>> tasks::ct_ptr = nullptr;
-std::shared_ptr<std::mutex> tasks::ct_ptr_mut;
-std::vector<std::filesystem::path> tasks::ct_recent_paths;
-std::mutex tasks::ct_recent_paths_mut;
-
-// define the functions for manipulating the variables
-void tasks::addFileControllerTask(controllerTask task){
-    spdlog::info("Sending a task to the controller");
-    {
-        std::scoped_lock lk(ct_mutex);
-        ct.push(task);
-    }
-    ct_cv.notify_one();
-}
-void tasks::addFileControllerTaskPath(std::filesystem::path& path){
-    std::scoped_lock lk(ct_mutex);
-    ct_paths.push(path);
-}
-void tasks::addFileControllerTaskPath(std::string& path){
-    std::scoped_lock lk(ct_mutex);
-    ct_paths.emplace(std::filesystem::path(path));
-}
-void tasks::addFileControllerDrawables(const std::shared_ptr<std::vector<std::unique_ptr<drawable>>>& ptr, const std::shared_ptr<std::mutex>& mut){
-    std::scoped_lock lk(ct_mutex);
-    ct_ptr = ptr;
-    ct_ptr_mut = mut;
-}
-
-
-// controller functions
-Controller::Controller()
+Controller::Controller(infoExchange* c) : channel(c)
 {   // Get the path of the DAGReader executable
 #if defined(_WIN32)
     std::string buffer(MAX_PATH, '\0');
@@ -99,11 +64,11 @@ Controller::Controller()
 
     auto& section = ini.sections.at("recentPaths");
     {   // now lets load those paths in
-        std::scoped_lock lk(tasks::ct_recent_paths_mut);
+        std::scoped_lock lk(channel->recent_paths_mut);
         for(int i = 4; i >= 0; i--){ // there should be max 5 entries here
             if (section.find(std::to_string(i)) == section.end()) // if there is less, skip
                 continue;
-            tasks::ct_recent_paths.emplace_back(section.at(std::to_string(i)));
+            channel->recent_paths.emplace_back(section.at(std::to_string(i)));
             // the entries are loaded backwards, this is so that upon adding a path (with push_back)
             // the paths get a new order, and only the last 5 paths get saved so new ones get saved as first (most recent)
         }
@@ -121,26 +86,26 @@ void Controller::run()
     bool shouldExit = false;
     while(!shouldExit){
         spdlog::info("Controller waiting for a task...");
-        std::unique_lock lk(tasks::ct_mutex);
-        tasks::ct_cv.wait(lk, [&](){ return !tasks::ct.empty(); });
-        auto t = tasks::ct.front();
-        tasks::ct.pop();
+        std::unique_lock lk(channel->controller_tasks_mut);
+        channel->controller_tasks_cv.wait(lk, [&](){ return !channel->controller_tasks.empty(); });
+        auto t = channel->controller_tasks.front();
+        channel->controller_tasks.pop();
         lk.unlock();
 
         spdlog::info("Controller recieved a task");
 
-        if (t == tasks::CT_OPEN_NFD || t == tasks::CT_OPEN_PATH)
+        if (t == tasks::OPEN_NFD || t == tasks::OPEN_PATH)
         {
             fs::path path;
-            if (t == tasks::CT_OPEN_NFD){
+            if (t == tasks::OPEN_NFD){
                 spdlog::info("Task: OPEN_NFD");
                 getPathNFD(path);
             }
             else{
                 spdlog::info("Task: OPEN_PATH");
                 lk.lock();
-                path = tasks::ct_paths.front();
-                tasks::ct_paths.pop();
+                path = channel->controller_tasks_paths.front();
+                channel->controller_tasks_paths.pop();
                 lk.unlock();
             }
             if (path.empty()) spdlog::info("Recieved an empty path");
@@ -149,23 +114,23 @@ void Controller::run()
                 // save the path to the recently used paths
                 spdlog::info("Updating the .ini ...");
                 {   // now we need to use recent_paths data
-                    std::scoped_lock lk2(tasks::ct_recent_paths_mut);
+                    std::scoped_lock lk2(channel->recent_paths_mut);
                     
                     // remove previous occurences
-                    tasks::ct_recent_paths.erase(
-                        std::remove(tasks::ct_recent_paths.begin(), tasks::ct_recent_paths.end(), path),
-                        tasks::ct_recent_paths.end()
+                    channel->recent_paths.erase(
+                        std::remove(channel->recent_paths.begin(), channel->recent_paths.end(), path),
+                        channel->recent_paths.end()
                     );
 
                     // then add our path
-                    tasks::ct_recent_paths.push_back(path);
+                    channel->recent_paths.push_back(path);
                     
                     // update the ini file
                     auto& section = ini.sections.at("recentPaths");
                     
                     // save 5 (or less) elements from the back
-                    for(int i = (int)tasks::ct_recent_paths.size() - 1; i >= 0 && (int)tasks::ct_recent_paths.size() - i <= 5; i--)
-                        section[std::to_string((int)tasks::ct_recent_paths.size() - i - 1)] = tasks::ct_recent_paths[i].string();
+                    for(int i = (int)channel->recent_paths.size() - 1; i >= 0 && (int)channel->recent_paths.size() - i <= 5; i--)
+                        section[std::to_string((int)channel->recent_paths.size() - i - 1)] = channel->recent_paths[i].string();
                 }
                 std::ofstream iniFileOut(iniPath, std::ios::trunc);
                 if (iniFileOut.is_open()) ini.generate(iniFileOut);
@@ -174,35 +139,27 @@ void Controller::run()
 
                 spdlog::info("Running the parser on the file");
                 graphPtr = std::make_unique<GFA>(path.string());
+                channel->updated_drawables = true; // new things to draw now available
             }
         }
-        else if (t == tasks::CT_LAYOUT_GRAPH)
+        else if (t == tasks::LAYOUT_GRAPH)
         {
             spdlog::info("Task: LAYOUT_GRAPH");
             if (graphPtr){
                 spdlog::info("Laying out a graph");
                 graphPtr.get()->computeGraph();
-                if (s_drawables){
-                    spdlog::info("Inserting the data into the shared datastructure");
-                    std::unique_lock<std::mutex> lk(*s_drawables_mutex);
-                    s_drawables->clear();
-                    graphPtr.get()->insertGraph(s_drawables);
+                spdlog::info("Inserting the data into the shared datastructure");
+
+                std::unique_lock<std::mutex> lk(channel->drawables_mutex);
+                if (channel->drawables){
+                    graphPtr.get()->insertGraph(channel->drawables);
+                    channel->updated_drawables = false; // update has been drawn, bool false now
                 }
-                else spdlog::warn("Shared datastrure pointer is not defined");
+                else spdlog::warn("Shared datastructure pointer is not defined");
             }
             else spdlog::warn("No graph found!");
         }
-        else if (t == tasks::CT_SET_DRAWABLES)
-        {
-            spdlog::info("Task: Set Drawables (shared datastructure)");
-            lk.lock();
-            s_drawables = tasks::ct_ptr;
-            s_drawables_mutex = tasks::ct_ptr_mut;
-            lk.unlock();
-            if (s_drawables) spdlog::info("Shared dastructure pointer set");
-            else spdlog::warn("Shared datastructure pointer not specified!");
-        }
-        else if (t == tasks::CT_EXIT)
+        else if (t == tasks::EXIT)
         {
             spdlog::info("Task: EXIT");
             shouldExit = true;

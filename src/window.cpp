@@ -31,9 +31,9 @@ void Window::drawStuff()
 
     // we try to lock the s_drawables and draw them (since the vector is shared between threads)
     // this will work always, except when the file controller is writing to s_drawables, which is rare
-    std::unique_lock lk(*s_drawables_mutex, std::try_to_lock);
+    std::unique_lock lk(channel->drawables_mutex, std::try_to_lock);
     if (lk.owns_lock()){
-        for(auto& dr:*s_drawables){
+        for(auto& dr:*channel->drawables){
             if (!dr->getDidInit()) dr->initBuffers(); // if drawables havent been initialized, initialize
             dr->draw();
         }
@@ -51,7 +51,7 @@ void Window::drawStuff()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
+Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_height(H)
 {
     spdlog::info("GLFW version: {}.{}.{}", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION);
     spdlog::info("GLEW version: {}.{}.{}", GLEW_VERSION_MAJOR, GLEW_VERSION_MINOR, GLEW_VERSION_MICRO);
@@ -132,16 +132,11 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
     ImGui_ImplOpenGL3_Init("#version 330"); //glsl version
     
     // add custom imgui windows
-    m_imguis.emplace_back(std::make_unique<menuBar>());
-    m_imguis.emplace_back(std::make_unique<sidePanel>(300.f));
+    m_imguis.emplace_back(std::make_unique<menuBar>(channel));
+    m_imguis.emplace_back(std::make_unique<sidePanel>(channel, 300.f));
 
-    // create shared variables on the heap
-    s_drawables = std::make_shared<std::vector<std::unique_ptr<drawable>>>();
-    s_drawables_mutex = std::make_shared<std::mutex>();
-
-    // exchange shared data with the file controller thread
-    tasks::addFileControllerDrawables(s_drawables, s_drawables_mutex);
-    tasks::addFileControllerTask(tasks::CT_SET_DRAWABLES);
+    // create the drawables vector for the channel
+    channel->drawables = std::make_shared<std::vector<std::unique_ptr<drawable>>>();
 }
 
 Window::~Window()
@@ -225,5 +220,5 @@ void Window::run()
         glFlush();
     }
     spdlog::info("Window Closed, notifiyng file controller to close...");
-    tasks::addFileControllerTask(tasks::CT_EXIT);
+    channel->addControllerTask(tasks::EXIT);
 }

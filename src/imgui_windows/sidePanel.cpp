@@ -1,6 +1,6 @@
 #include "sidePanel.hpp"
 
-sidePanel::sidePanel(const float w) : m_width(w), m_collapsed(false) {}
+sidePanel::sidePanel(infoExchange* c, const float w) : channel(c), m_width(w), m_collapsed(false) {}
 
 void sidePanel::draw()
 {
@@ -20,7 +20,21 @@ void sidePanel::draw()
     {
         ImGui::Text("Hi :D");
         if (ImGui::Button("Layout the graph!")){
-            tasks::addFileControllerTask(tasks::CT_LAYOUT_GRAPH);
+            if(channel->updated_drawables){
+                channel->drawables->clear(); // has to be cleared here cause this thread has the opengl context
+                channel->addControllerTask(tasks::LAYOUT_GRAPH);
+            }
+            else spdlog::info("No changes to draw!");
+        }
+        if(channel->updated_drawables){
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "*");
+            if (ImGui::BeginItemTooltip()){
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::TextUnformatted("You have made updates, click the button to redraw");
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
         }
         ImGui::SameLine();
         HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");

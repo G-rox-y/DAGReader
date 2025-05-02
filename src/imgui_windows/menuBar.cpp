@@ -1,5 +1,7 @@
 #include "menuBar.hpp"
 
+menuBar::menuBar(infoExchange* c) : channel(c) {}
+
 void menuBar::draw()
 {
     if (ImGui::BeginMainMenuBar())
@@ -7,21 +9,21 @@ void menuBar::draw()
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Open file", "Ctrl+O")){ // TODO: make this shortcut work
-                tasks::addFileControllerTask(tasks::CT_OPEN_NFD);
+                channel->addControllerTask(tasks::OPEN_NFD);
             }
             if (ImGui::BeginMenu("Open recent"))
             {
-                std::unique_lock lk(tasks::ct_recent_paths_mut, std::try_to_lock);
+                std::unique_lock lk(channel->recent_paths_mut, std::try_to_lock);
                 if (lk.owns_lock()){
-                    if (tasks::ct_recent_paths.empty())
+                    if (channel->recent_paths.empty())
                         ImGui::TextDisabled("No recently opened files");
                     else{
                         // show 5 paths from the back of the vector
-                        for(int i = (int)tasks::ct_recent_paths.size() - 1; i >= 0 && (int)tasks::ct_recent_paths.size() - i <= 5; i--){
-                            std::string title = tasks::ct_recent_paths[i].filename().string() + "##" + std::to_string(i);
+                        for(int i = (int)channel->recent_paths.size() - 1; i >= 0 && (int)channel->recent_paths.size() - i <= 5; i--){
+                            std::string title = channel->recent_paths[i].filename().string() + "##" + std::to_string(i);
                             if (ImGui::MenuItem(title.c_str())){
-                                tasks::addFileControllerTaskPath(tasks::ct_recent_paths[i]);
-                                tasks::addFileControllerTask(tasks::CT_OPEN_PATH);
+                                channel->addControllerTaskPath(channel->recent_paths[i]);
+                                channel->addControllerTask(tasks::OPEN_PATH);
                             }
                         }
                     }
