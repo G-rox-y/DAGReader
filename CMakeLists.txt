@@ -38,39 +38,25 @@ FetchContent_Declare(glfw
     GIT_REPOSITORY https://github.com/glfw/glfw
     GIT_TAG 3.3.8
 )
-
-FetchContent_GetProperties(glfw)
-if(NOT glfw_POPULATED)
-    FetchContent_Populate(glfw)
-
-    set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
-    set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
-    set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
-    set(ONLY_LIBS ON CACHE INTERNAL "" FORCE)
-
-    add_subdirectory(${glfw_SOURCE_DIR} ${glfw_BINARY_DIR})
-endif()
+set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
+set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
+set(ONLY_LIBS ON CACHE INTERNAL "" FORCE)
+FetchContent_MakeAvailable(glfw)
 
 # add glew-cmake
 FetchContent_Declare(glew
     GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
     GIT_TAG 9758219375d923a008feef93c0955931d801740f # master branch Jun 26 2023
 )
-
-FetchContent_GetProperties(glew)
-if(NOT glew_POPULATED)
-    FetchContent_Populate(glew)
-
-    # if no debugging is happening i can turn off the building of utility programs (glewinfo and visualinfo)
-    # this is because glewinfo is used to list extensions and visualinfo to list visual/pixel formats
-    if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(BUILD_UTILS OFF CACHE BOOL "")
-    endif()
-    set(glew-cmake_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
-
-    add_subdirectory(${glew_SOURCE_DIR} ${glew_BINARY_DIR})
+# if no debugging is happening i can turn off the building of utility programs (glewinfo and visualinfo)
+# this is because glewinfo is used to list extensions and visualinfo to list visual/pixel formats
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(BUILD_UTILS OFF CACHE BOOL "")
 endif()
+set(glew-cmake_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
+FetchContent_MakeAvailable(glew)
 
 # add glm
 FetchContent_Declare(glm
@@ -84,11 +70,7 @@ FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
     GIT_TAG v1.91.9
 )
-
-FetchContent_GetProperties(imgui)
-if(NOT imgui_POPULATED)
-    FetchContent_Populate(imgui)
-endif()
+FetchContent_MakeAvailable(imgui)
 
 # add nfd-extended
 # TODO: test for dependencies and their availlability (same goes for other packages)
@@ -96,16 +78,9 @@ FetchContent_Declare(nfd
     GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
     GIT_TAG v1.2.1
 )
-
-FetchContent_GetProperties(nfd)
-if(NOT nfd_POPULATED)
-    FetchContent_Populate(nfd)
-
-    # Disable installation of NFD library to the system
-    set(NFD_INSTALL OFF CACHE BOOL "")
-
-    add_subdirectory(${nfd_SOURCE_DIR} ${nfd_BINARY_DIR})
-endif()
+# Disable installation of NFD library to the system
+set(NFD_INSTALL OFF CACHE BOOL "")
+FetchContent_MakeAvailable(nfd)
 
 # add speedlog (header only)
 FetchContent_Declare(spdlog
@@ -119,7 +94,15 @@ FetchContent_Declare(ogdf
     GIT_REPOSITORY https://github.com/ogdf/ogdf
     GIT_TAG elderberry-202309
 )
-FetchContent_MakeAvailable(ogdf)
+FetchContent_GetProperties(ogdf)
+if(NOT ogdf_POPULATED)
+    FetchContent_Populate(ogdf)
+
+    # Inject globally into OGDF sources
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include cstdint")
+
+    add_subdirectory(${ogdf_SOURCE_DIR} ${ogdf_BINARY_DIR})
+endif()
 
 # add inipp
 FetchContent_Declare(inipp
@@ -156,29 +139,29 @@ add_custom_command(
 
 # add imguis code since they dont have their own (useable) cmake
 target_sources(${PROJECT_NAME} PUBLIC
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_draw.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_demo.cpp"  # imgui demo (optional)
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_tables.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/imgui_widgets.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/imgui_impl_glfw.cpp"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/imgui_impl_opengl3.cpp"
+    "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
+    "${imgui_SOURCE_DIR}/imgui.cpp"
+    "${imgui_SOURCE_DIR}/imgui_draw.cpp"
+    "${imgui_SOURCE_DIR}/imgui_demo.cpp"  # imgui demo (optional)
+    "${imgui_SOURCE_DIR}/imgui_tables.cpp"
+    "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
     "${PROJECT_BINARY_DIR}/shaderEmbed.cpp" # this is where the shaders get added to
 )
 
 # include dependencies
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
-    "${PROJECT_BINARY_DIR}/_deps/glm-src/"
-    "${PROJECT_BINARY_DIR}/_deps/glew-src/include/"
-    "${PROJECT_BINARY_DIR}/_deps/glfw-src/include/"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/backends/"
-    "${PROJECT_BINARY_DIR}/_deps/imgui-src/misc/cpp"
-    "${PROJECT_BINARY_DIR}/_deps/nfd-src/src/include"
-    "${PROJECT_BINARY_DIR}/_deps/spdlog-src/include"
-    "${PROJECT_BINARY_DIR}/_deps/ogdf-src/include"
-    "${PROJECT_BINARY_DIR}/_deps/inipp-src"
+    "${glm_SOURCE_DIR}/"
+    "${glew_SOURCE_DIR}/include/"
+    "${glfw_SOURCE_DIR}/include/"
+    "${imgui_SOURCE_DIR}/"
+    "${imgui_SOURCE_DIR}/backends/"
+    "${imgui_SOURCE_DIR}/misc/cpp"
+    "${nfd_SOURCE_DIR}/src/include"
+    "${spdlog_SOURCE_DIR}/include"
+    "${ogdf_SOURCE_DIR}/include"
+    "${inipp_SOURCE_DIR}/"
 )
 
 # link libraries to the executable

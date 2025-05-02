@@ -72,7 +72,7 @@ Controller::Controller()
     buffer.resize(size);
 #endif
     m_binaryPath = buffer;
-    spdlog::info("Executable ran from: {}", m_binaryPath.c_str());
+    spdlog::info("Executable ran from: {}", m_binaryPath.string());
 
     iniPath = m_binaryPath.parent_path() / "DAGReader.ini";
     
@@ -83,7 +83,7 @@ Controller::Controller()
     }
     
     // Now we load the .ini file
-    spdlog::info("Loading the .ini file from {}", iniPath.c_str());
+    spdlog::info("Loading the .ini file from {}", iniPath.string());
 	std::ifstream iniFile(iniPath);
     if (!iniFile.is_open()){
         spdlog::error("Controller error: failed to open the .ini file");
@@ -112,7 +112,7 @@ Controller::Controller()
     // update the ini file and close
     std::ofstream iniFileOut(iniPath, std::ios::trunc);
     if (iniFileOut.is_open()) ini.generate(iniFileOut);
-    else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.c_str());
+    else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.string());
     iniFileOut.close();
 }
 
@@ -144,7 +144,7 @@ void Controller::run()
                 lk.unlock();
             }
             if (path.empty()) spdlog::info("Recieved an empty path");
-            if (!fs::exists(path)) spdlog::warn("Recieved a path that doesnt exist: {}", path.c_str());
+            if (!fs::exists(path)) spdlog::warn("Recieved a path that doesnt exist: {}", path.string());
             else{
                 // save the path to the recently used paths
                 spdlog::info("Updating the .ini ...");
@@ -165,11 +165,11 @@ void Controller::run()
                     
                     // save 5 (or less) elements from the back
                     for(int i = (int)tasks::ct_recent_paths.size() - 1; i >= 0 && (int)tasks::ct_recent_paths.size() - i <= 5; i--)
-                        section[std::to_string((int)tasks::ct_recent_paths.size() - i - 1)] = tasks::ct_recent_paths[i].c_str();
+                        section[std::to_string((int)tasks::ct_recent_paths.size() - i - 1)] = tasks::ct_recent_paths[i].string();
                 }
                 std::ofstream iniFileOut(iniPath, std::ios::trunc);
                 if (iniFileOut.is_open()) ini.generate(iniFileOut);
-                else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.c_str());
+                else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.string());
                 iniFileOut.close();
 
                 spdlog::info("Running the parser on the file");

@@ -43,6 +43,6 @@ int main()
     // TODO: add sigint and sigterm handling
 
     t_window.join(); // wait for the window to close before ending the program
-    spdlog::info("Progeam exiting...");
+    spdlog::info("Program exiting...");
     spdlog::shutdown();
 }

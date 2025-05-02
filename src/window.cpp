@@ -103,7 +103,7 @@ Window::Window(int W, int H) : m_w_width(W), m_w_height(H)
         [](GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam){
             spdlog::warn("[OpenGL Debug]: {}", message);
     }, nullptr);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
 #endif
 
     glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
