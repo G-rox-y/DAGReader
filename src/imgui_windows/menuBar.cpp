@@ -32,6 +32,11 @@ void menuBar::draw()
                 else ImGui::TextDisabled("Loading...");
                 ImGui::EndMenu();
             }
+            if (ImGui::MenuItem("Clear layout")){
+                std::scoped_lock lk(channel->drawables_mutex);
+                channel->drawables->clear();
+                channel->graph_loaded.store(false);
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Info"))

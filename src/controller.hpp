@@ -16,6 +16,10 @@ private:
 
     inipp::Ini<char> ini; // inipp handler
 	std::filesystem::path iniPath; // ini file stream
+
+    // ogdf graph structures
+    ogdf::Graph m_graph;
+    ogdf::GraphAttributes m_graphAttr;
 public:
     Controller(infoExchange* c);
     ~Controller() = default;

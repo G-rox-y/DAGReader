@@ -13,20 +13,20 @@ void sidePanel::draw()
     ImGui::SetNextWindowSizeConstraints(ImVec2(m_width, 0), ImVec2(m_width, viewport->WorkSize.y));
 
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
-        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize;
+        | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
 
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.f, 0.f, 0.f, 0.6f));
     if (ImGui::Begin("Side Panel", NULL, flags))
     {
         ImGui::Text("Hi :D");
         if (ImGui::Button("Layout the graph!")){
-            if(channel->updated_drawables){
+            if(channel->updated_drawables.load()){
                 channel->drawables->clear(); // has to be cleared here cause this thread has the opengl context
                 channel->addControllerTask(tasks::LAYOUT_GRAPH);
             }
             else spdlog::info("No changes to draw!");
         }
-        if(channel->updated_drawables){
+        if(channel->updated_drawables.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "*");
             if (ImGui::BeginItemTooltip()){
@@ -38,6 +38,35 @@ void sidePanel::draw()
         }
         ImGui::SameLine();
         HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
+
+        bool copy_gau = channel->graph_auto_update.load();
+        if (ImGui::Checkbox("Auto update graph layout", &copy_gau))
+            channel->graph_auto_update.store(copy_gau);
+
+        if(ImGui::TreeNode("Layout settings"))
+        {
+            bool copy_gadsl = channel->graph_auto_determine_segment_length.load();
+            if (ImGui::Checkbox("Auto calculate segment fragment size", &copy_gadsl)){
+                channel->graph_auto_determine_segment_length.store(copy_gadsl);
+                if (channel->graph_loaded.load()) channel->updated_drawables.store(true);
+            }
+
+            ImGui::TextWrapped("Segment fragment size");
+            ImGui::BeginDisabled(copy_gadsl);
+            ImGui::SetNextItemWidth(m_width * 0.7f);
+            long long step = 1, step_fast = std::max<long long int>(channel->graph_segment_length.load() / 100, 10);
+            long long int copy_gsl = channel->graph_segment_length.load();
+            if (ImGui::InputScalar("##segment_fragment_size", ImGuiDataType_S64, &copy_gsl, &step, &step_fast) && copy_gsl > 0){
+                channel->graph_segment_length.store(copy_gsl);
+                if (channel->graph_loaded.load()) channel->updated_drawables.store(true);
+            }
+            ImGui::SameLine();
+            HelpMarker("This number controls how big the segments will end up being\n---\n"
+                "Example: if a segment is 5000 base pairs long, and this number is set to 1000, the segment size will be 5\n[minimal size is 1]\n---\n"
+                "Pro tip: you can hold CTRL while holding the - + buttons to quickly tune the values");
+            ImGui::TreePop();
+            ImGui::EndDisabled();
+        }
     }
     ImGui::End();
     ImGui::PopStyleColor();

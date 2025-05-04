@@ -7,6 +7,7 @@ private:
 public:
     virtual ~segmentLength() = default;
     void setSegmentLength(const long long int& c) { segment_length = c; }
+    long long int getSegmentLength() const { return segment_length; }
 };
 
 // abstract class for adding the read_count property to classes

@@ -46,12 +46,18 @@ struct infoExchange
     std::shared_ptr<std::vector<std::unique_ptr<drawable>>> drawables;
     std::mutex drawables_mutex;
     // this bool checks if the drawables had any updates and if they should be redrawn
-    std::atomic_bool updated_drawables = false;
+    std::atomic<bool> updated_drawables{false};
 
     // a vector of recent paths
     // used by: window (menu > open recent)
     // modified by: controller
     std::vector<std::filesystem::path> recent_paths;
     std::mutex recent_paths_mut;
+
+    // configuration variables for graph drawing
+    std::atomic<bool> graph_loaded{false};
+    std::atomic<bool> graph_auto_update{false};
+    std::atomic<long long int> graph_segment_length{100000};
+    std::atomic<bool> graph_auto_determine_segment_length{true};
 };
 

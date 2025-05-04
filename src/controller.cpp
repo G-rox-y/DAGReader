@@ -11,6 +11,7 @@
 #endif
 
 namespace fs = std::filesystem;
+using namespace ogdf;
 
 Controller::Controller(infoExchange* c) : channel(c)
 {   // Get the path of the DAGReader executable
@@ -139,21 +140,60 @@ void Controller::run()
 
                 spdlog::info("Running the parser on the file");
                 graphPtr = std::make_unique<GFA>(path.string());
-                channel->updated_drawables = true; // new things to draw now available
+                channel->graph_loaded.store(true);
+                channel->updated_drawables.store(true); // new things to draw now available
             }
         }
         else if (t == tasks::LAYOUT_GRAPH)
         {
             spdlog::info("Task: LAYOUT_GRAPH");
             if (graphPtr){
-                spdlog::info("Laying out a graph");
-                graphPtr.get()->computeGraph();
-                spdlog::info("Inserting the data into the shared datastructure");
+                spdlog::info("Laying out the graph");
+                // prepare the graph datastructures
+                m_graph.clear();
+                m_graphAttr = GraphAttributes(m_graph, GraphAttributes::nodeGraphics | GraphAttributes::edgeGraphics | GraphAttributes::nodeLabel 
+                    | GraphAttributes::nodeLabelPosition | GraphAttributes::edgeArrow);
+
+                // first pull the graph data from the graphPtr
+                graphPtr.get()->insertGraph(m_graph, m_graphAttr, channel->graph_segment_length, channel->graph_auto_determine_segment_length.load());
+
+                // run graph layout algorithms
+                PlanarizationLayout pl;
+                pl.call(m_graphAttr);
+
+                {   // normalize the coordinates to be in the [-1,1] range
+                    double minX, maxX, minY, maxY;
+                    minX = minY = std::numeric_limits<double>::max();
+                    maxX = maxY = std::numeric_limits<double>::min();
+                    for (auto n:m_graph.nodes){ // first calculate the bounding box and the scale factor
+                        if (m_graphAttr.x(n) < minX) minX = m_graphAttr.x(n);
+                        if (m_graphAttr.x(n) > maxX) maxX = m_graphAttr.x(n);
+                        if (m_graphAttr.y(n) < minY) minY = m_graphAttr.y(n);
+                        if (m_graphAttr.y(n) > maxY) maxY = m_graphAttr.y(n);
+                    }
+                    double scale = 1.0 / std::max(maxX-minX, maxY-minY) / 2.0; // then get the scale and the center
+                    double centerX = -(minX+maxX) * scale / 2.0;
+                    double centerY = -(minY+maxY) * scale / 2.0;
+                    m_graphAttr.scaleAndTranslate(scale, centerX, centerY); // and apply
+                    for (auto n:m_graph.nodes){ // and reduce square size a bit
+                        m_graphAttr.width(n) = m_graphAttr.width(n) / 2.0;
+                        m_graphAttr.height(n) = m_graphAttr.height(n) / 2.0;
+                    }
+                }
 
                 std::unique_lock<std::mutex> lk(channel->drawables_mutex);
                 if (channel->drawables){
-                    graphPtr.get()->insertGraph(channel->drawables);
-                    channel->updated_drawables = false; // update has been drawn, bool false now
+                    for(auto n:m_graph.nodes) // quads
+                        channel->drawables->emplace_back(std::make_unique<Quad>(
+                            glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f
+                        ))
+                    ;
+                    for(auto e:m_graph.edges){ // lines
+                        std::vector<glm::vec2> pts;
+                        for(auto& b:m_graphAttr.bends(e)) pts.emplace_back(b.m_x, b.m_y);
+                        channel->drawables->emplace_back(std::make_unique<Line>(pts));
+                    }
+                    channel->updated_drawables.store(false); // update has been drawn, bool false now
                 }
                 else spdlog::warn("Shared datastructure pointer is not defined");
             }

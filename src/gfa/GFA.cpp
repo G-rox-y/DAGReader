@@ -300,63 +300,29 @@ GFA::GFA(const std::string& path) : version_string("")
     file.close();
 }
 
-void GFA::computeGraph()
-{ using namespace ogdf;
-    m_graph.clear();
-    m_graphAttr = GraphAttributes(m_graph, GraphAttributes::nodeGraphics | GraphAttributes::edgeGraphics | GraphAttributes::nodeLabel 
-        | GraphAttributes::nodeLabelPosition | GraphAttributes::edgeArrow);
-    std::unordered_map<std::string, node> nodes; // lookup map to find nodes by name
+void GFA::insertGraph(ogdf::Graph& graph, ogdf::GraphAttributes& ga, std::atomic<long long int>& segmentSize, bool calcSize) const
+{
+    std::unordered_map<std::string, ogdf::node> nodes; // lookup map to find nodes by name
+     // first, fill the map
+    for (auto& seg:segments)
+        nodes.emplace(std::make_pair(seg.getName(), graph.newNode()));
+    // then calculate the size if needed
+    if (calcSize){
+        long long int maxSize = std::numeric_limits<long long int>::min();
+        for(auto& seg:segments) // fetch the largest size
+            maxSize = std::max<long long int>(maxSize, seg.getSegmentLength());
+        segmentSize.store(maxSize / 15); // the largest segment will have 15 (or 16) fragments
+    }
 
-    // add segments as graph nodes
+    // append graph attributes for nodes
     for (auto& seg:segments){
         const std::string& name = seg.getName();
-        nodes.emplace(std::make_pair(name, m_graph.newNode()));
-        m_graphAttr.label(nodes.at(name)) = name;
+        auto& node = nodes.at(name);
+        ga.label(node) = name;
+        ga.width(node) *= std::max<long long int>(seg.getSegmentLength(), 1) / std::max<long long int>(segmentSize.load(), 1) + 1; // width is directed by the segment size
     }
 
     // use links as graph edges
     for (auto& lnk:links)
-        m_graph.newEdge(nodes.at(lnk.getFromName()), nodes.at(lnk.getToName()));
-    
-    // Use a layout algorithm
-    PlanarizationLayout pl;
-    pl.call(m_graphAttr);
-
-    // normalize the coordinates to be in the [-1,1] range
-    double minX = 1e308, maxX = -1e308, minY = 1e308, maxY = -1e308; // e308 is an approx that will work just fine
-    for (auto n:m_graph.nodes){ // first calculate the bounding box and the scale factor
-        if (m_graphAttr.x(n) < minX) minX = m_graphAttr.x(n);
-        if (m_graphAttr.x(n) > maxX) maxX = m_graphAttr.x(n);
-        if (m_graphAttr.y(n) < minY) minY = m_graphAttr.y(n);
-        if (m_graphAttr.y(n) > maxY) maxY = m_graphAttr.y(n);
-    }
-    double scale = 1.0 / std::max(maxX-minX, maxY-minY) / 2.0;
-    double centerX = -(minX+maxX) * scale / 2.0;
-    double centerY = -(minY+maxY) * scale / 2.0;
-    m_graphAttr.scaleAndTranslate(scale, centerX, centerY);
-    for (auto n:m_graph.nodes){ // reduce width a bit
-        m_graphAttr.width(n) = m_graphAttr.width(n) / 2.0;
-        m_graphAttr.height(n) = m_graphAttr.height(n) / 2.0;
-    }    
-
-    // print graph data
-    // std::stringstream ss;
-    // GraphIO::writeDOT(m_graphAttr, ss);
-    // spdlog::info("{}", ss.str());
-}
-
-void GFA::insertGraph(const std::shared_ptr<std::vector<std::unique_ptr<drawable>>>& datastructure) const 
-{
-    // TODO: this whole thing with quads being constructed in this thread seems overcomplicated, consider simplifiying it, maybe send a graph to the window?
-    // or maybe just have this function inside of the file controller
-    for(auto n:m_graph.nodes)
-        datastructure->emplace_back(std::make_unique<Quad>(
-            glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f
-        ))
-    ;
-    for(auto e:m_graph.edges){
-        std::vector<glm::vec2> pts;
-        for(auto& b:m_graphAttr.bends(e)) pts.emplace_back(b.m_x, b.m_y);
-        datastructure->emplace_back(std::make_unique<Line>(pts));
-    }
+        graph.newEdge(nodes.at(lnk.getFromName()), nodes.at(lnk.getToName()));
 }

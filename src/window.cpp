@@ -207,6 +207,12 @@ void Window::run()
         // system events
         this->manageInputs();
 
+        // check if the graph should be auto-updated
+        if (channel->graph_auto_update.load() && channel->updated_drawables.load()){
+            channel->drawables->clear(); // has to be cleared here cause this thread has the opengl context
+            channel->addControllerTask(tasks::LAYOUT_GRAPH);
+        }
+
         // we should update the camera before drawing;
         m_cam->update(m_fb_width, m_fb_height);
 
