@@ -29,20 +29,8 @@ void Window::drawStuff()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // we try to lock the s_drawables and draw them (since the vector is shared between threads)
-    // this will work always, except when the file controller is writing to s_drawables, which is rare
-    std::unique_lock lk(channel->drawables_mutex, std::try_to_lock);
-    if (lk.owns_lock()){
-        for(auto& dr:*channel->drawables){
-            if (!dr->getDidInit()) dr->initBuffers(); // if drawables havent been initialized, initialize
-            dr->draw();
-        }
-        lk.unlock(); // release the lock early so it can be used by other threads
-    }
-    else{ // if the lock isnt available, it means that graph data is being loaded
-        ImGui::TextDisabled("Loading..."); // TODO: add better loading, this one will create a window titled debug with the text "loading"
-    }
-    
+    m_renderer->draw();
+
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
     // ImGui::ShowDemoWindow();
     
@@ -134,9 +122,6 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     // add custom imgui windows
     m_imguis.emplace_back(std::make_unique<menuBar>(channel));
     m_imguis.emplace_back(std::make_unique<sidePanel>(channel, 300.f));
-
-    // create the drawables vector for the channel
-    channel->drawables = std::make_shared<std::vector<std::unique_ptr<drawable>>>();
 }
 
 Window::~Window()
@@ -152,6 +137,7 @@ void Window::run()
 {
     // create the camera object
     m_cam = std::make_unique<Camera>(glm::vec3(0.f, 0.f, -1.f));
+    channel->renderer = m_renderer = std::make_shared<Renderer>();
 
     // ===== CALLBACKS =====
 
@@ -208,8 +194,8 @@ void Window::run()
         this->manageInputs();
 
         // check if the graph should be auto-updated
-        if (channel->graph_auto_update.load() && channel->updated_drawables.load()){
-            channel->drawables->clear(); // has to be cleared here cause this thread has the opengl context
+        if (channel->graph_auto_update.load() && channel->graph_param_change.load()){
+            m_renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
             channel->addControllerTask(tasks::LAYOUT_GRAPH);
         }
 

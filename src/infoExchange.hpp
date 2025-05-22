@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pch.hpp"
+#include "renderer.hpp"
 
 namespace tasks{
     // tasks that the fileController could have
@@ -39,14 +40,12 @@ struct infoExchange
     }
 
 
-    // a vector of drawables
-    // used by: window (to draw elements to the screen)
-    // modified by: controller (changes the elements)
-    // owned by: window (only window owns the opengl context so only it can call destructors and other things)
-    std::shared_ptr<std::vector<std::unique_ptr<drawable>>> drawables;
-    std::mutex drawables_mutex;
-    // this bool checks if the drawables had any updates and if they should be redrawn
-    std::atomic<bool> updated_drawables{false};
+    // the renderer -> thread safe!
+    // created by: window
+    // owned by: the heap
+    // modified by: controller (adds elements through member functions)
+    // used by: window (for rendering)
+    std::shared_ptr<Renderer> renderer;
 
     // a vector of recent paths
     // used by: window (menu > open recent)
@@ -57,6 +56,7 @@ struct infoExchange
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
     std::atomic<bool> graph_auto_update{false};
+    std::atomic<bool> graph_param_change{false};
     std::atomic<long long int> graph_segment_length{100000};
     std::atomic<bool> graph_auto_determine_segment_length{true};
 };

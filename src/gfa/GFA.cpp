@@ -319,6 +319,7 @@ void GFA::insertGraph(ogdf::Graph& graph, ogdf::GraphAttributes& ga, std::atomic
         const std::string& name = seg.getName();
         auto& node = nodes.at(name);
         ga.label(node) = name;
+        ga.height(node) = ga.width(node) = 15.f;
         ga.width(node) *= std::max<long long int>(seg.getSegmentLength(), 1) / std::max<long long int>(segmentSize.load(), 1) + 1; // width is directed by the segment size
     }
 

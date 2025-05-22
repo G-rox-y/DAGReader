@@ -33,8 +33,7 @@ void menuBar::draw()
                 ImGui::EndMenu();
             }
             if (ImGui::MenuItem("Clear layout")){
-                std::scoped_lock lk(channel->drawables_mutex);
-                channel->drawables->clear();
+                channel->renderer->clearAll();
                 channel->graph_loaded.store(false);
             }
             ImGui::EndMenu();

@@ -7,10 +7,7 @@
 #include <inipp/inipp.h>
 #include <ogdf/basic/Graph.h>
 #include <ogdf/basic/graph_generators.h>
-#include <ogdf/planarity/PlanarizationLayout.h>
 #include <ogdf/fileformats/GraphIO.h>
-
-#include "drawable.hpp"
 
 #include <mutex>
 #include <thread>

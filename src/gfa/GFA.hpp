@@ -6,8 +6,6 @@
 #include "GFA_segment.hpp"
 #include "GFA_containment.hpp"
 #include "GFA_path.hpp"
-#include "quad.hpp"
-#include "line.hpp"
 
 struct GFA_field{
     std::string tag, type, value;

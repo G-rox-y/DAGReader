@@ -141,7 +141,7 @@ void Controller::run()
                 spdlog::info("Running the parser on the file");
                 graphPtr = std::make_unique<GFA>(path.string());
                 channel->graph_loaded.store(true);
-                channel->updated_drawables.store(true); // new things to draw now available
+                channel->graph_param_change.store(true); // new things to draw now available
             }
         }
         else if (t == tasks::LAYOUT_GRAPH)
@@ -158,8 +158,8 @@ void Controller::run()
                 graphPtr.get()->insertGraph(m_graph, m_graphAttr, channel->graph_segment_length, channel->graph_auto_determine_segment_length.load());
 
                 // run graph layout algorithms
-                PlanarizationLayout pl;
-                pl.call(m_graphAttr);
+                FMMMLayout l;
+                l.call(m_graphAttr);
 
                 {   // normalize the coordinates to be in the [-1,1] range
                     double minX, maxX, minY, maxY;
@@ -181,19 +181,23 @@ void Controller::run()
                     }
                 }
 
-                std::unique_lock<std::mutex> lk(channel->drawables_mutex);
-                if (channel->drawables){
+                // print graph data
+                std::stringstream ss;
+                GraphIO::writeDOT(m_graphAttr, ss);
+                spdlog::info("{}", ss.str());
+
+                if (channel->renderer){
                     for(auto n:m_graph.nodes) // quads
-                        channel->drawables->emplace_back(std::make_unique<Quad>(
-                            glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f
-                        ))
-                    ;
+                        channel->renderer->addQuad(glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f);
+                    /*
                     for(auto e:m_graph.edges){ // lines
                         std::vector<glm::vec2> pts;
                         for(auto& b:m_graphAttr.bends(e)) pts.emplace_back(b.m_x, b.m_y);
                         channel->drawables->emplace_back(std::make_unique<Line>(pts));
                     }
-                    channel->updated_drawables.store(false); // update has been drawn, bool false now
+                    */
+                    channel->graph_param_change.store(false); // update has been drawn, bool false now
+                    channel->renderer->setShouldUpdate();
                 }
                 else spdlog::warn("Shared datastructure pointer is not defined");
             }
@@ -203,7 +207,7 @@ void Controller::run()
         {
             spdlog::info("Task: EXIT");
             shouldExit = true;
-        }
+        } // exit shouldnt be checked like this but by some atomic bool in infochannel that shuts down the while
     }
 }
 

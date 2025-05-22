@@ -11,6 +11,7 @@
 #include "sidePanel.hpp"
 #include "GLProgram.hpp"
 #include "camera.hpp"
+#include "renderer.hpp"
 #include "infoExchange.hpp"
 
 // the class that controls the graphical window of the program
@@ -28,6 +29,8 @@ private:
     // TODO: for now quads do draw calls individually, this should be made into a batch
 
     std::unique_ptr<Camera> m_cam;
+
+    std::shared_ptr<Renderer> m_renderer;
 
     void manageInputs();
     void drawStuff();

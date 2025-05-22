@@ -20,13 +20,12 @@ void sidePanel::draw()
     {
         ImGui::Text("Hi :D");
         if (ImGui::Button("Layout the graph!")){
-            if(channel->updated_drawables.load()){
-                channel->drawables->clear(); // has to be cleared here cause this thread has the opengl context
+            if (channel->graph_param_change.load()){
+                channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
                 channel->addControllerTask(tasks::LAYOUT_GRAPH);
             }
-            else spdlog::info("No changes to draw!");
         }
-        if(channel->updated_drawables.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
+        if(channel->graph_param_change.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "*");
             if (ImGui::BeginItemTooltip()){
@@ -48,7 +47,7 @@ void sidePanel::draw()
             bool copy_gadsl = channel->graph_auto_determine_segment_length.load();
             if (ImGui::Checkbox("Auto calculate segment fragment size", &copy_gadsl)){
                 channel->graph_auto_determine_segment_length.store(copy_gadsl);
-                if (channel->graph_loaded.load()) channel->updated_drawables.store(true);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
             }
 
             ImGui::TextWrapped("Segment fragment size");
@@ -58,7 +57,7 @@ void sidePanel::draw()
             long long int copy_gsl = channel->graph_segment_length.load();
             if (ImGui::InputScalar("##segment_fragment_size", ImGuiDataType_S64, &copy_gsl, &step, &step_fast) && copy_gsl > 0){
                 channel->graph_segment_length.store(copy_gsl);
-                if (channel->graph_loaded.load()) channel->updated_drawables.store(true);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
             }
             ImGui::SameLine();
             HelpMarker("This number controls how big the segments will end up being\n---\n"

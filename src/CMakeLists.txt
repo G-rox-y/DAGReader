@@ -7,10 +7,9 @@ target_sources(${PROJECT_NAME} PUBLIC
     "gfa/GFA.cpp"
     "gfa/GFA_segment.cpp"
     "gfa/GFA_path.cpp"
-    "graphics/quad.cpp"
     "graphics/GLProgram.cpp"
     "graphics/camera.cpp"
-    "graphics/line.cpp"
+    "graphics/renderer.cpp"
 )
 
 # add the precompiled header
