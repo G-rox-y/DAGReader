@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pch.hpp"
+#include "camera.hpp"
 #include "renderer.hpp"
 
 namespace tasks{
@@ -41,11 +42,16 @@ struct infoExchange
 
 
     // the renderer -> thread safe!
-    // created by: window
-    // owned by: the heap
+    // created by: window (on head)
     // modified by: controller (adds elements through member functions)
     // used by: window (for rendering)
     std::shared_ptr<Renderer> renderer;
+
+    // and the camera (only internal scale variable is thread safe)
+    // created by: window (on head)
+    // modified by: controller (sets initial zoom) and window
+    // used by: window (for rendering)
+    std::shared_ptr<Camera> cam;
 
     // a vector of recent paths
     // used by: window (menu > open recent)

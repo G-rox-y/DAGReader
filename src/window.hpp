@@ -28,8 +28,7 @@ private:
 
     // TODO: for now quads do draw calls individually, this should be made into a batch
 
-    std::unique_ptr<Camera> m_cam;
-
+    std::shared_ptr<Camera> m_cam;
     std::shared_ptr<Renderer> m_renderer;
 
     void manageInputs();

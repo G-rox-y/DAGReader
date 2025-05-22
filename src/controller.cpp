@@ -161,7 +161,7 @@ void Controller::run()
                 FMMMLayout l;
                 l.call(m_graphAttr);
 
-                {   // normalize the coordinates to be in the [-1,1] range
+                {   // set the zoom of the camera and center the graph
                     double minX, maxX, minY, maxY;
                     minX = minY = std::numeric_limits<double>::max();
                     maxX = maxY = std::numeric_limits<double>::min();
@@ -171,14 +171,10 @@ void Controller::run()
                         if (m_graphAttr.y(n) < minY) minY = m_graphAttr.y(n);
                         if (m_graphAttr.y(n) > maxY) maxY = m_graphAttr.y(n);
                     }
-                    double scale = 1.0 / std::max(maxX-minX, maxY-minY) / 2.0; // then get the scale and the center
-                    double centerX = -(minX+maxX) * scale / 2.0;
-                    double centerY = -(minY+maxY) * scale / 2.0;
-                    m_graphAttr.scaleAndTranslate(scale, centerX, centerY); // and apply
-                    for (auto n:m_graph.nodes){ // and reduce square size a bit
-                        m_graphAttr.width(n) = m_graphAttr.width(n) / 2.0;
-                        m_graphAttr.height(n) = m_graphAttr.height(n) / 2.0;
-                    }
+                    double scale = 1.0 / std::max(maxX-minX, maxY-minY) / 2.0; // take care of the zoom
+                    channel->cam->setZoom(scale);
+                    double centerX = (minX+maxX) / 2.0, centerY = (minY+maxY) / 2.0; // take care of the translation
+                    m_graphAttr.translate(-centerX, -centerY); // and apply
                 }
 
                 // print graph data

@@ -5,15 +5,25 @@ void Window::manageInputs()
     glfwPollEvents(); // poll inputs
 
     if (glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
-        m_cam->setPosition(glm::vec3(0.f, 0.f, 0.f));
+        m_cam->resetView();
     
     bool panUp = false, panLeft = false, panDown = false, panRight = false;
-    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) panUp = true;
-    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) panLeft = true;
-    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) panDown = true;
-    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) panRight = true;
+    if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) panUp = true;
+    if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS) panLeft = true;
+    if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) panDown = true;
+    if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS) panRight = true;
     if (panUp || panLeft || panDown || panRight)
         m_cam->pan(panUp, panLeft, panDown, panRight);
+
+    bool rotUp = false, rotLeft = false, rotDown = false, rotRight = false, yawCw = false, yawCcw = false;
+    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) rotUp = true;
+    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) rotLeft = true;
+    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) rotDown = true;
+    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) rotRight = true;
+    if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS) yawCw = true;
+    if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS) yawCcw = true;
+    if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
+        m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw);
 
     bool zoomIn = false, zoomOut = false;
     if (glfwGetKey(m_window, GLFW_KEY_I) == GLFW_PRESS) zoomIn = true;
@@ -94,8 +104,8 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
 #endif
 
-    glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
-    glCullFace(GL_BACK); // the back side cant be seen
+    //glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
+    //glCullFace(GL_BACK); // the back side cant be seen
     glFrontFace(GL_CCW); // front is where the points of a triangle are connected counterclockwise
 
     // loging version info
@@ -136,7 +146,7 @@ Window::~Window()
 void Window::run()
 {
     // create the camera object
-    m_cam = std::make_unique<Camera>(glm::vec3(0.f, 0.f, -1.f));
+    channel->cam = m_cam = std::make_shared<Camera>();
     channel->renderer = m_renderer = std::make_shared<Renderer>();
 
     // ===== CALLBACKS =====
@@ -204,6 +214,10 @@ void Window::run()
 
         // pass the camera view matrix through uniform
         program.setUniformMat4f("MVP", m_cam->getMat());
+
+        // which faces to cull (whats the front and whats the back)
+        bool mirrored = glm::determinant(m_cam->getMat()) < 0.0f;
+        glFrontFace(mirrored ? GL_CW : GL_CCW);
 
         this->drawStuff();
 
