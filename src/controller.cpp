@@ -158,7 +158,7 @@ void Controller::run()
                 graphPtr.get()->insertGraph(m_graph, m_graphAttr, channel->graph_segment_length, channel->graph_auto_determine_segment_length.load());
 
                 // run graph layout algorithms
-                FMMMLayout l;
+                PlanarizationLayout l;
                 l.call(m_graphAttr);
 
                 {   // set the zoom of the camera and center the graph
@@ -177,21 +177,16 @@ void Controller::run()
                     m_graphAttr.translate(-centerX, -centerY); // and apply
                 }
 
-                // print graph data
-                std::stringstream ss;
-                GraphIO::writeDOT(m_graphAttr, ss);
-                spdlog::info("{}", ss.str());
-
                 if (channel->renderer){
                     for(auto n:m_graph.nodes) // quads
                         channel->renderer->addQuad(glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), m_graphAttr.width(n), m_graphAttr.height(n), 0.f);
-                    /*
+
                     for(auto e:m_graph.edges){ // lines
-                        std::vector<glm::vec2> pts;
-                        for(auto& b:m_graphAttr.bends(e)) pts.emplace_back(b.m_x, b.m_y);
-                        channel->drawables->emplace_back(std::make_unique<Line>(pts));
+                        std::vector<float> pts;
+                        for(auto& b:m_graphAttr.bends(e)) pts.insert(pts.begin(), {(float)b.m_x, (float)b.m_y});
+                        channel->renderer->addLine(pts);
                     }
-                    */
+
                     channel->graph_param_change.store(false); // update has been drawn, bool false now
                     channel->renderer->setShouldUpdate();
                 }

@@ -22,6 +22,9 @@ private:
     // TODO: this will rotate slower if the framerate drops, the update functions should get a dt parameter
     // and sensitivities should be calculated in degrees/second not per update at some point
 
+    // when the view gets reset what will the scale(zoom) get set to
+    float m_default_scale = 1.f;
+
 public:
     Camera();
     ~Camera() = default;

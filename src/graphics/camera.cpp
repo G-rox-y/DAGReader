@@ -48,12 +48,12 @@ void Camera::rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw
 
 void Camera::setZoom(const float scale){
     m_scale.store(scale);
-    
+    m_default_scale = m_scale.load();
     m_shouldRecalculate = true;
 }
 
 void Camera::resetView(){ 
-    m_scale = 1.f; 
+    m_scale.store(m_default_scale); 
     m_rot = glm::identity<glm::quat>(); 
     m_position = glm::vec3(0.f, 0.f, -1.f);
 
@@ -66,8 +66,7 @@ void Camera::update(int window_w, int window_h){
     m_shouldRecalculate = false;
     
     // recalculate
-    m_mat = 
-        glm::perspective(glm::radians(60.f), (float)window_w/window_h, 0.05f, 500.f)
+    m_mat = glm::perspective(glm::radians(60.f), (float)window_w/window_h, 0.05f, 500.f)
         * glm::translate(glm::mat4(1.0f), m_position) * glm::mat4(m_rot) * glm::scale(glm::mat4(1), glm::vec3(m_scale));
     ;
 }

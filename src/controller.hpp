@@ -5,7 +5,7 @@
 #include "GFA.hpp"
 #include "infoExchange.hpp"
 
-#include <ogdf/energybased/FMMMLayout.h>
+#include <ogdf/planarity/PlanarizationLayout.h>
 
 // this class contols file input output and data manipulation
 class Controller {
