@@ -48,6 +48,7 @@ public:
 
     void addQuad(glm::vec2 center, float length, float width, float angle, glm::u8vec4 color);
     void addLine(const std::vector<float>& pts, glm::u8vec4 color);
+    void addBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 end, glm::vec3 endNormal, glm::u8vec4 color);
 
     void clearAll();
 

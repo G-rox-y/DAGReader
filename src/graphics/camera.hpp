@@ -18,7 +18,8 @@ private:
 
     // control sensitivities
     float m_zoom_sens = 0.02f;
-    float m_rotate_sens = glm::radians(1.f); // in degrees per update (one update per frame)
+    float m_rotate_sens = glm::radians(0.75f); // in degrees per update (one update per frame)
+    float m_pan_sens = 0.02f;
     // TODO: this will rotate slower if the framerate drops, the update functions should get a dt parameter
     // and sensitivities should be calculated in degrees/second not per update at some point
 
@@ -29,7 +30,7 @@ public:
     Camera();
     ~Camera() = default;
 
-    void pan(bool up, bool left, bool down, bool right);
+    void move(bool up, bool left, bool down, bool right, bool in, bool out);
     void zoom(bool in, bool out);
 
     void rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw);

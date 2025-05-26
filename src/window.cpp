@@ -7,29 +7,25 @@ void Window::manageInputs()
     if (glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
         m_cam->resetView();
     
-    bool panUp = false, panLeft = false, panDown = false, panRight = false;
-    if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) panUp = true;
-    if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS) panLeft = true;
-    if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) panDown = true;
-    if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS) panRight = true;
-    if (panUp || panLeft || panDown || panRight)
-        m_cam->pan(panUp, panLeft, panDown, panRight);
+    bool moveUp = false, moveLeft = false, moveDown = false, moveRight = false, moveIn = false, moveOut = false;
+    if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) moveUp = true;
+    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) moveLeft = true;
+    if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) moveDown = true;
+    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) moveRight = true;
+    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) moveIn = true;
+    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) moveOut = true;
+    if (moveUp || moveLeft || moveDown || moveRight || moveIn || moveOut)
+        m_cam->move(moveUp, moveLeft, moveDown, moveRight, moveIn, moveOut);
 
     bool rotUp = false, rotLeft = false, rotDown = false, rotRight = false, yawCw = false, yawCcw = false;
-    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) rotUp = true;
-    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) rotLeft = true;
-    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) rotDown = true;
-    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) rotRight = true;
+    if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) rotUp = true;
+    if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS) rotLeft = true;
+    if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) rotDown = true;
+    if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS) rotRight = true;
     if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS) yawCw = true;
     if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS) yawCcw = true;
     if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
         m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw);
-
-    bool zoomIn = false, zoomOut = false;
-    if (glfwGetKey(m_window, GLFW_KEY_I) == GLFW_PRESS) zoomIn = true;
-    if (glfwGetKey(m_window, GLFW_KEY_O) == GLFW_PRESS) zoomOut = true;
-    if (zoomIn || zoomOut)
-        m_cam->zoom(zoomIn, zoomOut);
 }
 
 void Window::drawStuff()

@@ -36,7 +36,7 @@ void Renderer::addQuad(glm::vec2 center, float length, float width, float angle,
     std::lock_guard lk(mem_mut);
     
     // fill the index array
-    int b = mt_ivmem.size() / 2;
+    int b = mt_ivmem.size() / 3;
     mt_iimem.insert(mt_iimem.end(), {
         b+0, b+1, b+2,
         b+2, b+3, b+0
@@ -44,10 +44,10 @@ void Renderer::addQuad(glm::vec2 center, float length, float width, float angle,
 
     // and fill the array
     mt_ivmem.insert(mt_ivmem.end(), {
-        p1_rot.x, p1_rot.y,
-        p2_rot.x, p2_rot.y,
-        p3_rot.x, p3_rot.y,
-        p4_rot.x, p4_rot.y
+        p1_rot.x, p1_rot.y, 0.f,
+        p2_rot.x, p2_rot.y, 0.f,
+        p3_rot.x, p3_rot.y, 0.f,
+        p4_rot.x, p4_rot.y, 0.f
     });
 
     mt_ivcmem.insert(mt_ivcmem.end(), {color, color, color, color}); // 4 colors 4 points
@@ -71,6 +71,58 @@ void Renderer::addLine(const std::vector<float>& pts, glm::u8vec4 color)
     }
     
     ml_ivmem.insert(ml_ivmem.end(), pts.begin(), pts.end());
+}
+
+void Renderer::addBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 end, glm::vec3 endNormal, glm::u8vec4 color)
+{
+    // lambda for creating planes
+    auto makePlane = [this](glm::vec3 center, glm::vec3 normal, glm::u8vec4 color){
+        float halfH = 0.1f, halfW = 0.1f;
+
+        glm::vec3  N = glm::normalize(normal);
+        glm::vec3  up = glm::abs(N.y) < 0.999f ? glm::vec3(0,1,0) : glm::vec3(1,0,0);
+        glm::vec3  X = glm::normalize(glm::cross(up, N));
+        glm::vec3  Y = glm::cross(N, X); 
+
+        glm::vec3 c1 = center + (+halfW * X) + (-halfH * Y);
+        glm::vec3 c2 = center + (+halfW * X) + (+halfH * Y);
+        glm::vec3 c3 = center + (-halfW * X) + (+halfH * Y);
+        glm::vec3 c4 = center + (-halfW * X) + (-halfH * Y);
+        
+        int b = mt_ivmem.size() / 3;
+        mt_iimem.insert(mt_iimem.end(), {
+            b+0, b+1, b+2,
+            b+2, b+3, b+0,
+        });
+
+        mt_ivmem.insert(mt_ivmem.end(), {
+            c1.x, c1.y, c1.z,
+            c2.x, c2.y, c2.z,
+            c3.x, c3.y, c3.z,
+            c4.x, c4.y, c4.z
+        });
+
+        mt_ivcmem.insert(mt_ivcmem.end(), {color, color, color, color});
+    };
+
+    // save the position before adding vertices for more intuitive index handling
+    int b = mt_ivmem.size() / 3;
+
+    // create planes
+    makePlane(begin, beginNormal, color);
+    makePlane(end, endNormal, color);
+    
+    // connect planes
+    mt_iimem.insert(mt_iimem.end(), {
+        b+0, b+1, b+4,
+        b+1, b+5, b+4,
+        b+1, b+2, b+5,
+        b+2, b+6, b+5,
+        b+2, b+3, b+6,
+        b+3, b+7, b+6,
+        b+3, b+0, b+7,
+        b+0, b+4, b+7
+    });
 }
 
 void Renderer::clearAll()
@@ -120,7 +172,7 @@ void Renderer::updateBuffers()
     glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(combined.size()), combined.data(), GL_STATIC_DRAW);
 
     // set the vertex layout
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(glm::u8vec4), (void*)vsize);
     glEnableVertexAttribArray(1);
@@ -130,8 +182,8 @@ void Renderer::updateBuffers()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mt_iimem.size() * sizeof(int), mt_iimem.data(), GL_STATIC_DRAW); 
 
     mt_indexSize = mt_iimem.size();
-    mt_indexedSize = mt_ivmem.size() / 2;
-    mt_unindexedSize = mt_vmem.size() / 2;
+    mt_indexedSize = mt_ivmem.size() / 3;
+    mt_unindexedSize = mt_vmem.size() / 3;
 
     // now the lines
     combined.clear();
