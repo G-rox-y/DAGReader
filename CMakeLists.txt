@@ -129,11 +129,17 @@ add_custom_command(
         ${CMAKE_BINARY_DIR}/shaderEmbed.cpp
     COMMAND ${CMAKE_COMMAND} 
         -DINPUT_VERT=${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
+        -DINPUT_TCS=${CMAKE_SOURCE_DIR}/src/shaders/tcs.glsl
+        -DINPUT_TES=${CMAKE_SOURCE_DIR}/src/shaders/tes.glsl
+        -DINPUT_GEOM=${CMAKE_SOURCE_DIR}/src/shaders/geometry.glsl
         -DINPUT_FRAG=${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
         -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/shaderEmbed.cpp
         -P ${CMAKE_SOURCE_DIR}/src/shaders/shaderEmbed.cmake
     DEPENDS 
         ${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
+        ${CMAKE_SOURCE_DIR}/src/shaders/tcs.glsl
+        ${CMAKE_SOURCE_DIR}/src/shaders/tes.glsl
+        ${CMAKE_SOURCE_DIR}/src/shaders/geometry.glsl
         ${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
 )
 

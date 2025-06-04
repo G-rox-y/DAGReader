@@ -1,6 +1,9 @@
 #pragma once
 
 extern const char* vertexShaderSource;
+extern const char* tcsShaderSource;
+extern const char* tesShaderSource;
+extern const char* geometryShaderSource;
 extern const char* fragmentShaderSource;
 
 // thats all for this file, now you may wonder where are these ShaderSource-s defined?

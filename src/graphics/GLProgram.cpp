@@ -5,6 +5,9 @@ GLuint GLProgram::loadShader(const GLuint type)
     const char* code;
     
     if (type == GL_VERTEX_SHADER) code = vertexShaderSource;
+    else if (type == GL_TESS_CONTROL_SHADER) code = tcsShaderSource;
+    else if (type == GL_TESS_EVALUATION_SHADER) code = tesShaderSource;
+    else if (type == GL_GEOMETRY_SHADER) code = geometryShaderSource;
     else if (type == GL_FRAGMENT_SHADER) code = fragmentShaderSource;
     else spdlog::warn("Shader type '{}' is not allowed", type);
 
@@ -33,6 +36,15 @@ GLProgram::GLProgram()
     GLuint vert = loadShader(GL_VERTEX_SHADER);
     glAttachShader(id, vert);
     
+    GLuint tcs = loadShader(GL_TESS_CONTROL_SHADER);
+    glAttachShader(id, tcs);
+    
+    GLuint tes = loadShader(GL_TESS_EVALUATION_SHADER);
+    glAttachShader(id, tes);
+
+    GLuint geom = loadShader(GL_GEOMETRY_SHADER);
+    glAttachShader(id, geom);
+    
     GLuint frag = loadShader(GL_FRAGMENT_SHADER);
     glAttachShader(id, frag);
 
@@ -48,6 +60,9 @@ GLProgram::GLProgram()
 
     // we dont need shaders after compilation
     glDeleteShader(vert);
+    glDeleteShader(tcs);
+    glDeleteShader(tes);
+    glDeleteShader(geom);
     glDeleteShader(frag);
 
     this->use();
@@ -70,13 +85,6 @@ int GLProgram::getUniformLocation(const std::string& param)
     
     uniformLocationCache[param] = location;
     return location;
-}
-
-
-void GLProgram::setUniform3f(const std::string& param, float f1, float f2, float f3)
-{
-    this->use();
-    glUniform3f(this->getUniformLocation(param), f1, f2, f3);
 }
 
 void GLProgram::setUniformMat4f(const std::string& param, const glm::mat4& matrix)

@@ -22,7 +22,6 @@ public:
     int getUniformLocation(const std::string& param);
 
     // set shader uniform
-    void setUniform3f(const std::string& param, float f1, float f2, float f3);
     void setUniformMat4f(const std::string& param, const glm::mat4& matrix);
 
     // activates the program

@@ -178,7 +178,7 @@ void Controller::run()
                 }
 
                 if (channel->renderer){
-                    for(auto n:m_graph.nodes) // quads
+                    /*for(auto n:m_graph.nodes) // quads
                         channel->renderer->addQuad(
                             glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), 
                             m_graphAttr.width(n), m_graphAttr.height(n), 
@@ -189,7 +189,7 @@ void Controller::run()
                         std::vector<float> pts;
                         for(auto& b:m_graphAttr.bends(e)) pts.insert(pts.begin(), {(float)b.m_x, (float)b.m_y});
                         channel->renderer->addLine(pts, glm::u8vec4(255, 255, 255, 255));
-                    }
+                    }*/
 
                     channel->graph_param_change.store(false); // update has been drawn, bool false now
                     channel->renderer->setShouldUpdate();

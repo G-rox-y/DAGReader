@@ -68,6 +68,8 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "DAGReader");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "DAGReader");
 
+    glfwWindowHint(GLFW_SAMPLES, 4); // request 4×MSAA
+
     // create the window
     m_window = glfwCreateWindow(m_w_width, m_w_height, "DAGReader", NULL, NULL);
     if (!m_window){
@@ -100,9 +102,12 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
 #endif
 
-    //glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
-    //glCullFace(GL_BACK); // the back side cant be seen
+    glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
+    glCullFace(GL_BACK); // the back side cant be seen
     glFrontFace(GL_CCW); // front is where the points of a triangle are connected counterclockwise
+    glEnable(GL_DEPTH_TEST); // make sure that the things that are in the back dont get drawn in front
+    glEnable(GL_MULTISAMPLE); // turn on MSAA
+    // TODO: ADD option to disable MSAA
 
     // loging version info
     spdlog::info("OPENGL version: {}", (char*)glGetString(GL_VERSION));
@@ -123,8 +128,11 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     
     // Setup Platform/Renderer backends for imgui
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
+#ifdef NO_GL_4_3
     ImGui_ImplOpenGL3_Init("#version 330"); //glsl version
-    
+#else
+    ImGui_ImplOpenGL3_Init("#version 430"); //glsl version
+#endif
     // add custom imgui windows
     m_imguis.emplace_back(std::make_unique<menuBar>(channel));
     m_imguis.emplace_back(std::make_unique<sidePanel>(channel, 300.f));
@@ -185,7 +193,9 @@ void Window::run()
     glfwGetFramebufferSize(m_window, &m_fb_width, &m_fb_height);
 
     // set background color
-    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+
+    m_renderer->addBezierBox(glm::vec3(-1.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 0.f), glm::vec3(3.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::u8vec4(0, 255, 0, 255));
 
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);

@@ -8,33 +8,22 @@
 // this class is thread safe since elements will be added through one thread and displayed through the other
 class Renderer {
 private:
-    // -- stuff for drawing triangles --
+    // -- bezier boxes --
 
-    GLuint mt_VA; // id of the triangles vertex array
-    GLuint mt_VB; // id of the triangles vertex buffer
-    GLuint mt_EB; // id of the triangles element buffer (for indexing triangle edges into triangles)
+    GLuint mbb_VA; // id of the bezier box vertex array
+    GLuint mbb_VB; // id of the bezier box vertex buffer
 
-    std::vector<float> mt_ivmem; // temporary memory for storing vertices of index array-ed triangles
-    std::vector<float> mt_vmem; // temporary memory for storing vertices of other triangles
-    std::vector<int> mt_iimem; // temporary memory for storing the index array of the index array-ed vertices 
-    std::vector<glm::u8vec4> mt_ivcmem, mt_vcmem; // color memory for the vertex arrays
+    struct bezierBox {
+        std::array<glm::vec4, 4> pt; // control poins
+        glm::u8vec4 color;
+        uint32_t _padding0; // padding so that we can pass the data directly and have it comply with glsl std430
+        glm::vec2 halfExt; // dimensions of the box cross-section
+        glm::vec2 _padding1; 
+    };
 
-    // the size values that need to be saved cause they can change before drawing
-    GLuint mt_indexSize, mt_indexedSize, mt_unindexedSize;
-    
-    // -- stuff for drawing lines --
+    std::vector<bezierBox> mbb_mem; // temporary memory for storing vertices of index array-ed lines
 
-    GLuint ml_VA; // id of the lines vertex array
-    GLuint ml_VB; // id of the lines vertex buffer
-    GLuint ml_EB; // id of the lines element buffer
-
-    std::vector<float> ml_ivmem; // temporary memory for storing vertices of index array-ed lines
-    std::vector<float> ml_vmem; // temporary memory for storing vertices of other lines
-    std::vector<int> ml_iimem; // temporary memory for storing the index array of the index array-ed lines 
-    std::vector<glm::u8vec4> ml_ivcmem, ml_vcmem; // color memory for the vertex arrays
-
-    // the size values that need to be saved cause they can change before drawing
-    GLuint ml_indexSize, ml_indexedSize, ml_unindexedSize;
+    GLuint mbb_indexSize = 0; // the saved index size between updates
 
     // -- other stuff --
 
@@ -46,9 +35,7 @@ public:
     Renderer();
     ~Renderer();
 
-    void addQuad(glm::vec2 center, float length, float width, float angle, glm::u8vec4 color);
-    void addLine(const std::vector<float>& pts, glm::u8vec4 color);
-    void addBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 end, glm::vec3 endNormal, glm::u8vec4 color);
+    void addBezierBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 end, glm::vec3 endNormal, glm::u8vec4 color);
 
     void clearAll();
 
