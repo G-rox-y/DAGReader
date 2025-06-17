@@ -3,9 +3,8 @@
 #include <nfd.hpp>
 #include "pch.hpp"
 #include "GFA.hpp"
+#include "GRIP.hpp"
 #include "infoExchange.hpp"
-
-#include <ogdf/planarity/PlanarizationLayout.h>
 
 // this class contols file input output and data manipulation
 class Controller {
@@ -19,9 +18,6 @@ private:
     inipp::Ini<char> ini; // inipp handler
 	std::filesystem::path iniPath; // ini file stream
 
-    // ogdf graph structures
-    ogdf::Graph m_graph;
-    ogdf::GraphAttributes m_graphAttr;
 public:
     Controller(infoExchange* c);
     ~Controller() = default;

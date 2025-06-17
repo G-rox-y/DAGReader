@@ -89,21 +89,6 @@ FetchContent_Declare(spdlog
 )
 FetchContent_MakeAvailable(spdlog)
 
-# add ogdf
-FetchContent_Declare(ogdf
-    GIT_REPOSITORY https://github.com/ogdf/ogdf
-    GIT_TAG elderberry-202309
-)
-FetchContent_GetProperties(ogdf)
-if(NOT ogdf_POPULATED)
-    FetchContent_Populate(ogdf)
-
-    # Inject globally into OGDF sources
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include cstdint")
-
-    add_subdirectory(${ogdf_SOURCE_DIR} ${ogdf_BINARY_DIR})
-endif()
-
 # add inipp
 FetchContent_Declare(inipp
     GIT_REPOSITORY https://github.com/mcmtroffaes/inipp
@@ -166,13 +151,12 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     "${imgui_SOURCE_DIR}/misc/cpp"
     "${nfd_SOURCE_DIR}/src/include"
     "${spdlog_SOURCE_DIR}/include"
-    "${ogdf_SOURCE_DIR}/include"
     "${inipp_SOURCE_DIR}/"
 )
 
 # link libraries to the executable
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    "glfw;libglew_static;nfd;OGDF;inipp"
+    "glfw;libglew_static;nfd;inipp"
 )
 
 # add definitions

@@ -10,6 +10,7 @@ target_sources(${PROJECT_NAME} PUBLIC
     "graphics/GLProgram.cpp"
     "graphics/camera.cpp"
     "graphics/renderer.cpp"
+    "graphing/GRIP.cpp"
 )
 
 # add the precompiled header
@@ -18,6 +19,7 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE "pch.hpp")
 target_include_directories(${PROJECT_NAME} PUBLIC
     "imgui_windows"
     "graphics"
+    "graphing"
     "gfa"
     "."
 )

@@ -6,6 +6,7 @@
 #include "GFA_segment.hpp"
 #include "GFA_containment.hpp"
 #include "GFA_path.hpp"
+#include "GRIP.hpp"
 
 struct GFA_field{
     std::string tag, type, value;
@@ -32,7 +33,7 @@ public:
     // the constructor of this class parses a GFA file from the path provided
     GFA(const std::string& path);
 
-    void insertGraph(ogdf::Graph& graph, ogdf::GraphAttributes& ga, std::atomic<long long int>& segmentSize, bool calsSize) const;
+    void fillGraph(Graph& g) const;
 
     const int segmentNum() const { return segments.size(); }
     const int containmentNum() const { return containments.size(); }

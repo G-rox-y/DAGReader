@@ -11,7 +11,6 @@
 #endif
 
 namespace fs = std::filesystem;
-using namespace ogdf;
 
 Controller::Controller(infoExchange* c) : channel(c)
 {   // Get the path of the DAGReader executable
@@ -149,50 +148,27 @@ void Controller::run()
             spdlog::info("Task: LAYOUT_GRAPH");
             if (graphPtr){
                 spdlog::info("Laying out the graph");
-                // prepare the graph datastructures
-                m_graph.clear();
-                m_graphAttr = GraphAttributes(m_graph, GraphAttributes::nodeGraphics | GraphAttributes::edgeGraphics | GraphAttributes::nodeLabel 
-                    | GraphAttributes::nodeLabelPosition | GraphAttributes::edgeArrow);
-
-                // first pull the graph data from the graphPtr
-                graphPtr.get()->insertGraph(m_graph, m_graphAttr, channel->graph_segment_length, channel->graph_auto_determine_segment_length.load());
-
-                // run graph layout algorithms
-                PlanarizationLayout l;
-                l.call(m_graphAttr);
-
-                {   // set the zoom of the camera and center the graph
-                    double minX, maxX, minY, maxY;
-                    minX = minY = std::numeric_limits<double>::max();
-                    maxX = maxY = std::numeric_limits<double>::min();
-                    for (auto n:m_graph.nodes){ // first calculate the bounding box and the scale factor
-                        if (m_graphAttr.x(n) < minX) minX = m_graphAttr.x(n);
-                        if (m_graphAttr.x(n) > maxX) maxX = m_graphAttr.x(n);
-                        if (m_graphAttr.y(n) < minY) minY = m_graphAttr.y(n);
-                        if (m_graphAttr.y(n) > maxY) maxY = m_graphAttr.y(n);
-                    }
-                    double scale = 1.0 / std::max(maxX-minX, maxY-minY) / 2.0; // take care of the zoom
-                    channel->cam->setZoom(scale);
-                    double centerX = (minX+maxX) / 2.0, centerY = (minY+maxY) / 2.0; // take care of the translation
-                    m_graphAttr.translate(-centerX, -centerY); // and apply
-                }
-
+                
+                Graph g;
+                graphPtr->fillGraph(g);
+                GRIP layout(g);
+                layout.run();
+                
                 if (channel->renderer){
-                    /*for(auto n:m_graph.nodes) // quads
-                        channel->renderer->addQuad(
-                            glm::vec2(m_graphAttr.x(n), m_graphAttr.y(n)), 
-                            m_graphAttr.width(n), m_graphAttr.height(n), 
-                            0.f, glm::u8vec4(255, 255, 255, 255)
+                    for(auto& v:g.vertices){
+                        spdlog::info("id = {}, pos = ({}, {}, {})", v.id, v.pos.x, v.pos.y, v.pos.z);
+                        channel->renderer->addBezierBox(
+                            v.pos+glm::vec3(0.1f, 0.f, 0.f), glm::vec3(1.f), 
+                            v.pos-glm::vec3(0.1f, 0.f, 0.f), glm::vec3(1.f), 
+                            glm::u8vec4(255, 255, 0, 255)
                         );
-
-                    for(auto e:m_graph.edges){ // lines
-                        std::vector<float> pts;
-                        for(auto& b:m_graphAttr.bends(e)) pts.insert(pts.begin(), {(float)b.m_x, (float)b.m_y});
-                        channel->renderer->addLine(pts, glm::u8vec4(255, 255, 255, 255));
-                    }*/
+                    }
+                    for(auto& e:g.edges){
+                        
+                    }
 
                     channel->graph_param_change.store(false); // update has been drawn, bool false now
-                    channel->renderer->setShouldUpdate();
+                    channel->renderer->setShouldUpdate(); // but notify the renderer that it now has updates
                 }
                 else spdlog::warn("Shared datastructure pointer is not defined");
             }

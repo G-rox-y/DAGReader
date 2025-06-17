@@ -300,30 +300,18 @@ GFA::GFA(const std::string& path) : version_string("")
     file.close();
 }
 
-void GFA::insertGraph(ogdf::Graph& graph, ogdf::GraphAttributes& ga, std::atomic<long long int>& segmentSize, bool calcSize) const
-{
-    std::unordered_map<std::string, ogdf::node> nodes; // lookup map to find nodes by name
-     // first, fill the map
-    for (auto& seg:segments)
-        nodes.emplace(std::make_pair(seg.getName(), graph.newNode()));
-    // then calculate the size if needed
-    if (calcSize){
-        long long int maxSize = std::numeric_limits<long long int>::min();
-        for(auto& seg:segments) // fetch the largest size
-            maxSize = std::max<long long int>(maxSize, seg.getSegmentLength());
-        segmentSize.store(maxSize / 15); // the largest segment will have 15 (or 16) fragments
+void GFA::fillGraph(Graph& g) const {
+    std::unordered_map<std::string, int> verts;
+
+    for(auto& s:segments){
+        int id = g.vertices.size();
+        g.vertices.emplace_back(id);
+        verts[s.getName()] = id;
     }
 
-    // append graph attributes for nodes
-    for (auto& seg:segments){
-        const std::string& name = seg.getName();
-        auto& node = nodes.at(name);
-        ga.label(node) = name;
-        ga.height(node) = ga.width(node) = 15.f;
-        ga.width(node) *= std::max<long long int>(seg.getSegmentLength(), 1) / std::max<long long int>(segmentSize.load(), 1) + 1; // width is directed by the segment size
+    for(auto& l:links){
+        int id1 = verts[l.getFromName()];
+        int id2 = verts[l.getToName()];
+        g.edges.emplace_back(id1, id2);
     }
-
-    // use links as graph edges
-    for (auto& lnk:links)
-        graph.newEdge(nodes.at(lnk.getFromName()), nodes.at(lnk.getToName()));
 }

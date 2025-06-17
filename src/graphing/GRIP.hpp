@@ -1,0 +1,82 @@
+// the implementation of the GRIP algorithm (Graph dRawing with Intelligent Placement)
+
+#pragma once
+
+#include "pch.hpp"
+
+#pragma once
+
+struct Vertex{
+    int id;
+    glm::vec3 pos;
+
+    Vertex(int _id) : id(_id), pos(glm::vec3(0.f)) {}
+};
+
+struct Edge{
+    int start;
+    int end;
+
+    Edge(int v1, int v2) : start(v1), end(v2) {}
+};
+
+struct Graph{
+    std::vector<Vertex> vertices;
+    std::vector<Edge> edges;
+};
+
+class GRIP{
+private:
+    Graph* mr_graph; // mr_ = member reference
+    float m_avgDegG = 0.f; // average degree of the graph
+
+    // graph adjacency list, a map vertex id is paired with a vector filled with vertex ids of its neighbours
+    std::unordered_map<int, std::vector<int>> m_adjListG;
+    
+    float m_edgeLength = 1.f; // what is the worldspace length equivalent of a graph length of 1
+    float m_scalingFactor = 0.05f; // the scaling factor for the Fruchterman-Reingold computation
+
+    float m_temperatureGain = 0.45f; // keep within <0,1>
+    float m_temperatureNarrowGainIncrease = 1.3f; // keep >1
+
+    int m_rounds_number = 16; // authors of the algorithm suggest within [5,30]
+
+    mutable std::mt19937 m_rng{std::random_device{}()};
+
+    // can find the distance between two vertices using BFS
+    // worst complexity O(nlogn) best O(logn)
+    // guaranteed to be most O(logn) when used from vertex_initial_placement
+    // this function should only be ran in the base layer
+    float find_dist(int id1, int id2) const;
+
+    // computer filtrations and fills the given vector that stores filtrations (f)
+    void create_filtrations(std::vector<std::vector<int>>& f) const;
+
+    // computes neighbourhoods and fills in their vector (n) for a given vertex
+    void compute_vertex_neighbourhoods(
+        const Vertex* v, std::vector<std::vector<std::pair<int, int>>>& n, 
+        const std::vector<int> nbrs, const std::vector<std::unordered_set<int>>& f_c, const int K
+    ) const;
+
+    // sets the initial position of vertices in the base filter
+    void base_filter_placement(const std::vector<int>& base) const;
+
+    // sets the vertex initial position given its neighbourhood
+    void vertex_initial_placement(Vertex* v, const std::vector<std::pair<int, int>>& n, const std::unordered_set<int>& placed) const;
+
+    // updates the temperature with given parameters, updates through updating a reference (cos and temp)
+    void calc_temp(float& oldTemp, float& oldCos, const glm::vec3& oldDisp, const glm::vec3& force) const;
+
+    // computes the Kamada-Kawai force vector on a vertex by its neighbourhood O(n)
+    glm::vec3 compute_KKforce(const Vertex* v, const std::vector<std::pair<int, int>>& n) const;
+
+    // computes the Fruchterman-Reingold force vector on a vertex by its neighbourhood O(n+adj)
+    glm::vec3 compute_FRforce(const Vertex* v, const std::vector<std::pair<int, int>>& n) const;
+
+    // just a function for reporting errors
+    void grip_error(const std::string& description) const;
+public:
+    GRIP(Graph& g);
+
+    void run();
+};
