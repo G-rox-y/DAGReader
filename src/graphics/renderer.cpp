@@ -25,8 +25,7 @@ void Renderer::addBezierBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 en
         {glm::vec4(begin, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(end, 1.f)},
         color, 
         0, // padding
-        glm::vec2(0.1f, 0.1f),
-        glm::vec2(0.f, 0.f) // padding
+        glm::vec2(0.1f, 0.1f)
     });
 }
 

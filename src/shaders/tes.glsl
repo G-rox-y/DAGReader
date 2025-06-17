@@ -10,7 +10,7 @@ struct BezierBox{
 
 layout(std430, binding = 0) buffer Boxes { BezierBox box[]; };
 
-in flat uint tcInstanceID[];
+patch in flat uint patchID;
 
 out teData{
     vec4 color;
@@ -43,7 +43,7 @@ vec3 bezierSecondDeriv(vec4 P[4], float u){
 }
 
 void main(){
-    uint idx = tcInstanceID[0];
+    uint idx = patchID;
     BezierBox b = box[idx];
 
     float u = gl_TessCoord.x;
