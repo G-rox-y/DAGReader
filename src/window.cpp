@@ -195,6 +195,8 @@ void Window::run()
     // set background color
     glClearColor(0.1f, 0.1f, 0.1f, 1.f);
 
+    m_renderer->addBezierBox(glm::vec3(-1.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 0.f), glm::vec3(3.f, 0.f, 0.f), glm::vec3(1.f, 0.f, 1.f), glm::u8vec4(0, 255, 0, 255));
+
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
     glfwFocusWindow(m_window);
