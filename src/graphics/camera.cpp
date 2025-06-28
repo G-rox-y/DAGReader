@@ -3,17 +3,19 @@
 Camera::Camera() : m_position(glm::vec3(0.f, 0.f, -1.f)), m_rot(glm::identity<glm::quat>()), m_shouldRecalculate(true) 
 {}
 
-void Camera::move(bool up, bool left, bool down, bool right, bool in, bool out){
+void Camera::move(bool up, bool left, bool down, bool right, bool in, bool out, bool fast){
     if (up && down) up = down = false;
     if (left && right) left = right = false;
     if (in && out) in = out = false;
 
-    if (up) m_position += glm::vec3(0.f, -m_pan_sens, 0.f) * m_rot;
-    if (left) m_position += glm::vec3(m_pan_sens, 0.f, 0.f) * m_rot;
-    if (down) m_position += glm::vec3(0.f, m_pan_sens, 0.f) * m_rot;
-    if (right) m_position += glm::vec3(-m_pan_sens, 0.f, 0.f) * m_rot;
-    if (in) m_position += glm::vec3(0.f, 0.f, m_pan_sens) * m_rot;
-    if (out) m_position += glm::vec3(0.f, 0.f, -m_pan_sens) * m_rot;
+    float increment = (fast) ? m_pan_sens * 10.f : m_pan_sens;
+
+    if (up) m_position += glm::vec3(0.f, -increment, 0.f) * m_rot;
+    if (left) m_position += glm::vec3(increment, 0.f, 0.f) * m_rot;
+    if (down) m_position += glm::vec3(0.f, increment, 0.f) * m_rot;
+    if (right) m_position += glm::vec3(-increment, 0.f, 0.f) * m_rot;
+    if (in) m_position += glm::vec3(0.f, 0.f, increment) * m_rot;
+    if (out) m_position += glm::vec3(0.f, 0.f, -increment) * m_rot;
 
     m_shouldRecalculate = true;
 }

@@ -30,7 +30,7 @@ public:
     Camera();
     ~Camera() = default;
 
-    void move(bool up, bool left, bool down, bool right, bool in, bool out);
+    void move(bool up, bool left, bool down, bool right, bool in, bool out, bool fast);
     void zoom(bool in, bool out);
 
     void rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw);

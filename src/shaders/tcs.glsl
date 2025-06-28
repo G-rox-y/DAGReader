@@ -1,4 +1,4 @@
-#version 430
+#version 430 core
 
 layout(vertices = 1) out;
 
@@ -11,7 +11,7 @@ struct BezierBox{
 layout(std430, binding = 0) buffer Boxes { BezierBox box[]; };
 
 in flat uint vInstanceID[];
-patch out flat uint patchID;
+patch out uint patchID;
 patch out vec3 T0; // tangent for first point
 patch out vec3 N0; // normal for first point
 

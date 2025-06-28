@@ -1,4 +1,4 @@
-#version 430
+#version 430 core
 
 layout(isolines, fractional_even_spacing, cw) in;
 
@@ -10,7 +10,7 @@ struct BezierBox{
 
 layout(std430, binding = 0) buffer Boxes { BezierBox box[]; };
 
-patch in flat uint patchID;
+patch in uint patchID;
 patch in vec3 T0;
 patch in vec3 N0;
 

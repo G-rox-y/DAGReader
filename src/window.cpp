@@ -7,15 +7,16 @@ void Window::manageInputs()
     if (glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
         m_cam->resetView();
     
-    bool moveUp = false, moveLeft = false, moveDown = false, moveRight = false, moveIn = false, moveOut = false;
+    bool moveUp = false, moveLeft = false, moveDown = false, moveRight = false, moveIn = false, moveOut = false, moveFast = false;
     if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) moveUp = true;
     if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) moveLeft = true;
-    if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) moveDown = true;
+    if (glfwGetKey(m_window, GLFW_KEY_C) == GLFW_PRESS) moveDown = true;
     if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) moveRight = true;
     if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) moveIn = true;
     if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) moveOut = true;
+    if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) moveFast = true;
     if (moveUp || moveLeft || moveDown || moveRight || moveIn || moveOut)
-        m_cam->move(moveUp, moveLeft, moveDown, moveRight, moveIn, moveOut);
+        m_cam->move(moveUp, moveLeft, moveDown, moveRight, moveIn, moveOut, moveFast);
 
     bool rotUp = false, rotLeft = false, rotDown = false, rotRight = false, yawCw = false, yawCcw = false;
     if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) rotUp = true;
@@ -194,8 +195,6 @@ void Window::run()
 
     // set background color
     glClearColor(0.1f, 0.1f, 0.1f, 1.f);
-
-    m_renderer->addBezierBox(glm::vec3(-1.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 0.f), glm::vec3(3.f, 0.f, 0.f), glm::vec3(1.f, 0.f, 1.f), glm::u8vec4(0, 255, 0, 255));
 
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
