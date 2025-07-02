@@ -13,8 +13,11 @@ Renderer::~Renderer()
     glDeleteVertexArrays(1, &mbb_VA);
 }
 
-void Renderer::addBezierBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 end, glm::vec3 endNormal, glm::u8vec4 color)
-{
+void Renderer::addBezierBox(
+    const glm::vec3& begin, const glm::vec3& beginNormal, 
+    const glm::vec3& end, const glm::vec3& endNormal, 
+    const glm::vec2& dimensions, const glm::u8vec4& color
+){
     float segment = glm::length(end - begin) / 3.f;
     glm::vec3 pt1 = begin + beginNormal * segment;
     glm::vec3 pt2 = end - endNormal * segment;
@@ -25,7 +28,7 @@ void Renderer::addBezierBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 en
         {glm::vec4(begin, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(end, 1.f)},
         color, 
         0, // padding
-        glm::vec2(0.1f, 0.1f)
+        dimensions
     });
 }
 

@@ -59,6 +59,31 @@ void sidePanel::draw()
                 channel->graph_segment_length.store(copy_gsl);
                 if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
             }
+
+            int copy_grm = channel->grip_roundsNum.load();
+            if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
+                channel->grip_roundsNum.store(copy_grm);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+
+            float copy_gtg = channel->grip_tempGain.load();
+            if (ImGui::SliderFloat("Temp Gain", &copy_gtg, 0.f, 1.f, "%.2f")){
+                channel->grip_tempGain.store(copy_gtg);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+
+            float copy_gtng = channel->grip_tempNarrowGain.load();
+            if (ImGui::SliderFloat("Temp Narrow Gain", &copy_gtng, 1.f, 3.f, "%.2f")){
+                channel->grip_tempNarrowGain.store(copy_gtng);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+
+            float copy_gsf = channel->grip_scalingFactor.load();
+            if (ImGui::SliderFloat("Scaling Factor", &copy_gsf, 0.f, 2.f, "%.3f")){
+                channel->grip_scalingFactor.store(copy_gsf);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+
             ImGui::SameLine();
             HelpMarker("This number controls how big the segments will end up being\n---\n"
                 "Example: if a segment is 5000 base pairs long, and this number is set to 1000, the segment size will be 5\n[minimal size is 1]\n---\n"

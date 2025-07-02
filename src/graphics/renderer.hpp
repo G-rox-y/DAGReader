@@ -34,7 +34,11 @@ public:
     Renderer();
     ~Renderer();
 
-    void addBezierBox(glm::vec3 begin, glm::vec3 beginNormal, glm::vec3 end, glm::vec3 endNormal, glm::u8vec4 color);
+    void addBezierBox(
+        const glm::vec3& begin, const glm::vec3& beginNormal, 
+        const glm::vec3& end, const glm::vec3& endNormal, 
+        const glm::vec2& dimensions, const glm::u8vec4& color
+    );
 
     void clearAll();
 

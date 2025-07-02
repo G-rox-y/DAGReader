@@ -112,7 +112,8 @@ void GRIP::create_filtrations(vector<vector<int>>& f) const {
 }
 
 void GRIP::compute_vertex_neighbourhoods(
-    const Vertex* v, vector<vector<pair<int, int>>>& n, const vector<int> nbrs, const vector<unordered_set<int>>& f_c, const int K
+    const Vertex* v, vector<vector<pair<int, int>>>& n, const vector<int> nbrs, 
+    const vector<unordered_set<int>>& f_c, const int K, const unordered_set<int>& placed
 ) const {
     queue<int> q; // BFS queue that contains int value pairs (id, depth)
     unordered_set<int> visited{v->id};
@@ -129,8 +130,13 @@ void GRIP::compute_vertex_neighbourhoods(
             if (visited.find(id) != visited.end()) continue;
             visited.insert(id);
 
-            if (f_c[i].find(id) != f_c[i].end()) // if present in the filter they are neighbours
+            if (
+                ( i < K && f_c[i].find(id) != f_c[i].end())  // if present in the filter they are neighbours
+                || ( i == K && K+1 != (int)nbrs.size() && placed.find(id) != placed.end())
+                // ^ for the last neighbourhood we can add only already placed, except if the base layer
+            ){
                 n[i].emplace_back(make_pair(id, d));
+            }
             
             for(auto& el:m_adjListG.at(id)){
                 if (visited.find(el) == visited.end()){
@@ -293,7 +299,7 @@ void GRIP::run() {
             for(size_t j = 0; j < v.size(); j++){ // setup new vertices
                 if (placed_id.find(v[j]) != placed_id.end()) continue;
                 Vertex* vp = &mr_graph->vertices.at(v[j]);
-                compute_vertex_neighbourhoods(vp, neighbourhoods[v[j]], nbrs, filter_finder, i);
+                compute_vertex_neighbourhoods(vp, neighbourhoods[v[j]], nbrs, filter_finder, i, placed_id);
                 vertex_initial_placement(vp, neighbourhoods[v[j]][i], placed_id);
                 placed_id.insert(v[j]);
             }
@@ -301,7 +307,7 @@ void GRIP::run() {
         else{  // base filter needs special treatment
             for(size_t j = 0; j < v.size(); j++){
                 Vertex* vp = &mr_graph->vertices.at(v[j]);
-                compute_vertex_neighbourhoods(vp, neighbourhoods[v[j]], nbrs, filter_finder, i);
+                compute_vertex_neighbourhoods(vp, neighbourhoods[v[j]], nbrs, filter_finder, i, placed_id);
                 placed_id.insert(v[j]);
             }
             base_filter_placement(v);

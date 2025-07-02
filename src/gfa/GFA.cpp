@@ -202,11 +202,13 @@ GFA::GFA(const std::string& path) : version_string("")
             while (file.good() && file.peek() != '\n' && file.peek() != '\t') name += file.get(); // load the name
             paths.emplace_back(GFA_path(name));
             GFA_path& path = paths.back();
+            while(file.peek() == '\t') file.get(); // remove the tab(s)
             try{
                 path.setSegments(file);
             } catch(const std::exception& e){
                 parser_error("Error while parsing path segments:\n\t" + std::string(e.what()));
             }
+            while(file.peek() == '\t') file.get(); // remove the tab(s)
             path.setOverlaps(file, links, link_lookup);
             continue;
         }

@@ -24,14 +24,11 @@ void GFA_path::setOverlaps(std::ifstream& input, const std::vector<GFA_link>& li
     for(char c = input.get(); input.good() && c != '\t' && c != '\n'; c = input.get()){
         if (c == ',' || input.peek() == '\t' || input.peek() == '\n'){
             if (input.peek() == '\t' || input.peek() == '\n') builtstr += c;
-            if (segments.size() > overlaps.size() && builtstr == "*"){
-                auto par = std::make_pair(segments[overlaps.size()-2], segments[overlaps.size()-1]);
-                if (link_lookup.find(par) != link_lookup.end())
-                    overlaps.emplace_back(links[link_lookup.at(par)].getOverlap());
-            }
-            else overlaps.push_back(builtstr); // TODO: check against regex
+            if (builtstr != "*") overlaps.push_back(builtstr); // TODO: check against regex
             builtstr.clear();
         }
         else builtstr += c;
     }
+
+    // TODO: check if builtstr is = "*" and if it is, pull overlaps from links using link lookup and segments
 }

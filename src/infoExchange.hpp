@@ -65,5 +65,10 @@ struct infoExchange
     std::atomic<bool> graph_param_change{false};
     std::atomic<long long int> graph_segment_length{100000};
     std::atomic<bool> graph_auto_determine_segment_length{true};
+    
+    std::atomic<float> grip_scalingFactor{0.05f};
+    std::atomic<float> grip_tempGain{0.45f};
+    std::atomic<float> grip_tempNarrowGain{1.3f};
+    std::atomic<int> grip_roundsNum{16};
 };
 

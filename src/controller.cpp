@@ -152,15 +152,20 @@ void Controller::run()
                 Graph g;
                 graphPtr->fillGraph(g);
                 GRIP layout(g);
+                layout.setFRscaling(channel->grip_scalingFactor.load());
+                layout.setRoundsNumber(channel->grip_roundsNum.load());
+                layout.setTempGain(channel->grip_tempGain.load());
+                layout.setTempNarrowGainInc(channel->grip_tempNarrowGain.load());
                 layout.run();
                 
                 if (channel->renderer){
+                    float segmentWidth = 0.03f;
                     for(auto& v:g.vertices){
                         spdlog::info("id = {}, pos = ({}, {}, {})", v.id, v.pos.x, v.pos.y, v.pos.z);
                         channel->renderer->addBezierBox(
                             v.pos+glm::vec3(0.1f, 0.f, 0.f), glm::vec3(1.f), 
                             v.pos-glm::vec3(0.1f, 0.f, 0.f), glm::vec3(1.f), 
-                            glm::u8vec4(255, 255, 0, 255)
+                            glm::vec2(segmentWidth), glm::u8vec4(130, 180, 50, 255)
                         );
                     }
                     for(auto& e:g.edges){

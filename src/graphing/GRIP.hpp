@@ -54,8 +54,8 @@ private:
 
     // computes neighbourhoods and fills in their vector (n) for a given vertex
     void compute_vertex_neighbourhoods(
-        const Vertex* v, std::vector<std::vector<std::pair<int, int>>>& n, 
-        const std::vector<int> nbrs, const std::vector<std::unordered_set<int>>& f_c, const int K
+        const Vertex* v, std::vector<std::vector<std::pair<int, int>>>& n, const std::vector<int> nbrs, 
+        const std::vector<std::unordered_set<int>>& f_c, const int K, const std::unordered_set<int>& placed
     ) const;
 
     // sets the initial position of vertices in the base filter
@@ -77,6 +77,11 @@ private:
     void grip_error(const std::string& description) const;
 public:
     GRIP(Graph& g);
+
+    void setTempGain(const float newTemp) { m_temperatureGain = newTemp; }
+    void setTempNarrowGainInc(const float newNgain) { m_temperatureNarrowGainIncrease = newNgain; }
+    void setRoundsNumber(const int newNum) { m_rounds_number = newNum; }
+    void setFRscaling(const float newScale) { m_scalingFactor = newScale; }
 
     void run();
 };
