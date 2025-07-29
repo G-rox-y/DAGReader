@@ -41,6 +41,8 @@ private:
 
     int m_rounds_number = 16; // authors of the algorithm suggest within [5,30]
 
+    int m_dimensions = 3;
+
     mutable std::mt19937 m_rng{std::random_device{}()};
 
     // can find the distance between two vertices using BFS
@@ -82,6 +84,7 @@ public:
     void setTempNarrowGainInc(const float newNgain) { m_temperatureNarrowGainIncrease = newNgain; }
     void setRoundsNumber(const int newNum) { m_rounds_number = newNum; }
     void setFRscaling(const float newScale) { m_scalingFactor = newScale; }
+    void setDimensions(const int dims) { m_dimensions = dims; }
 
     void run();
 };

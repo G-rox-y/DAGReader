@@ -48,7 +48,7 @@ void GRIP::create_filtrations(vector<vector<int>>& f) const {
         f[0].emplace_back(mr_graph->vertices[i].id);
 
     int maxDepth = 1; 
-    while (f.back().size() > 3){ // last level has to be at most 3 vertices
+    while (f.back().size() > (size_t)m_dimensions+1){
         vector<int> f_prev(f.back().begin(), f.back().end()); // make a copy where we will pull random vertices from
         unordered_map<int, size_t> f_prev_indmap; // map with (vertex id, f_prev index) pairs
         unordered_set<int> visited;
@@ -89,9 +89,9 @@ void GRIP::create_filtrations(vector<vector<int>>& f) const {
         maxDepth *= 2;
     }
 
-    // if we dont have 3 points in the last layer we will have to promote some points from the previous layer
-    if (f.size() < 2 || f.front().size() < 3) return; // can only do this if there is >=2 filters and >=3 vertices
-    while(f.back().size() < 3){ // fill with the elements in the previous filter which are farthest away
+    // if we dont have dimensions+1 points in the last layer we will have to promote some points from the previous layer
+    if (f.size() < 2 || f.front().size() < (size_t)m_dimensions+1) return; // can only do this if there is >=2 filters and enough vertices
+    while(f.back().size() < (size_t)m_dimensions+1){ // fill with the elements in the previous filter which are farthest away
         float maxdist = 0.f; int saved_v;
         set<int> f_back_has(f.back().begin(), f.back().end());
         for(auto v:f[f.size()-2]){
@@ -159,15 +159,29 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
     float dist01 = find_dist(base[0], base[1]);
     mr_graph->vertices[base[1]].pos = glm::vec3(dist01, 0.f, 0.f);
 
-    if (base.size() < 3) return;
+    if (base.size() < 3 || m_dimensions+1 < 3) return;
 
     float dist02 = find_dist(base[0], base[2]);
     float dist12 = find_dist(base[1], base[2]);
     
-    float x = (glm::pow(dist01, 2) + glm::pow(dist02, 2) - glm::pow(dist12, 2)) / dist01 / 2.f;
-    float y = glm::sqrt(glm::pow(dist02, 2) - glm::pow(x, 2));
+    float x3 = (glm::pow(dist01, 2) + glm::pow(dist02, 2) - glm::pow(dist12, 2)) / dist01 / 2.f;
+    float y3 = glm::sqrt(glm::pow(dist02, 2) - glm::pow(x3, 2));
 
-    mr_graph->vertices[base[2]].pos = glm::vec3(x, y, 0.f);
+    mr_graph->vertices[base[2]].pos = glm::vec3(x3, y3, 0.f);
+
+    if (base.size() < 4 || m_dimensions+1 < 4) return;
+
+    float r1 = find_dist(base[0], base[3]);
+    float r2 = find_dist(base[1], base[3]);
+    float r3 = find_dist(base[2], base[3]);
+
+    float X = (dist01*dist01 + r1*r1 - r2*r2) / (2.0f * dist01);
+    float Y = (x3*x3 + y3*y3 + r1*r1 - r3*r3 - 2.0f*x3*X) / (2.0f * y3);
+    float zz = r1*r1 - X*X - Y*Y;
+    // if zz < 0 its tehnically not correct to abs it, but eh
+    float Z = std::sqrt(std::max(0.f, std::abs(zz)));
+
+    mr_graph->vertices[base[3]].pos = glm::vec3(X, Y, Z);
 }
 
 void GRIP::vertex_initial_placement(Vertex* v, const vector<pair<int, int>>& n, const unordered_set<int>& placed) const {
