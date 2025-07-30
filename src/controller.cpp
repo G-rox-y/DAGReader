@@ -151,6 +151,17 @@ void Controller::run()
                 
                 Graph g;
                 graphPtr->fillGraph(g);
+
+                if (channel->graph_auto_determine_segment_length.load() && !g.edges.empty()){
+                    long long int maxSize = std::numeric_limits<long long int>::min();
+                    for(auto& e:g.edges) if (maxSize < e.length) maxSize = e.length;
+                    channel->graph_segment_length.store((maxSize / 15) + 1);
+                }
+                {
+                    long long int gsl = channel->graph_segment_length.load();
+                    for(auto& e:g.edges) e.length = (e.length / gsl) + 1;
+                }
+
                 GRIP layout(g);
                 layout.setFRscaling(channel->grip_scalingFactor.load());
                 layout.setRoundsNumber(channel->grip_roundsNum.load());
@@ -159,18 +170,85 @@ void Controller::run()
                 layout.run();
                 
                 if (channel->renderer){
-                    float segmentWidth = 0.03f;
-                    for(auto& v:g.vertices){
-                        spdlog::info("id = {}, pos = ({}, {}, {})", v.id, v.pos.x, v.pos.y, v.pos.z);
-                        channel->renderer->addBezierBox(
-                            v.pos+glm::vec3(0.1f, 0.f, 0.f), glm::vec3(1.f), 
-                            v.pos-glm::vec3(0.1f, 0.f, 0.f), glm::vec3(1.f), 
-                            glm::vec2(segmentWidth), glm::u8vec4(130, 180, 50, 255)
-                        );
-                    }
-                    for(auto& e:g.edges){
+                    float segmentWidth = 0.06f;
+                    float edgeWidth = segmentWidth / 4.f;
+
+                    struct SegBoxData{
+                        glm::vec3 start, end;
+                        glm::vec3 startOri, endOri;
+                        glm::vec2 dims;
                         
+                        // barycenter of connection endpoints to calculate orientation
+                        glm::vec3 startBc, endBc;
+                        int startBcCounter, endBcCounter;
+
+                        SegBoxData() 
+                        : startBc(0.f, 0.f, 0.f), endBc(0.f, 0.f, 0.f), startBcCounter(0), endBcCounter(0) {}
+                    };
+                    std::vector<SegBoxData> segBoxes(g.vertices.size() / 2);
+
+                    for(auto& e:g.edges){
+                        if (e.segPart){
+                            SegBoxData& b = segBoxes.at(e.start / 2);
+                            b.start = g.vertices.at(e.start).pos;
+                            b.end = g.vertices.at(e.end).pos;
+                            b.dims =  glm::vec2(segmentWidth);
+                            b.startOri = glm::normalize(b.end - b.start);
+                            b.endOri = -b.startOri;
+                        }
+                        else{
+                            SegBoxData& bStart = segBoxes.at(e.start/2);
+                            SegBoxData& bEnd = segBoxes.at(e.end/2);
+
+                            // set barycenter of edge start box
+                            if (e.start % 2 == 1){ // if id is uneven, it is connected to the end of the segment
+                                bStart.endBcCounter++;
+                                bStart.endBc += g.vertices.at(e.end).pos;
+                            } else { // else its the beginning
+                                bStart.startBcCounter++;
+                                bStart.startBc += g.vertices.at(e.end).pos;
+                            }
+
+                            // same for the other edge end box
+                            if (e.end % 2 == 1){
+                                bEnd.endBcCounter++;
+                                bEnd.endBc = g.vertices.at(e.start).pos;
+                            } else {
+                                bEnd.startBcCounter++;
+                                bEnd.startBc = g.vertices.at(e.start).pos;
+                            }
+                        }
                     }
+
+                    // calculate the orientation out of baryceters
+                    for(auto& b:segBoxes){
+                        b.startBc /= b.startBcCounter;
+                        b.endBc /= b.endBcCounter;
+                        glm::vec3 l_startOri = b.start - b.startBc;
+                        glm::vec3 l_endOri = b.end - b.endBc;
+                        if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
+                        if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
+                    }
+
+                    for(auto& e:g.edges){
+                        if(!e.segPart){
+                            channel->renderer->addBezierBox(
+                                g.vertices.at(e.start).pos,
+                                ((e.start % 2 == 1) ? -segBoxes.at(e.start/2).endOri : -segBoxes.at(e.start/2).startOri),
+                                g.vertices.at(e.end).pos,
+                                ((e.end % 2 == 1) ? -segBoxes.at(e.end/2).endOri : -segBoxes.at(e.end/2).startOri),
+                                glm::vec2(edgeWidth),
+                                glm::u8vec4(130, 100, 40, 255)
+                            );
+                        }
+                    }
+
+                    // and write to buffer
+                    for(auto& b : segBoxes)
+                        channel->renderer->addBezierBox(
+                            b.start, b.startOri, b.end, b.endOri, b.dims, glm::u8vec4(220, 30, 150, 255)
+                        );
+                    
 
                     channel->graph_param_change.store(false); // update has been drawn, bool false now
                     channel->renderer->setShouldUpdate(); // but notify the renderer that it now has updates

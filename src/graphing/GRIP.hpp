@@ -3,8 +3,7 @@
 #pragma once
 
 #include "pch.hpp"
-
-#pragma once
+#include "dataTypes.hpp"
 
 struct Vertex{
     int id;
@@ -16,8 +15,12 @@ struct Vertex{
 struct Edge{
     int start;
     int end;
+    long long int length;
+    bool segPart = false;
 
-    Edge(int v1, int v2) : start(v1), end(v2) {}
+    Edge(int v1, int v2, long long int v3 = 1) : start(v1), end(v2), length(v3) {}
+    void addLength(int v3) { length = v3; }
+    void isSegmentPart(bool is) { segPart = is; }
 };
 
 struct Graph{
@@ -33,7 +36,12 @@ private:
     // graph adjacency list, a map vertex id is paired with a vector filled with vertex ids of its neighbours
     std::unordered_map<int, std::vector<int>> m_adjListG;
     
-    float m_edgeLength = 1.f; // what is the worldspace length equivalent of a graph length of 1
+    float m_defaultEdgeLength = 1.f; // what is the worldspace length equivalent of a graph length of 1
+
+    // override for edge lengths of pairs
+    // if this map contiains a pair, than this value is ued, if not, the default value is used
+    std::unordered_map<stdpp::sorted_pair<int>, int> m_edgeLengths;
+
     float m_scalingFactor = 0.05f; // the scaling factor for the Fruchterman-Reingold computation
 
     float m_temperatureGain = 0.45f; // keep within <0,1>
@@ -50,6 +58,9 @@ private:
     // guaranteed to be most O(logn) when used from vertex_initial_placement
     // this function should only be ran in the base layer
     float find_dist(int id1, int id2) const;
+
+    // finds out if default value should be used for edge_length or some other value
+    float find_edge_length(int id1, int id2) const;
 
     // computer filtrations and fills the given vector that stores filtrations (f)
     void create_filtrations(std::vector<std::vector<int>>& f) const;

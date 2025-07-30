@@ -20,10 +20,8 @@ void sidePanel::draw()
     {
         ImGui::Text("Hi :D");
         if (ImGui::Button("Layout the graph!")){
-            if (channel->graph_param_change.load()){
-                channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
-                channel->addControllerTask(tasks::LAYOUT_GRAPH);
-            }
+            channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
+            channel->addControllerTask(tasks::LAYOUT_GRAPH);
         }
         if(channel->graph_param_change.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
             ImGui::SameLine();

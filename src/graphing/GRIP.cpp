@@ -37,6 +37,12 @@ float GRIP::find_dist(int id1, int id2) const {
     return 0.f; // return to make compiler shut up
 }
 
+float GRIP::find_edge_length(int id1, int id2) const {
+    stdpp::sorted_pair p(id1, id2);
+    if (m_edgeLengths.find(p) == m_edgeLengths.end()) return m_defaultEdgeLength;
+    else return m_defaultEdgeLength * m_edgeLengths.at(p);
+}
+
 void GRIP::grip_error(const std::string& description) const {
     spdlog::error("GRIP error: {}", description);
     throw std::runtime_error("GRIP error (check logs)");
@@ -206,7 +212,7 @@ void GRIP::vertex_initial_placement(Vertex* v, const vector<pair<int, int>>& n, 
     for(int i = 0; i < found; i++) bc += mr_graph->vertices.at(n[ids[i]].first).pos;
     bc /= static_cast<float>(found);
 
-    const float mag = 1e-3f * m_edgeLength;
+    const float mag = 1e-3f * m_defaultEdgeLength;
     static uniform_real_distribution<float> dist(-mag, mag); // dont forget to change this if you make edgeLength changeable
     glm::vec3 jitter(dist(m_rng), dist(m_rng), dist(m_rng));
 
@@ -231,7 +237,8 @@ glm::vec3 GRIP::compute_KKforce(const Vertex* v, const vector<pair<int, int>>& n
     for(size_t i = 0; i < n.size(); i++){
         Vertex* u = &mr_graph->vertices.at(n[i].first);
         float distR = glm::distance(u->pos, v->pos);
-        float distG = static_cast<float>(n[i].second) * static_cast<float>(glm::pow(m_edgeLength, 2));
+        float edgeL = find_edge_length(v->id, u->id);
+        float distG = static_cast<float>(n[i].second) * static_cast<float>(glm::pow(edgeL, 2));
         glm::vec3 inc = (u->pos - v->pos) * (distR / distG - 1.f);
         force += inc;
     }
@@ -242,7 +249,8 @@ glm::vec3 GRIP::compute_FRforce(const Vertex* v, const vector<pair<int, int>>& n
     glm::vec3 force;
     for(size_t i = 0; i < n.size(); i++){
         Vertex* u = &mr_graph->vertices.at(n[i].first);
-        float factor = (float)pow(m_edgeLength, 2) / max(glm::distance2(u->pos, v->pos), 1e-4f);
+        float edgeL = find_edge_length(v->id, u->id);
+        float factor = (float)pow(edgeL, 2) / max(glm::distance2(u->pos, v->pos), 1e-4f);
         force += (v->pos - u->pos) * factor * m_scalingFactor;
     }
     for(size_t i = 0; i < m_adjListG.at(v->id).size(); i++){
@@ -277,6 +285,10 @@ void GRIP::run() {
         m_avgDegG += static_cast<float>(val.size());
     m_avgDegG /= static_cast<float>(m_adjListG.size());
 
+    // fill edge lengths
+    for(auto& e:mr_graph->edges)
+        if (e.length != 1) m_edgeLengths[stdpp::sorted_pair<int>(e.start, e.end)];
+
     // filters V_0, V_1, V_2 ... (V_i is a subset of V_i-1), filters[0] is V_0
     vector<vector<int>> filters;
     create_filtrations(filters);
@@ -302,7 +314,7 @@ void GRIP::run() {
     // helper vectors for heat and displacement calculations, all are indexed by vertex id
     vector<glm::vec3> displacements(N, glm::vec3(0.f));
     vector<float> oldCos(N, 0.f); // a cosine angle between a previous displacement and a new one
-    vector<float> heat(N, m_edgeLength/6.f); // default heat is a sixth of edge length
+    vector<float> heat(N, m_defaultEdgeLength/6.f); // default heat is a sixth of edge length
 
     // a set to help track which vertices have already been placed and which havent
     unordered_set<int> placed_id;
