@@ -1,11 +1,12 @@
 #include "GRIP.hpp"
 
 using namespace std;
+using namespace stdpp;
 
 float GRIP::find_dist(int id1, int id2) const {
-    static map<pair<int, int>, int> alr_found;
+    static unordered_map<sorted_pair<int>, int> alr_found;
     
-    auto refpair = make_pair(min(id1, id2), max(id1, id2));
+    sorted_pair refpair(id1, id2);
     if (alr_found.find(refpair) != alr_found.end()) // check if we alr calculated this
         return alr_found.at(refpair);
 
@@ -18,7 +19,7 @@ float GRIP::find_dist(int id1, int id2) const {
         if (visited.find(id) != visited.end()) continue;
         visited.insert(id);
 
-        auto newpair = make_pair(min(id, id1), max(id, id1));
+        sorted_pair newpair(id, id1);
         alr_found[newpair] = d;
 
         if (id == id2){
@@ -38,7 +39,7 @@ float GRIP::find_dist(int id1, int id2) const {
 }
 
 float GRIP::find_edge_length(int id1, int id2) const {
-    stdpp::sorted_pair p(id1, id2);
+    sorted_pair p(id1, id2);
     if (m_edgeLengths.find(p) == m_edgeLengths.end()) return m_defaultEdgeLength;
     else return m_defaultEdgeLength * m_edgeLengths.at(p);
 }
@@ -287,7 +288,7 @@ void GRIP::run() {
 
     // fill edge lengths
     for(auto& e:mr_graph->edges)
-        if (e.length != 1) m_edgeLengths[stdpp::sorted_pair<int>(e.start, e.end)];
+        if (e.length != 1) m_edgeLengths[sorted_pair<int>(e.start, e.end)];
 
     // filters V_0, V_1, V_2 ... (V_i is a subset of V_i-1), filters[0] is V_0
     vector<vector<int>> filters;

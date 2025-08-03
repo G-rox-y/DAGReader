@@ -59,6 +59,9 @@ struct infoExchange
     std::vector<std::filesystem::path> recent_paths;
     std::mutex recent_paths_mut;
 
+    // variable for controlling imgui windows
+    std::atomic<bool> about_window_shown{false};
+
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
     std::atomic<bool> graph_auto_update{false};

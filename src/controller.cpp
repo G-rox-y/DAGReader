@@ -147,7 +147,7 @@ void Controller::run()
         {
             spdlog::info("Task: LAYOUT_GRAPH");
             if (graphPtr){
-                spdlog::info("Laying out the graph");
+                spdlog::info("Reading the graph");
                 
                 Graph g;
                 graphPtr->fillGraph(g);
@@ -161,6 +161,8 @@ void Controller::run()
                     long long int gsl = channel->graph_segment_length.load();
                     for(auto& e:g.edges) e.length = (e.length / gsl) + 1;
                 }
+
+                spdlog::info("Laying out the graph");
 
                 GRIP layout(g);
                 layout.setFRscaling(channel->grip_scalingFactor.load());
@@ -222,8 +224,8 @@ void Controller::run()
 
                     // calculate the orientation out of baryceters
                     for(auto& b:segBoxes){
-                        b.startBc /= b.startBcCounter;
-                        b.endBc /= b.endBcCounter;
+                        b.startBc /= static_cast<float>(b.startBcCounter);
+                        b.endBc /= static_cast<float>(b.endBcCounter);
                         glm::vec3 l_startOri = b.start - b.startBc;
                         glm::vec3 l_endOri = b.end - b.endBc;
                         if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
@@ -236,7 +238,7 @@ void Controller::run()
                                 g.vertices.at(e.start).pos,
                                 ((e.start % 2 == 1) ? -segBoxes.at(e.start/2).endOri : -segBoxes.at(e.start/2).startOri),
                                 g.vertices.at(e.end).pos,
-                                ((e.end % 2 == 1) ? -segBoxes.at(e.end/2).endOri : -segBoxes.at(e.end/2).startOri),
+                                ((e.end % 2 == 1) ? segBoxes.at(e.end/2).endOri : segBoxes.at(e.end/2).startOri),
                                 glm::vec2(edgeWidth),
                                 glm::u8vec4(130, 100, 40, 255)
                             );
@@ -246,7 +248,7 @@ void Controller::run()
                     // and write to buffer
                     for(auto& b : segBoxes)
                         channel->renderer->addBezierBox(
-                            b.start, b.startOri, b.end, b.endOri, b.dims, glm::u8vec4(220, 30, 150, 255)
+                            b.start, b.startOri, b.end, b.endOri, b.dims, glm::u8vec4(220, 30, 150, 100)
                         );
                     
 

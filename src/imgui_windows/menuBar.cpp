@@ -41,7 +41,7 @@ void menuBar::draw()
         if (ImGui::BeginMenu("Info"))
         {
             if (ImGui::MenuItem("About DAGReader")){
-
+                channel->about_window_shown.store(true);
             }
             ImGui::EndMenu();
         }

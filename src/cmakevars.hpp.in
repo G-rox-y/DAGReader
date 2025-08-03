@@ -1,0 +1,9 @@
+#pragma once
+
+// this file interacts with cmake to make some defines
+
+// version
+#define DAGR_VERSION_MAJOR @DAGReader_VERSION_MAJOR@
+#define DAGR_VERSION_MINOR @DAGReader_VERSION_MINOR@
+#define DAGR_VERSION_MICRO @DAGReader_VERSION_PATCH@
+#define DAGR_VERSION_STRING "@DAGReader_VERSION_STRING@"

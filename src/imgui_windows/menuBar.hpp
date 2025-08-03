@@ -1,5 +1,6 @@
 #pragma once
 
+#include "about.hpp"
 #include "imguiWindow.hpp"
 #include "controller.hpp"
 #include "infoExchange.hpp"

@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "Roboto_Medium.hpp"
 
 void Window::manageInputs()
 {
@@ -106,7 +107,11 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
     glCullFace(GL_BACK); // the back side cant be seen
     glFrontFace(GL_CCW); // front is where the points of a triangle are connected counterclockwise
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST); // make sure that the things that are in the back dont get drawn in front
+    glDepthMask(GL_TRUE);
     glEnable(GL_MULTISAMPLE); // turn on MSAA
     // TODO: ADD option to disable MSAA
 
@@ -123,9 +128,19 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     // initialize imgui
     IMGUI_CHECKVERSION(); // check that version is compatible with what its used for
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
     ImGui::StyleColorsDark();
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    static const ImWchar CRO_RANGES[] = {
+        0x0020, 0x00FF,   // Basic Latin + Latin-1
+        0x0100, 0x017F,   // Latin Extended-A (č ć š đ ž …)
+        0
+    };
+    ImFont* f = io.Fonts->AddFontFromMemoryCompressedTTF(
+        Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 15.0f, nullptr, CRO_RANGES
+    );
+    IM_ASSERT(f && "Font failed to load");
     
     // Setup Platform/Renderer backends for imgui
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
@@ -137,6 +152,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     // add custom imgui windows
     m_imguis.emplace_back(std::make_unique<menuBar>(channel));
     m_imguis.emplace_back(std::make_unique<sidePanel>(channel, 300.f));
+    m_imguis.emplace_back(std::make_unique<about>(channel));
 }
 
 Window::~Window()

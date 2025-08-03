@@ -9,6 +9,7 @@
 #include "imguiWindow.hpp"
 #include "menuBar.hpp"
 #include "sidePanel.hpp"
+#include "about.hpp"
 #include "GLProgram.hpp"
 #include "camera.hpp"
 #include "renderer.hpp"

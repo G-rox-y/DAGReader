@@ -14,7 +14,7 @@ set(BUILD_SHARED_LIBS OFF)
 set(BUILD_TESTING OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -finput-charset=UTF-8")
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 else()
@@ -167,3 +167,21 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME} PUBLIC DEBUG_LOGGING)
 endif()
+
+# --- Add the font to the binary ---
+
+add_executable(bin2c ${imgui_SOURCE_DIR}/misc/fonts/binary_to_compressed_c.cpp)
+
+set(FONT_TTF ${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf)
+set(FONT_HDR ${PROJECT_BINARY_DIR}/src/Roboto_Medium.hpp)
+
+add_custom_command(
+  OUTPUT  ${FONT_HDR}
+  COMMAND bin2c ${FONT_TTF} Roboto_Medium > ${FONT_HDR}
+  DEPENDS bin2c ${FONT_TTF}
+  COMMENT "Embedding Roboto-Medium.ttf into Roboto_Medium.hpp"
+)
+add_custom_target(embed_fonts DEPENDS ${FONT_HDR})
+
+add_dependencies(${PROJECT_NAME} embed_fonts)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_BINARY_DIR})
