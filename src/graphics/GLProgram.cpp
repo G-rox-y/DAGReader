@@ -93,6 +93,18 @@ void GLProgram::setUniformMat4f(const std::string& param, const glm::mat4& matri
     glUniformMatrix4fv(this->getUniformLocation(param), 1, false, &matrix[0][0]);
 }
 
+void GLProgram::setUniformVec3f(const std::string& param, const glm::vec3& vector)
+{
+    this->use();
+    glUniform3fv(this->getUniformLocation(param), 1, &vector[0]);
+}
+
+void GLProgram::setUniform1f(const std::string& param, float num)
+{
+    this->use();
+    glUniform1f(this->getUniformLocation(param), num);
+}
+
 void GLProgram::use() const
 {
     glUseProgram(id); 

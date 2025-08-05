@@ -248,7 +248,7 @@ void Controller::run()
                     // and write to buffer
                     for(auto& b : segBoxes)
                         channel->renderer->addBezierBox(
-                            b.start, b.startOri, b.end, b.endOri, b.dims, glm::u8vec4(220, 30, 150, 100)
+                            b.start, b.startOri, b.end, b.endOri, b.dims, glm::u8vec4(220, 30, 150, 175)
                         );
                     
 

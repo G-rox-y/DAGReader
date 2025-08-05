@@ -26,6 +26,9 @@ private:
     // when the view gets reset what will the scale(zoom) get set to
     float m_default_scale = 1.f;
 
+    // camera FOV
+    float m_FOV = glm::radians(60.f);
+
 public:
     Camera();
     ~Camera() = default;
@@ -33,7 +36,7 @@ public:
     void move(bool up, bool left, bool down, bool right, bool in, bool out, bool fast);
     void zoom(bool in, bool out);
 
-    void rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw);
+    void rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw, bool fast);
 
     // this should get called before drawing the frame
     // checks if camera matrix recalculation is needed, if yes then it recalculates
@@ -44,4 +47,6 @@ public:
 
     bool& getRecalc() { return m_shouldRecalculate; }
     const glm::mat4& getMat() const { return m_mat; }
+    const glm::vec3& getPos() const { return m_position; }
+    const float getFOV() const { return m_FOV; }
 };

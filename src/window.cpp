@@ -27,7 +27,7 @@ void Window::manageInputs()
     if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS) yawCw = true;
     if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS) yawCcw = true;
     if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
-        m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw);
+        m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw, moveFast);
 }
 
 void Window::drawStuff()
@@ -235,6 +235,8 @@ void Window::run()
 
         // pass the camera view matrix through uniform
         program.setUniformMat4f("MVP", m_cam->getMat());
+        program.setUniformVec3f("CamPos", m_cam->getPos());
+        program.setUniform1f("PxPerRad", (float)m_fb_height / m_cam->getFOV());
 
         // which faces to cull (whats the front and whats the back)
         bool mirrored = glm::determinant(m_cam->getMat()) < 0.0f;
