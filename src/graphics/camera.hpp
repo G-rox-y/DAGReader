@@ -47,6 +47,6 @@ public:
 
     bool& getRecalc() { return m_shouldRecalculate; }
     const glm::mat4& getMat() const { return m_mat; }
-    const glm::vec3& getPos() const { return m_position; }
+    const glm::vec3 getPos() const { return -m_position; } // returning the negative because it makes more sense
     const float getFOV() const { return m_FOV; }
 };

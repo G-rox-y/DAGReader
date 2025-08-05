@@ -9,8 +9,7 @@ private:
     infoExchange* channel; // since this panel will display data from this struct, its best to include it
     
     float m_width; // side panel width
-    bool m_collapsed; // is it collapsed
 public:
-    sidePanel(infoExchange* c, const float w);
+    sidePanel(infoExchange* c, const float w) : channel(c), m_width(w) {}
     void draw() override;
 };

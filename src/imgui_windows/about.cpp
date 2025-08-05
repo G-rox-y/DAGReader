@@ -10,10 +10,33 @@ void about::setOffset(const std::string& text, float scale = 1.f){
 
 void about::draw()
 {
+    static std::string lines1[] = {
+        u8"Developed by Petar Dušević.",
+        u8"Special thanks to my mentor Krešimir Križanović, and my friends and family <3",
+        "DAGReader is licensed under the zlib License, see LICENSE for more information.",
+    };
+
+    static std::string lines2[] = {
+        "Hi, my name is Petar and I created this program",
+        "The reason for creation was simple, i really like making graphical programs in c++",
+        u8"And so, when my mentor Krešimir showed me a program called Bandage while doing some bioinformatics projects",
+        "We figured that making a 3D spinoff would be quite cool and i could use it for my bachelors thesis, so I got to work",
+        "I gave myself a challenge to make as much of it as reasonably possible from scratch",
+        "This took quite a lot of time, effort and thinking, but it was WORTH IT, i love what i created",
+        "Anyways, these are my words of encouragement to you, if you have some project in mind, just go for it",
+        "Dont overthink it, go with the flow, and be persistent, ly"
+    };
+
+    static std::string lines3[] = {
+        "If you have any ideas for contributions i am always open for discussion and pull requests on GitHub",
+        "If you are interested in some collaboration dont hesitate to contact me (Github, linkedin, whatever)",
+        "If you want to support the project in any way, please reach out to me :)"
+    };
+
     bool shown = channel->about_window_shown.load();    
     if (!shown) return;
 
-    if (ImGui::Begin("About DAGReader", &shown, ImGuiWindowFlags_AlwaysAutoResize)){
+    if (ImGui::Begin("About DAGReader", &shown, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)){
         std::string version = DAGR_VERSION_STRING;
         std::string title = "DAGReader " + version;
         float scale = 1.6f;
@@ -24,31 +47,17 @@ void about::draw()
 
         std::string linkText = "Github repository";
         setOffset(linkText);
-        ImGui::TextLinkOpenURL(linkText.c_str(), "https://github.com/ocornut/imgui");
-
-        
-        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-
-        ImGui::TextUnformatted(u8"Developed by Petar Dušević.");
-        ImGui::TextUnformatted(u8"Special thanks to my mentor Krešimir Križanović, and my friends and family <3");
-        ImGui::Text("DAGReader is licensed under the zlib License, see LICENSE for more information.");
+        ImGui::TextLinkOpenURL(linkText.c_str(), "https://github.com/G-rox-y/DAGReader");
 
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-
-        ImGui::Text("Hi, my name is Petar and I created this program");
-        ImGui::Text("The reason for creation was simple, i really like making graphical programs in c++");
-        ImGui::TextUnformatted(u8"And so, when my mentor Krešimir showed me a program called Bandage while doing some bioinformatics projects");
-        ImGui::Text("We figured that making a 3D spinoff would be quite cool and i could use it for my bachelors thesis, so I got to work");
-        ImGui::Text("I gave myself a challenge to make as much of it as reasonably possible from scratch");
-        ImGui::Text("This took quite a lot of time, effort and thinking, but it was WORTH IT, i love what i created");
-        ImGui::Text("Anyways, these are my words of encouragement to you, if you have some project in mind, just go for it");
-        ImGui::Text("Dont overthink it, go with the flow, and be persistent, ly");
-
+        for(auto& l:lines1)
+            ImGui::TextUnformatted(l.c_str());
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
-
-        ImGui::Text("If you have any ideas for contributions i am always open for discussion and pull requests on GitHub");
-        ImGui::Text("If you are interested in some collaboration dont hesitate to contact me (Github, linkedin, whatever)");
-        ImGui::Text("If you want to support the project in any way, please reach out to me :)");
+        for(auto& l:lines2)
+            ImGui::TextUnformatted(l.c_str());
+        ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+        for(auto& l:lines3)
+            ImGui::TextUnformatted(l.c_str());
 
         if (!shown){ // if ordered to close...
             channel->about_window_shown.store(false);

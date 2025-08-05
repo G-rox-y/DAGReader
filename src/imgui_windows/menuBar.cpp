@@ -38,10 +38,38 @@ void menuBar::draw()
             }
             ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("View"))
+        {
+            bool sws = channel->sidebar_window_shown.load();
+            if (ImGui::MenuItem("Sidebar", NULL, sws))
+                channel->sidebar_window_shown.store(!sws);
+
+            bool cws = channel->controls_window_shown.load();
+            if (ImGui::MenuItem("Controls", NULL, cws))
+                channel->controls_window_shown.store(!cws);
+
+            bool iws = channel->info_window_shown.load();
+            if (ImGui::MenuItem("Position info", NULL, iws))
+                channel->info_window_shown.store(!iws);
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Info"))
         {
-            if (ImGui::MenuItem("About DAGReader")){
-                channel->about_window_shown.store(true);
+            bool aws = channel->about_window_shown.load();
+            if (ImGui::MenuItem("About DAGReader", NULL, aws))
+                channel->about_window_shown.store(!aws);
+            
+            if (ImGui::MenuItem("How to use")){
+                
+            }
+            if (ImGui::MenuItem("Dependencies")){
+
+            }
+            if (ImGui::MenuItem("License")){
+                
             }
             ImGui::EndMenu();
         }

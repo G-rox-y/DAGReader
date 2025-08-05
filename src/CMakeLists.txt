@@ -5,6 +5,8 @@ target_sources(${PROJECT_NAME} PUBLIC
     "imgui_windows/menuBar.cpp"
     "imgui_windows/sidePanel.cpp"
     "imgui_windows/about.cpp"
+    "imgui_windows/controls.cpp"
+    "imgui_windows/info.cpp"
     "gfa/GFA.cpp"
     "gfa/GFA_segment.cpp"
     "gfa/GFA_path.cpp"

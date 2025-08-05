@@ -32,8 +32,7 @@ void main(){
     // calculate the angular size and the closeness of the curve
     vec3 C[4];
     for(int i = 0; i < 4; i++)
-        C[i] = b.P[i].xyz + CamPos;
-    // ^ the camera coordinates seem to be inverted, thats why its a + instead of a -
+        C[i] = b.P[i].xyz - CamPos;
     vec3 R[4];
     int n = 0;
     float closeness = 1e5;
@@ -75,14 +74,9 @@ void main(){
 
     gl_TessLevelOuter[0] = 1.0;
 
-    if (closeness < 40.0){
-        gl_TessLevelOuter[1] = maxSeg;
-    }
+    if (closeness < 40.0) gl_TessLevelOuter[1] = maxSeg;
     else{
         float t = clamp((pxSize - minPx) / (maxPx - minPx), 0.0, 1.0);
         gl_TessLevelOuter[1] = clamp(mix(minSeg, maxSeg, t), minSeg, maxSeg);
-    }
-
-    
-    
+    }   
 }

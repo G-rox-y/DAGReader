@@ -3,12 +3,10 @@
 #include "imguiWindow.hpp"
 #include "infoExchange.hpp"
 
-class about : public imguiWindow{
+class info : public imguiWindow{
 private:
     infoExchange* channel; // we need shared data (paths)
-
-    void setOffset(const std::string& text, float scale/* = 1.f*/);
 public:
-    about(infoExchange* info) : channel(info) {}
+    info(infoExchange* info) : channel(info) {}
     void draw() override;
 };

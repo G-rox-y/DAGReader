@@ -28,6 +28,8 @@ void Window::manageInputs()
     if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS) yawCcw = true;
     if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
         m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw, moveFast);
+
+    // Other keys added as callbacks       
 }
 
 void Window::drawStuff()
@@ -153,6 +155,8 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     m_imguis.emplace_back(std::make_unique<menuBar>(channel));
     m_imguis.emplace_back(std::make_unique<sidePanel>(channel, 300.f));
     m_imguis.emplace_back(std::make_unique<about>(channel));
+    m_imguis.emplace_back(std::make_unique<controls>(channel));
+    m_imguis.emplace_back(std::make_unique<info>(channel));
 }
 
 Window::~Window()
@@ -179,12 +183,14 @@ void Window::run()
         int* p_fb_width;
         int* p_fb_height;
         bool* cam_recalc;
+        infoExchange* channel;
     } callbackData;
     callbackData.p_w_width = &m_w_width;
     callbackData.p_w_height = &m_w_height;
     callbackData.p_fb_width = &m_fb_width;
     callbackData.p_fb_height = &m_fb_height;
     callbackData.cam_recalc = &m_cam->getRecalc();
+    callbackData.channel = channel;
     glfwSetWindowUserPointer(m_window, &callbackData);
 
     // set resize actions
@@ -199,6 +205,14 @@ void Window::run()
         *data->p_fb_height = height;
         glViewport(0, 0, width, height);
         *data->cam_recalc = true;
+    });
+
+    // key callback
+    glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods){
+        if (key == GLFW_KEY_H && action == GLFW_RELEASE) {
+            CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
+            data->channel->controls_window_shown.store(!data->channel->controls_window_shown.load());
+        }
     });
 
     // ==========

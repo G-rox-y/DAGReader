@@ -1,9 +1,9 @@
 #include "sidePanel.hpp"
 
-sidePanel::sidePanel(infoExchange* c, const float w) : channel(c), m_width(w), m_collapsed(false) {}
-
 void sidePanel::draw()
 {
+    if(!channel->sidebar_window_shown.load()) return;
+
     ImGuiIO& io = ImGui::GetIO();
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport(); // get the viewport

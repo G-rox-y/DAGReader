@@ -6,10 +6,12 @@
 
 #include "pch.hpp"
 
-#include "imguiWindow.hpp"
-#include "menuBar.hpp"
-#include "sidePanel.hpp"
-#include "about.hpp"
+#include "imgui_windows/imguiWindow.hpp"
+#include "imgui_windows/menuBar.hpp"
+#include "imgui_windows/sidePanel.hpp"
+#include "imgui_windows/about.hpp"
+#include "imgui_windows/controls.hpp"
+#include "imgui_windows/info.hpp"
 #include "GLProgram.hpp"
 #include "camera.hpp"
 #include "renderer.hpp"

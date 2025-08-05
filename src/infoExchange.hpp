@@ -61,6 +61,9 @@ struct infoExchange
 
     // variable for controlling imgui windows
     std::atomic<bool> about_window_shown{false};
+    std::atomic<bool> controls_window_shown{true};
+    std::atomic<bool> sidebar_window_shown{true};
+    std::atomic<bool> info_window_shown{true};
 
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
