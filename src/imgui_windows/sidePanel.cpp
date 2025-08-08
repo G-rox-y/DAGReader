@@ -12,12 +12,15 @@ void sidePanel::draw()
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - m_width, viewport->WorkPos.y), ImGuiCond_Always);
     ImGui::SetNextWindowSizeConstraints(ImVec2(m_width, 0), ImVec2(m_width, viewport->WorkSize.y));
 
-    static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
-        | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+    static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings 
+        | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
 
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.f, 0.f, 0.f, 0.6f));
     if (ImGui::Begin("Side Panel", NULL, flags))
     {
+        float availX = ImGui::GetContentRegionAvail().x;
+        float w = (availX - ImGui::GetStyle().ItemSpacing.y) * 0.75f;
+
         ImGui::Text("Hi :D");
         if (ImGui::Button("Layout the graph!")){
             channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
@@ -84,10 +87,80 @@ void sidePanel::draw()
 
             ImGui::SameLine();
             HelpMarker("This number controls how big the segments will end up being\n---\n"
-                "Example: if a segment is 5000 base pairs long, and this number is set to 1000, the segment size will be 5\n[minimal size is 1]\n---\n"
+                "Example: if a segment is 5000 base pairs long, and this number is set to 1000, "
+                "the segment size will be 5\n[minimal size is 1]\n---\n"
                 "Pro tip: you can hold CTRL while holding the - + buttons to quickly tune the values");
             ImGui::TreePop();
             ImGui::EndDisabled();
+        }
+        if (ImGui::TreeNode("Appearance"))
+        {
+            // TODO: add segment and link widths
+
+            bool rsc = channel->randomize_segment_colors.load();
+            if (ImGui::Checkbox("Randomize segment colors", &rsc)){
+                channel->randomize_segment_colors.store(rsc);
+                channel->addControllerTask(tasks::REFRESH_GRAPH);
+            }
+
+            bool rlc = channel->randomize_link_colors.load();
+            if(ImGui::Checkbox("Randomize link colors", &rlc)){
+                channel->randomize_link_colors.store(rlc);
+                channel->addControllerTask(tasks::REFRESH_GRAPH);
+            }
+
+            
+            // ---
+
+            static ImGuiItemFlags colorFlags = ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar 
+                | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoSidePreview;
+
+            // static because i need this only to init on loading and later on its free to change
+            static glm::u8vec4 colors1vec = channel->segment_color_packed.load();
+            static float colors1[] = {
+                static_cast<float>(colors1vec.x)/255.f , static_cast<float>(colors1vec.y)/255.f, 
+                static_cast<float>(colors1vec.z)/255.f, static_cast<float>(colors1vec.w)/255.f
+            };
+            ImGui::SeparatorText("Segment color");
+            ImGui::BeginDisabled(rsc);
+            ImGui::SetNextItemWidth(w);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+            if (ImGui::ColorPicker4("##Segment_colors", (float*)&colors1, colorFlags)){
+                channel->segment_color_packed.store(
+                    glm::u8vec4(255 * colors1[0], 255 * colors1[1], 255 * colors1[2], 255 * colors1[3])
+                );
+                channel->addControllerTask(tasks::REFRESH_GRAPH);
+            }
+            ImGui::EndDisabled();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+            ImGui::ColorButton("##Segment_preview",
+                ImVec4(colors1[0], colors1[1], colors1[2], colors1[3]), ImGuiColorEditFlags_None, ImVec2(w, 0)
+            );
+            
+            // ----
+            
+            static glm::u8vec4 colors2vec = channel->link_color_packed.load();
+            static float colors2[] = {
+                static_cast<float>(colors2vec.x)/255.f , static_cast<float>(colors2vec.y)/255.f, 
+                static_cast<float>(colors2vec.z)/255.f, static_cast<float>(colors2vec.w)/255.f
+            };
+            ImGui::SeparatorText("Link color");
+            ImGui::BeginDisabled(rlc);
+            ImGui::SetNextItemWidth(w);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+            if (ImGui::ColorPicker4("##Link_colors", (float*)&colors2, colorFlags)){
+                channel->link_color_packed.store(
+                    glm::u8vec4(255 * colors2[0], 255 * colors2[1], 255 * colors2[2], 255 * colors2[3])
+                );
+                channel->addControllerTask(tasks::REFRESH_GRAPH);
+            }
+            ImGui::EndDisabled();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+            ImGui::ColorButton("##Link_preview", 
+                ImVec4(colors2[0], colors2[1], colors2[2], colors2[3]), ImGuiColorEditFlags_None, ImVec2(w, 0)
+            );
+
+            ImGui::TreePop();
         }
     }
     ImGui::End();

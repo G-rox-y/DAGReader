@@ -25,6 +25,7 @@ public:
     void setUniformMat4f(const std::string& param, const glm::mat4& matrix);
     void setUniformVec3f(const std::string& param, const glm::vec3& vector);
     void setUniform1f(const std::string& param, float num);
+    void setUniform1i(const std::string& param, int num);
 
     // activates the program
     void use() const;

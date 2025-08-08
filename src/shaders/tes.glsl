@@ -2,13 +2,17 @@
 
 layout(isolines, fractional_even_spacing, cw) in;
 
-struct BezierBox{
+struct ControlPoints{
     vec4 P[4];
+};
+
+struct Appearance{
     uint color;
     vec2 halfExt;
 };
 
-layout(std430, binding = 0) buffer Boxes { BezierBox box[]; };
+layout(std430, binding = 0) buffer Points { ControlPoints pts[]; };
+layout(std430, binding = 1) buffer Appearances { Appearance aps[]; };
 
 patch in uint patchID;
 patch in vec3 T0;
@@ -42,7 +46,8 @@ vec3 bezierDeriv(vec4 P[4], float u) {
 
 void main(){
     uint idx = patchID;
-    BezierBox b = box[idx];
+    Appearance a = aps[idx];
+    ControlPoints b = pts[idx];
 
     // position on the curve [0,1] where 0 is the beginning and 1 is the end
     float u = gl_TessCoord.x;
@@ -67,10 +72,10 @@ void main(){
     teOUT.B = normalize(cross(T, N));
 
     // copy over the extension dimensions
-    teOUT.halfExt = b.halfExt;
+    teOUT.halfExt = a.halfExt;
 
     // unpack the color here because its less expensive since tes is parallelized
-    teOUT.color = unpackUnorm4x8(b.color);
+    teOUT.color = unpackUnorm4x8(a.color);
 
     gl_Position = vec4(pos, 1.0);
 };

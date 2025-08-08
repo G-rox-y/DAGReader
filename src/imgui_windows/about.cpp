@@ -37,8 +37,7 @@ void about::draw()
     if (!shown) return;
 
     if (ImGui::Begin("About DAGReader", &shown, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse)){
-        std::string version = DAGR_VERSION_STRING;
-        std::string title = "DAGReader " + version;
+        std::string title = "DAGReader " DAGR_VERSION_STRING;
         float scale = 1.6f;
         setOffset(title, scale);
         ImGui::SetWindowFontScale(scale);

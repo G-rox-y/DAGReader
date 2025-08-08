@@ -2,13 +2,17 @@
 
 layout(vertices = 1) out;
 
-struct BezierBox{
+struct ControlPoints{
     vec4 P[4];
+};
+
+struct Appearance{
     uint color;
     vec2 halfExt;
 };
 
-layout(std430, binding = 0) buffer Boxes { BezierBox box[]; };
+layout(std430, binding = 0) buffer Points { ControlPoints pts[]; };
+layout(std430, binding = 1) buffer Appearances { Appearance aps[]; };
 
 in flat uint vInstanceID[];
 patch out uint patchID;
@@ -17,12 +21,14 @@ patch out vec3 N0; // normal for first point
 
 uniform vec3 CamPos;
 uniform float PxPerRad;
+uniform int SSBOffset;
 
 void main(){
     if (gl_InvocationID != 0) return; // safety
 
-    patchID = vInstanceID[0];
-    BezierBox b = box[patchID];
+    patchID = vInstanceID[0] + SSBOffset;
+    Appearance a = aps[patchID];
+    ControlPoints b = pts[patchID];
 
     // calculate the initial frame
     T0 = normalize(3.0 * (b.P[1] - b.P[0])).xyz;
@@ -41,7 +47,7 @@ void main(){
         closeness = min(closeness, L);
         if (L > 1e-6) R[n++] = C[i] / L;
     }
-    float maxExt = max(b.halfExt.x, b.halfExt.y);
+    float maxExt = max(a.halfExt.x, a.halfExt.y);
     closeness /= maxExt;
     float maxAng = 0.0;
     if (n > 1)
@@ -78,5 +84,5 @@ void main(){
     else{
         float t = clamp((pxSize - minPx) / (maxPx - minPx), 0.0, 1.0);
         gl_TessLevelOuter[1] = clamp(mix(minSeg, maxSeg, t), minSeg, maxSeg);
-    }   
+    }
 }

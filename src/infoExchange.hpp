@@ -8,7 +8,7 @@ namespace tasks{
     // tasks that the fileController could have
     enum controllerTask {
         OPEN_NFD, OPEN_PATH,
-        LAYOUT_GRAPH,
+        LAYOUT_GRAPH, REFRESH_GRAPH,
         EXIT
     };
 }
@@ -71,7 +71,14 @@ struct infoExchange
     std::atomic<bool> graph_param_change{false};
     std::atomic<long long int> graph_segment_length{100000};
     std::atomic<bool> graph_auto_determine_segment_length{true};
-    
+
+    // graph appearance variables
+    std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(220, 30, 150, 175)};
+    std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(130, 100, 30, 255)};
+    std::atomic<bool> randomize_segment_colors = {false};
+    std::atomic<bool> randomize_link_colors = {false};
+
+    // grip variables
     std::atomic<float> grip_scalingFactor{0.05f};
     std::atomic<float> grip_tempGain{0.45f};
     std::atomic<float> grip_tempNarrowGain{1.3f};

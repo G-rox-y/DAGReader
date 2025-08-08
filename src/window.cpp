@@ -217,9 +217,6 @@ void Window::run()
 
     // ==========
 
-    // load the shader
-    GLProgram program;
-
     // fetch framebuffer dimensions
     glfwGetFramebufferSize(m_window, &m_fb_width, &m_fb_height);
 
@@ -248,9 +245,9 @@ void Window::run()
         m_cam->update(m_fb_width, m_fb_height);
 
         // pass the camera view matrix through uniform
-        program.setUniformMat4f("MVP", m_cam->getMat());
-        program.setUniformVec3f("CamPos", m_cam->getPos());
-        program.setUniform1f("PxPerRad", (float)m_fb_height / m_cam->getFOV());
+        m_renderer->program.setUniformMat4f("MVP", m_cam->getMat());
+        m_renderer->program.setUniformVec3f("CamPos", m_cam->getPos());
+        m_renderer->program.setUniform1f("PxPerRad", (float)m_fb_height / m_cam->getFOV());
 
         // which faces to cull (whats the front and whats the back)
         bool mirrored = glm::determinant(m_cam->getMat()) < 0.0f;

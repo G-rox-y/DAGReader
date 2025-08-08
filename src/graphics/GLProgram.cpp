@@ -87,25 +87,22 @@ int GLProgram::getUniformLocation(const std::string& param)
     return location;
 }
 
-void GLProgram::setUniformMat4f(const std::string& param, const glm::mat4& matrix)
-{
-    this->use();
+void GLProgram::setUniformMat4f(const std::string& param, const glm::mat4& matrix){
     glUniformMatrix4fv(this->getUniformLocation(param), 1, false, &matrix[0][0]);
 }
 
-void GLProgram::setUniformVec3f(const std::string& param, const glm::vec3& vector)
-{
-    this->use();
+void GLProgram::setUniformVec3f(const std::string& param, const glm::vec3& vector){
     glUniform3fv(this->getUniformLocation(param), 1, &vector[0]);
 }
 
-void GLProgram::setUniform1f(const std::string& param, float num)
-{
-    this->use();
+void GLProgram::setUniform1f(const std::string& param, float num){
     glUniform1f(this->getUniformLocation(param), num);
 }
 
-void GLProgram::use() const
-{
+void GLProgram::setUniform1i(const std::string& param, int num){
+    glUniform1i(this->getUniformLocation(param), num);
+}
+
+void GLProgram::use() const{
     glUseProgram(id); 
 }

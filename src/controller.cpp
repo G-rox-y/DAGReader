@@ -234,21 +234,21 @@ void Controller::run()
 
                     for(auto& e:g.edges){
                         if(!e.segPart){
-                            channel->renderer->addBezierBox(
+                            channel->renderer->addLink(
                                 g.vertices.at(e.start).pos,
                                 ((e.start % 2 == 1) ? -segBoxes.at(e.start/2).endOri : -segBoxes.at(e.start/2).startOri),
                                 g.vertices.at(e.end).pos,
                                 ((e.end % 2 == 1) ? segBoxes.at(e.end/2).endOri : segBoxes.at(e.end/2).startOri),
                                 glm::vec2(edgeWidth),
-                                glm::u8vec4(130, 100, 40, 255)
+                                channel->link_color_packed.load()
                             );
                         }
                     }
 
                     // and write to buffer
                     for(auto& b : segBoxes)
-                        channel->renderer->addBezierBox(
-                            b.start, b.startOri, b.end, b.endOri, b.dims, glm::u8vec4(220, 30, 150, 175)
+                        channel->renderer->addSegment(
+                            b.start, b.startOri, b.end, b.endOri, b.dims, channel->segment_color_packed.load()
                         );
                     
 
@@ -258,6 +258,15 @@ void Controller::run()
                 else spdlog::warn("Shared datastructure pointer is not defined");
             }
             else spdlog::warn("No graph found!");
+        }
+        else if (t == tasks::REFRESH_GRAPH)
+        {
+            if (!channel->randomize_segment_colors.load())
+                channel->renderer->changeSegmentColors(channel->segment_color_packed.load());
+            else channel->renderer->randomizeSegmentColors();
+            if (!channel->randomize_link_colors.load())
+                channel->renderer->changeLinkColors(channel->link_color_packed.load());
+            else channel->renderer->randomizeLinkColors();
         }
         else if (t == tasks::EXIT)
         {

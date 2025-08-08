@@ -1,4 +1,5 @@
 #include "info.hpp"
+#include "cmakevars.hpp"
 
 void info::draw()
 {
@@ -15,8 +16,15 @@ void info::draw()
 
     if (ImGui::Begin("Lower-Right HUD", nullptr, flags)){
         auto& nums = channel->cam->getPos();
-        std::string coords = "X = " + std::to_string(nums.x) + "; Y = " + std::to_string(nums.y) + "; Z = " + std::to_string(nums.z);
-        ImGui::Text(coords.c_str());
+
+        std::string version = "DAGReader v" DAGR_VERSION_STRING;
+        float avail = ImGui::GetContentRegionAvail().x;
+        float width = ImGui::CalcTextSize(version.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
+        ImGui::SetNextItemWidth(width);
+        ImGui::Text(version.c_str());
+        
+        ImGui::Text("X = %f; Y = %f; Z = %f", nums.x, nums.y, nums.z);
         ImGui::End();
     }
 }
