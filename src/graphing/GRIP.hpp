@@ -31,7 +31,7 @@ struct Graph{
 class GRIP{
 private:
     Graph* mr_graph; // mr_ = member reference
-    float m_avgDegG = 0.f; // average degree of the graph
+    std::vector<std::vector<int>> mr_noDsu_Graphs;
 
     // graph adjacency list, a map vertex id is paired with a vector filled with vertex ids of its neighbours
     std::unordered_map<int, std::vector<int>> m_adjListG;
@@ -51,6 +51,9 @@ private:
 
     int m_dimensions = 3;
 
+    // max num of elements for the graph to still be considered small
+    int m_smallGraphLimit = 10000;
+
     mutable std::mt19937 m_rng{std::random_device{}()};
 
     // can find the distance between two vertices using BFS
@@ -62,12 +65,9 @@ private:
     // finds out if default value should be used for edge_length or some other value
     float find_edge_length(int id1, int id2) const;
 
-    // computer filtrations and fills the given vector that stores filtrations (f)
-    void create_filtrations(std::vector<std::vector<int>>& f) const;
-
     // computes neighbourhoods and fills in their vector (n) for a given vertex
     void compute_vertex_neighbourhoods(
-        const Vertex* v, std::vector<std::vector<std::pair<int, int>>>& n, const std::vector<int> nbrs, 
+        int ID, std::vector<std::vector<std::pair<int, int>>>& n, const std::vector<size_t> nbrs, 
         const std::vector<std::unordered_set<int>>& f_c, const int K, const std::unordered_set<int>& placed
     ) const;
 
@@ -75,7 +75,7 @@ private:
     void base_filter_placement(const std::vector<int>& base) const;
 
     // sets the vertex initial position given its neighbourhood
-    void vertex_initial_placement(Vertex* v, const std::vector<std::pair<int, int>>& n, const std::unordered_set<int>& placed) const;
+    void vertex_initial_placement(int ID, const std::vector<std::pair<int, int>>& n, const std::unordered_set<int>& placed) const;
 
     // updates the temperature with given parameters, updates through updating a reference (cos and temp)
     void calc_temp(float& oldTemp, float& oldCos, const glm::vec3& oldDisp, const glm::vec3& force) const;
@@ -88,6 +88,10 @@ private:
 
     // just a function for reporting errors
     void grip_error(const std::string& description) const;
+
+    // function for running on a non-dsu graph
+    void runGraph(int graphId);
+
 public:
     GRIP(Graph& g);
 
