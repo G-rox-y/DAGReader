@@ -164,31 +164,33 @@ void GRIP::calc_temp(float& oldTemp, float& oldCos, const glm::vec3& oldDisp, co
     oldTemp = heat;
 }
 
-glm::vec3 GRIP::compute_KKforce(const Vertex* v, const vector<pair<int, int>>& n) const {
-    glm::vec3 force = glm::vec3(0.f);
-    for(size_t i = 0; i < n.size(); i++){
-        Vertex* u = &mr_graph->vertices.at(n[i].first);
-        float distR = glm::distance(u->pos, v->pos);
-        float edgeL = find_edge_length(v->id, u->id);
-        float distG = static_cast<float>(n[i].second) * static_cast<float>(glm::pow(edgeL, 2));
-        glm::vec3 inc = (u->pos - v->pos) * (distR / distG - 1.f);
-        force += inc;
+glm::vec3 GRIP::compute_KKforce(int ID, const vector<pair<int, int>>& n) const {
+    glm::vec3 force(0.f);
+    glm::vec3& POS = mr_graph->vertices.at(ID).pos;
+    for(auto& [OTHER_ID, d]:n){
+        glm::vec3 delta = mr_graph->vertices.at(OTHER_ID).pos - POS;
+        float distR = glm::length2(delta);
+        float edgeL = find_edge_length(ID, OTHER_ID);
+        float distG = glm::pow<float>(edgeL * static_cast<float>(d), 2);
+        force += delta * (distR / distG - 1.f);
     }
     return force;
 }
 
-glm::vec3 GRIP::compute_FRforce(const Vertex* v, const vector<pair<int, int>>& n) const {
-    glm::vec3 force;
-    for(size_t i = 0; i < n.size(); i++){
-        Vertex* u = &mr_graph->vertices.at(n[i].first);
-        float edgeL = find_edge_length(v->id, u->id);
-        float factor = (float)pow(edgeL, 2) / max(glm::distance2(u->pos, v->pos), 1e-4f);
-        force += (v->pos - u->pos) * factor * m_scalingFactor;
+glm::vec3 GRIP::compute_FRforce(int ID, const vector<pair<int, int>>& n) const {
+    glm::vec3 force(0.f);
+    glm::vec3& POS = mr_graph->vertices.at(ID).pos;
+    for(auto& OTHER_ID:m_adjListG.at(ID)){
+        glm::vec3 delta = mr_graph->vertices.at(OTHER_ID).pos - POS;
+        float edgeL = find_edge_length(ID, OTHER_ID);
+        float factor = glm::length2(delta) / glm::pow<float>(edgeL, 2);
+        force += delta * factor;
     }
-    for(size_t i = 0; i < m_adjListG.at(v->id).size(); i++){
-        Vertex* u = &mr_graph->vertices.at(m_adjListG.at(v->id)[i]);
-        float factor = glm::distance2(u->pos, v->pos) / pow(m_scalingFactor, 2);
-        force += (u->pos - v->pos) * factor;
+    for(auto& [OTHER_ID, d]:n){
+        glm::vec3 delta = POS - mr_graph->vertices.at(OTHER_ID).pos;
+        float edgeL = find_edge_length(ID, OTHER_ID);
+        float factor = glm::pow<float>(edgeL, 2) / std::max<float>(glm::length2(delta), 1e-4f);
+        force += delta * factor * m_scalingFactor;
     }
     return force;
 }
@@ -229,7 +231,7 @@ GRIP::GRIP(Graph& g) : mr_graph(&g) {
     // fill edge lengths
     for(auto& e:mr_graph->edges)
         if (e.length != 1)
-            m_edgeLengths[sorted_pair<int>(e.start, e.end)];
+            m_edgeLengths[sorted_pair<int>(e.start, e.end)] = e.length;
 }
 
 void GRIP::runGraph(int graphId)
@@ -392,11 +394,9 @@ void GRIP::runGraph(int graphId)
 
         for(int r = 0; r < m_rounds_number; r++){
             for(int ID:current_filter){
-                Vertex* vp = &mr_graph->vertices.at(ID);
-
                 glm::vec3 force;
-                if (i == 0) force = compute_FRforce(vp, neighbourhoods[ID][i]); // last filter special treatment
-                else force = compute_KKforce(vp, neighbourhoods[ID][i]);
+                if (i == 0) force = compute_FRforce(ID, neighbourhoods[ID][i]); // last filter special treatment
+                else force = compute_KKforce(ID, neighbourhoods[ID][i]);
                 
                 if (glm::length(force) < 1e-4) continue;
 

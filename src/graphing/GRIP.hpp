@@ -81,10 +81,10 @@ private:
     void calc_temp(float& oldTemp, float& oldCos, const glm::vec3& oldDisp, const glm::vec3& force) const;
 
     // computes the Kamada-Kawai force vector on a vertex by its neighbourhood O(n)
-    glm::vec3 compute_KKforce(const Vertex* v, const std::vector<std::pair<int, int>>& n) const;
+    glm::vec3 compute_KKforce(int ID, const std::vector<std::pair<int, int>>& n) const;
 
     // computes the Fruchterman-Reingold force vector on a vertex by its neighbourhood O(n+adj)
-    glm::vec3 compute_FRforce(const Vertex* v, const std::vector<std::pair<int, int>>& n) const;
+    glm::vec3 compute_FRforce(int ID, const std::vector<std::pair<int, int>>& n) const;
 
     // just a function for reporting errors
     void grip_error(const std::string& description) const;
