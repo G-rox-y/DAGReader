@@ -189,6 +189,9 @@ void Controller::run()
                     };
                     std::vector<SegBoxData> segBoxes(g.vertices.size() / 2);
 
+                    // in this for loop we are relying on the fact that all of the inter-segment edges are defined
+                    // before the other edges, so the first if will fire for all elements tat are segparts and then
+                    // the else will fire for all other elements
                     for(auto& e:g.edges){
                         if (e.segPart){
                             SegBoxData& b = segBoxes.at(e.start / 2);
@@ -202,23 +205,11 @@ void Controller::run()
                             SegBoxData& bStart = segBoxes.at(e.start/2);
                             SegBoxData& bEnd = segBoxes.at(e.end/2);
 
-                            // set barycenter of edge start box
-                            if (e.start % 2 == 1){ // if id is uneven, it is connected to the end of the segment
-                                bStart.endBcCounter++;
-                                bStart.endBc += g.vertices.at(e.end).pos;
-                            } else { // else its the beginning
-                                bStart.startBcCounter++;
-                                bStart.startBc += g.vertices.at(e.end).pos;
-                            }
-
-                            // same for the other edge end box
-                            if (e.end % 2 == 1){
-                                bEnd.endBcCounter++;
-                                bEnd.endBc = g.vertices.at(e.start).pos;
-                            } else {
-                                bEnd.startBcCounter++;
-                                bEnd.startBc = g.vertices.at(e.start).pos;
-                            }
+                            // set barycenter of edge start box and end box
+                            bStart.endBcCounter++;
+                            bStart.endBc += g.vertices.at(e.end).pos;
+                            bEnd.startBcCounter++;
+                            bEnd.startBc += g.vertices.at(e.start).pos;
                         }
                     }
 
@@ -236,9 +227,9 @@ void Controller::run()
                         if(!e.segPart){
                             channel->renderer->addLink(
                                 g.vertices.at(e.start).pos,
-                                ((e.start % 2 == 1) ? -segBoxes.at(e.start/2).endOri : -segBoxes.at(e.start/2).startOri),
+                                -segBoxes.at(e.start/2).endOri,
                                 g.vertices.at(e.end).pos,
-                                ((e.end % 2 == 1) ? segBoxes.at(e.end/2).endOri : segBoxes.at(e.end/2).startOri),
+                                segBoxes.at(e.end/2).startOri,
                                 glm::vec2(edgeWidth),
                                 channel->link_color_packed.load()
                             );
@@ -248,7 +239,7 @@ void Controller::run()
                     // and write to buffer
                     for(auto& b : segBoxes)
                         channel->renderer->addSegment(
-                            b.start, b.startOri, b.end, b.endOri, b.dims, channel->segment_color_packed.load()
+                            b.start, -b.startOri, b.end, b.endOri, b.dims, channel->segment_color_packed.load()
                         );
                     
 

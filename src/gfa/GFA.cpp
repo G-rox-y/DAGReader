@@ -308,16 +308,16 @@ void GFA::fillGraph(Graph& g) const {
     for(auto& s:segments){
         int id = g.vertices.size();
         g.vertices.emplace_back(id);
-        verts[s.getName() + "+"] = id;
+        verts[s.getName() + "START"] = id;
         g.vertices.emplace_back(id + 1);
-        verts[s.getName() + "-"] = id + 1;
+        verts[s.getName() + "END"] = id + 1;
         g.edges.emplace_back(id, id + 1, s.getSegmentLength());
         g.edges.back().isSegmentPart(true);
     }
 
     for(auto& l:links){
-        int id1 = verts[l.getFromName() + l.getFromOrientation()];
-        int id2 = verts[l.getToName() + l.getToOrientation()];
+        int id1 = verts[l.getFromName() + "START"];
+        int id2 = verts[l.getToName() + "END"];
         g.edges.emplace_back(id1, id2);
     }
 }
