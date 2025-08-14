@@ -2,7 +2,7 @@
 
 #include "pch.hpp"
 
-#include "GFA_link.hpp"
+#include "gfa/GFA_link.hpp"
 
 class GFA_path {
 private:

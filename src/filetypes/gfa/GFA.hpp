@@ -2,18 +2,21 @@
 
 #include "pch.hpp"
 
-#include "GFA_link.hpp"
-#include "GFA_segment.hpp"
-#include "GFA_containment.hpp"
-#include "GFA_path.hpp"
-#include "GRIP.hpp"
+#include "gfa/GFA_link.hpp"
+#include "gfa/GFA_segment.hpp"
+#include "gfa/GFA_containment.hpp"
+#include "gfa/GFA_path.hpp"
+#include "Graphs.hpp"
+#include "parser.hpp"
 
 struct GFA_field{
     std::string tag, type, value;
 };
 
-class GFA {
+class GFA : public parser {
 private:
+    using parser::parser_error;
+
     std::string version_string;
 
     std::vector<GFA_segment> segments;
@@ -26,14 +29,13 @@ private:
     // TODO: implement a custom hashing function to be able to relpace map with unordered_map
 
     // this function handles errors coming from GFA class
-    void parser_error(const std::string& description, const int line_n) const;
-    void parser_error(const std::string& description) const;
+    void parser_error(const std::string& description, const int line_n) const override;
 
 public:
     // the constructor of this class parses a GFA file from the path provided
     GFA(const std::string& path);
 
-    void fillGraph(Graph& g) const;
+    void fillGraph(Graph& g) const override;
 
     const int segmentNum() const { return segments.size(); }
     const int containmentNum() const { return containments.size(); }

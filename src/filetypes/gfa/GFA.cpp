@@ -6,16 +6,13 @@ void GFA::parser_error(const std::string& description, const int line_n) const {
     else spdlog::error("GFA Parser error: {}", description);
     throw std::runtime_error("GFA Parser error (check logs)");
 }
-void GFA::parser_error(const std::string& description) const {
-    parser_error(description, -1);
-}
 
-GFA::GFA(const std::string& path) : version_string("")
+GFA::GFA(const std::string& path) : parser(path), version_string("")
 {
     // open the requested file
     std::ifstream file(path);
     if (!file.is_open())
-        parser_error("File not found: " + path);
+        parser::parser_error("File not found: " + path);
 
     // TODO: a lot of parser debugging
 

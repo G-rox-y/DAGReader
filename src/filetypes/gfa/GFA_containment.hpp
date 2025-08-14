@@ -2,7 +2,7 @@
 
 #include "pch.hpp"
 
-#include "GFA_virtuals.hpp"
+#include "gfa/GFA_virtuals.hpp"
 
 class GFA_containment : public readCount, public numOfMismatchsGaps, public edgeIdentifier, public overlap {
 private:

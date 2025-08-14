@@ -7,9 +7,9 @@ target_sources(${PROJECT_NAME} PUBLIC
     "imgui_windows/about.cpp"
     "imgui_windows/controls.cpp"
     "imgui_windows/info.cpp"
-    "gfa/GFA.cpp"
-    "gfa/GFA_segment.cpp"
-    "gfa/GFA_path.cpp"
+    "filetypes/gfa/GFA.cpp"
+    "filetypes/gfa/GFA_segment.cpp"
+    "filetypes/gfa/GFA_path.cpp"
     "graphics/GLProgram.cpp"
     "graphics/camera.cpp"
     "graphics/renderer.cpp"
@@ -21,10 +21,10 @@ target_precompile_headers(${PROJECT_NAME} PRIVATE "pch.hpp")
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_BINARY_DIR}/src"
+    "filetypes"
     "imgui_windows"
     "graphics"
     "graphing"
-    "gfa"
     "."
 )
 

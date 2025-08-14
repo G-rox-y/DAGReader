@@ -2,7 +2,8 @@
 
 #include <nfd.hpp>
 #include "pch.hpp"
-#include "GFA.hpp"
+#include "gfa/GFA.hpp"
+#include "Graphs.hpp"
 #include "GRIP.hpp"
 #include "infoExchange.hpp"
 
