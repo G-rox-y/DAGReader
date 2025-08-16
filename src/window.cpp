@@ -29,6 +29,12 @@ void Window::manageInputs()
     if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
         m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw, moveFast);
 
+    bool scaleIn = false, scaleOut = false;
+    if (glfwGetKey(m_window, GLFW_KEY_I) == GLFW_PRESS) scaleIn = true;
+    if (glfwGetKey(m_window, GLFW_KEY_O) == GLFW_PRESS) scaleOut = true;
+    if (scaleIn || scaleOut)
+        m_cam->scale(scaleIn, scaleOut);
+
     // Other keys added as callbacks       
 }
 

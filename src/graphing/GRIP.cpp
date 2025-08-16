@@ -410,10 +410,30 @@ void GRIP::runGraph(int graphId)
 }
 
 void GRIP::run(){
+    double dist = 0.0;
     for(size_t i = 0; i < mr_noDsu_Graphs.size(); i++){
         runGraph(i);
 
-        // TODO: currently disjoint sets will overlap, that has to be fixed
+        // calculate the sphere barycenter
+        glm::dvec3 bc(0.0);
+        for(auto ID:mr_noDsu_Graphs.at(i))
+            bc += mr_graph->vertices.at(ID).pos;
+        bc /= static_cast<double>(mr_noDsu_Graphs.size());
         
+        // and its radius
+        double radius = 0.0;
+        for(auto ID:mr_noDsu_Graphs.at(i)){
+            glm::dvec3 loc = mr_graph->vertices.at(ID).pos;
+            radius = std::max<double>(radius, glm::distance(bc, loc));
+        }
+
+        radius += 0.5; // add some clearance
+
+        // translate the graph not to collide with others
+        if (dist != 0.0)
+            for(auto ID:mr_noDsu_Graphs.at(i))
+                mr_graph->vertices.at(ID).pos += glm::vec3(dist, 0.f, 0.f);
+
+        dist += radius;
     }
 }

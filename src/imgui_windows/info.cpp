@@ -15,15 +15,22 @@ void info::draw()
         | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground;
 
     if (ImGui::Begin("Lower-Right HUD", nullptr, flags)){
-        auto& nums = channel->cam->getPos();
-
-        std::string version = "DAGReader v" DAGR_VERSION_STRING;
         float avail = ImGui::GetContentRegionAvail().x;
+        
+        std::string version = "DAGReader v" DAGR_VERSION_STRING;
         float width = ImGui::CalcTextSize(version.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
         ImGui::SetNextItemWidth(width);
         ImGui::Text(version.c_str());
-        
+
+
+        std::string scale = "Model scale = " + std::to_string(channel->cam->getScale());
+        width = ImGui::CalcTextSize(scale.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
+        ImGui::SetNextItemWidth(width);
+        ImGui::Text(scale.c_str());
+
+        auto& nums = channel->cam->getPos();
         ImGui::Text("X = %f; Y = %f; Z = %f", nums.x, nums.y, nums.z);
         ImGui::End();
     }

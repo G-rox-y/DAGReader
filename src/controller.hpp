@@ -12,12 +12,12 @@ class Controller {
 private:
     infoExchange* channel; // shared variables between threads
 
-    std::unique_ptr<GFA> graphPtr;
-
     std::filesystem::path m_binaryPath; // the where the DAGReader binary is located
 
     inipp::Ini<char> ini; // inipp handler
 	std::filesystem::path iniPath; // ini file stream
+
+    Graph g;
 
 public:
     Controller(infoExchange* c);

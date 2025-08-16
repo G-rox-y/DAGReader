@@ -23,4 +23,12 @@ struct Edge{
 struct Graph{
     std::vector<Vertex> vertices;
     std::vector<Edge> edges;
+
+    void clear() {
+        vertices.clear();
+        edges.clear();
+    }
+    bool empty() {
+        return vertices.empty() | edges.empty();
+    }
 };

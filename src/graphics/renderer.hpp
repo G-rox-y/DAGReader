@@ -69,6 +69,9 @@ public:
     void randomizeSegmentColors();
     void randomizeLinkColors();
 
+    void changeSegmentDims(glm::vec2 dims);
+    void changeLinkDims(glm::vec2 dims);
+
     void clearAll();
 
     // this function is going to fill the vertex buffer object with data and properly assign its vertex array

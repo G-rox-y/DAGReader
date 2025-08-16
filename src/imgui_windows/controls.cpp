@@ -5,13 +5,13 @@ void controls::draw()
     if (!channel->controls_window_shown.load()) return;
 
     static std::string lines[] = {
-        "Up, Down Left, Right - Look around",
-        "W, A, S, D, - Move",
-        "E, Q - Rotate",
-        "Space - Move up",
-        "C - Move Down",
+        "Up, Down Left, Right - look around",
+        "W, A, S, D, - move",
+        "E, Q - rotate",
+        "Space, C - up / down",
+        "R - Reset camera position",
+        "I, O - Increase / decrease camera speed",
         "LShift(hold) - Speed up movement",
-        "R - Reset view",
         "H - Hide/Show this window"
     };
 
@@ -31,8 +31,9 @@ void controls::draw()
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.1f, 0.1f, 0.1f, 0.4f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 12.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-
+    
     if (ImGui::Begin("Controls", NULL, flags)){
+        ImGui::SeparatorText("Controls:");
         for(auto& l:lines) ImGui::Text(l.c_str());
         ImGui::End();
     }

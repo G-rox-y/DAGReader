@@ -15,6 +15,7 @@ struct GFA_field{
 
 class GFA : public parser {
 private:
+    using parser::parser_warning;
     using parser::parser_error;
 
     std::string version_string;
@@ -28,7 +29,7 @@ private:
     std::map<std::pair<std::string_view, std::string_view>, int> link_lookup;
     // TODO: implement a custom hashing function to be able to relpace map with unordered_map
 
-    // this function handles errors coming from GFA class
+    void parser_warning(const std::string& description, const int line_n) const override;
     void parser_error(const std::string& description, const int line_n) const override;
 
 public:

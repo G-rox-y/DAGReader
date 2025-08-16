@@ -65,6 +65,21 @@ struct infoExchange
     std::atomic<bool> sidebar_window_shown{true};
     std::atomic<bool> info_window_shown{true};
 
+    // graph data
+private:
+    std::string graph_name_string;
+    std::mutex graph_name_string_mut;
+public:
+    void graph_name_set(const std::string& name) {
+        std::lock_guard lk(graph_name_string_mut);
+        graph_name_string = name;
+    }
+    const std::string_view graph_name_get() const {
+        return std::string_view(graph_name_string);
+    };
+    std::atomic<int> graph_data_seg_num{0};
+    std::atomic<int> graph_data_link_num{0};
+
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
     std::atomic<bool> graph_auto_update{false};
@@ -77,6 +92,8 @@ struct infoExchange
     std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(130, 100, 30, 255)};
     std::atomic<bool> randomize_segment_colors = {false};
     std::atomic<bool> randomize_link_colors = {false};
+    std::atomic<float> link_widths{0.015f};
+    std::atomic<float> segment_widths{0.06f};
 
     // grip variables
     std::atomic<float> grip_scalingFactor{0.05f};

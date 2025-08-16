@@ -1,6 +1,10 @@
 #include "GFA.hpp"
 
 
+void GFA::parser_warning(const std::string& description, const int line_n) const {
+    if (line_n != -1) spdlog::warn("GFA Parser warning [at line {}]: {}", line_n, description);
+    else spdlog::warn("GFA Parser warning: {}", description);
+}
 void GFA::parser_error(const std::string& description, const int line_n) const {
     if (line_n != -1) spdlog::error("GFA Parser error [at line {}]: {}", line_n, description);
     else spdlog::error("GFA Parser error: {}", description);
@@ -293,7 +297,16 @@ GFA::GFA(const std::string& path) : parser(path), version_string("")
                 check_id(f, containment, field_str, line_n);
             }
         }
-        else parser_error("Unrecognized record type: " + std::string(1, first_char) + "\n", line_n);
+        else{
+            if(first_char == 'A'){
+                static bool hifiasmDetected = false;
+                if(!hifiasmDetected){
+                    parser_warning("Unrecognized record type [Ignore if hifiasm]: " + std::string(1, first_char) + "\n", line_n);
+                    hifiasmDetected = true;
+                }
+            }
+            else parser_warning("Unrecognized record type: " + std::string(1, first_char) + "\n", line_n);
+        }
     }
 
     file.close();

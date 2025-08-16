@@ -138,7 +138,14 @@ void Controller::run()
                 iniFileOut.close();
 
                 spdlog::info("Running the parser on the file");
-                graphPtr = std::make_unique<GFA>(path.string());
+                GFA gfa(path.string());
+
+                g.clear();
+                gfa.fillGraph(g);
+
+                channel->graph_data_seg_num.store(gfa.segmentNum());
+                channel->graph_data_link_num.store(gfa.linkNum());
+                channel->graph_name_set(path.filename().string());
                 channel->graph_loaded.store(true);
                 channel->graph_param_change.store(true); // new things to draw now available
             }
@@ -146,11 +153,8 @@ void Controller::run()
         else if (t == tasks::LAYOUT_GRAPH)
         {
             spdlog::info("Task: LAYOUT_GRAPH");
-            if (graphPtr){
+            if (!g.empty()){
                 spdlog::info("Reading the graph");
-                
-                Graph g;
-                graphPtr->fillGraph(g);
 
                 if (channel->graph_auto_determine_segment_length.load() && !g.edges.empty()){
                     long long int maxSize = std::numeric_limits<long long int>::min();
@@ -172,8 +176,8 @@ void Controller::run()
                 layout.run();
                 
                 if (channel->renderer){
-                    float segmentWidth = 0.06f;
-                    float edgeWidth = segmentWidth / 4.f;
+                    float segmentWidth = channel->segment_widths.load();
+                    float edgeWidth = channel->link_widths.load();
 
                     struct SegBoxData{
                         glm::vec3 start, end;
@@ -252,12 +256,43 @@ void Controller::run()
         }
         else if (t == tasks::REFRESH_GRAPH)
         {
-            if (!channel->randomize_segment_colors.load())
-                channel->renderer->changeSegmentColors(channel->segment_color_packed.load());
-            else channel->renderer->randomizeSegmentColors();
-            if (!channel->randomize_link_colors.load())
-                channel->renderer->changeLinkColors(channel->link_color_packed.load());
-            else channel->renderer->randomizeLinkColors();
+            // memory
+            static glm::u8vec4 prevSegColor, prevLinkColor;
+            static float prevSegWidth = 0.f, prevLinkWidth = 0.f;
+            static bool prevSegRandom = false, prevLinkRandom = false;
+
+            glm::u8vec4 segColor = channel->segment_color_packed.load();
+            glm::u8vec4 linkColor = channel->link_color_packed.load();
+            float segWidth = channel->segment_widths.load(), linkWidth = channel->link_widths.load();
+            bool segRandom = channel->randomize_segment_colors.load();
+            bool linkRandom = channel->randomize_link_colors.load();
+
+            if (linkRandom != prevLinkRandom){
+                if (linkRandom) channel->renderer->randomizeLinkColors();
+                else channel->renderer->changeLinkColors(linkColor);
+                prevLinkRandom = linkRandom;
+            }
+            else if (segRandom != prevSegRandom){
+                if (segRandom) channel->renderer->randomizeSegmentColors();
+                else channel->renderer->changeSegmentColors(segColor);
+                prevSegRandom = segRandom;
+            }
+            else if (!linkRandom && prevLinkColor != linkColor){
+                channel->renderer->changeLinkColors(linkColor);
+                prevLinkColor = linkColor;
+            }
+            else if (!segRandom && prevSegColor != segColor){
+                channel->renderer->changeSegmentColors(segColor);
+                prevSegColor = segColor;
+            }
+            else if (linkWidth != prevLinkWidth){
+                channel->renderer->changeLinkDims(glm::vec2(channel->link_widths.load()));
+                prevLinkWidth = linkWidth;
+            }
+            else if (segWidth != prevSegWidth){
+                channel->renderer->changeSegmentDims(glm::vec2(channel->segment_widths.load()));
+                prevSegWidth = segWidth;
+            }
         }
         else if (t == tasks::EXIT)
         {

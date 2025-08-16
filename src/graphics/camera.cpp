@@ -20,18 +20,13 @@ void Camera::move(bool up, bool left, bool down, bool right, bool in, bool out, 
     m_shouldRecalculate = true;
 }
 
-void Camera::zoom(bool in, bool out){
+void Camera::scale(bool in, bool out){
     if (in && out) return;
 
-    // keep trying to update until you succeed (since its atomic we have to make sure it works)
-    auto atomic_mul = [](std::atomic<float>& a, const float factor){
-        float cur = a.load(std::memory_order_relaxed), next;
-        do next = cur * factor;
-        while (!a.compare_exchange_weak(cur, next, std::memory_order_release, std::memory_order_relaxed));
-    };
-
-    if (out && m_position.z < -0.1f) atomic_mul(m_scale, 1.f - m_zoom_sens);
-    if (in) atomic_mul(m_scale, 1.f + m_zoom_sens);
+    float prevscale = m_scale;
+    if (out) m_scale *= 1.f - m_scale_sens;
+    if (in) m_scale *= 1.f + m_scale_sens;
+    m_position *= m_scale / prevscale;
 
     m_shouldRecalculate = true;
 }
@@ -53,14 +48,8 @@ void Camera::rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw
     m_shouldRecalculate = true;
 }
 
-void Camera::setZoom(const float scale){
-    m_scale.store(scale);
-    m_default_scale = m_scale.load();
-    m_shouldRecalculate = true;
-}
-
 void Camera::resetView(){ 
-    m_scale.store(m_default_scale); 
+    m_scale = 1.f;
     m_rot = glm::identity<glm::quat>(); 
     m_position = glm::vec3(0.f, 0.f, -1.f);
 

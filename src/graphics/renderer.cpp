@@ -83,6 +83,16 @@ void Renderer::randomizeLinkColors(){
     m_link_appearanceUpdated = true;
 }
 
+void Renderer::changeSegmentDims(glm::vec2 dims){
+    for(auto& e:m_seg_appearances) e.halfExt = dims;
+    m_seg_appearanceUpdated = true;
+}
+
+void Renderer::changeLinkDims(glm::vec2 dims){
+    for(auto& e:m_link_appearances) e.halfExt = dims;
+    m_link_appearanceUpdated = true;
+}
+
 void Renderer::clearAll()
 {
     m_seg_controlPoints.clear();

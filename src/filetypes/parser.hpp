@@ -7,6 +7,8 @@ class parser {
 protected:
     std::string m_filepath;
 
+    virtual void parser_warning(const std::string& description, const int line_n) const = 0;
+    void parser_warning(const std::string& description) const { parser_warning(description, -1); };
     virtual void parser_error(const std::string& description, const int line_n) const = 0;
     void parser_error(const std::string& description) const { parser_error(description, -1); };
 
