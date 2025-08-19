@@ -36,7 +36,7 @@ void Camera::rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw
     if (left && right) left = right = false;
     if (cw && ccw) cw = ccw = false;
 
-    float increment = (fast) ? m_rotate_sens * 3.f : m_rotate_sens;
+    float increment = (fast) ? m_rotate_sens * 2.f : m_rotate_sens;
 
     if (up) m_rot = glm::angleAxis(-increment, glm::vec3(1.f, 0.f, 0.f)) * m_rot;
     if (down) m_rot = glm::angleAxis(increment, glm::vec3(1.f, 0.f, 0.f)) * m_rot;

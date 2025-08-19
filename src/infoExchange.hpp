@@ -100,5 +100,9 @@ public:
     std::atomic<float> grip_tempGain{0.45f};
     std::atomic<float> grip_tempNarrowGain{1.3f};
     std::atomic<int> grip_roundsNum{16};
+
+    // progress variables
+    std::atomic<bool> loading_file_in_progress{false};
+    std::atomic<bool> layout_in_progress{false};
 };
 

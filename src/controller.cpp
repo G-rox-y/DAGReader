@@ -138,6 +138,7 @@ void Controller::run()
                 iniFileOut.close();
 
                 spdlog::info("Running the parser on the file");
+                channel->loading_file_in_progress.store(true);
                 GFA gfa(path.string());
 
                 g.clear();
@@ -148,13 +149,15 @@ void Controller::run()
                 channel->graph_name_set(path.filename().string());
                 channel->graph_loaded.store(true);
                 channel->graph_param_change.store(true); // new things to draw now available
+                channel->loading_file_in_progress.store(false);
             }
         }
         else if (t == tasks::LAYOUT_GRAPH)
         {
             spdlog::info("Task: LAYOUT_GRAPH");
             if (!g.empty()){
-                spdlog::info("Reading the graph");
+                spdlog::info("Laying out the graph");
+                channel->layout_in_progress.store(true);
 
                 if (channel->graph_auto_determine_segment_length.load() && !g.edges.empty()){
                     long long int maxSize = std::numeric_limits<long long int>::min();
@@ -166,7 +169,6 @@ void Controller::run()
                     for(auto& e:g.edges) e.length = (e.length / gsl) + 1;
                 }
 
-                spdlog::info("Laying out the graph");
 
                 GRIP layout(g);
                 layout.setFRscaling(channel->grip_scalingFactor.load());
@@ -175,6 +177,8 @@ void Controller::run()
                 layout.setTempNarrowGainInc(channel->grip_tempNarrowGain.load());
                 layout.run();
                 
+                channel->layout_in_progress.store(false);
+
                 if (channel->renderer){
                     float segmentWidth = channel->segment_widths.load();
                     float edgeWidth = channel->link_widths.load();
@@ -253,9 +257,9 @@ void Controller::run()
                         maxY = std::max<float>(maxY, s.pos.y);
                     }
                     float halfFov = channel->cam->getFOV() / 2.f;
-                    float camZ = glm::sin(glm::radians(90.f) - halfFov) * maxY / 2.f / std::sin(halfFov);
+                    float camZ = glm::sin(glm::radians(90.f) - halfFov) * maxX / 2.f / std::sin(halfFov);
                     float scale = channel->cam->getFarCP() / camZ / 400.f;
-                    channel->cam->setDefPos(glm::vec3(maxX/2.f, maxY/2.f, camZ * 1.5f));
+                    channel->cam->setDefPos(glm::vec3(maxX/2.f, maxX/2.f, camZ * 1.5f));
                     channel->cam->setDefScale(scale);
                     channel->cam->resetView();
 

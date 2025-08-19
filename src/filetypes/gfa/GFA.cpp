@@ -172,7 +172,6 @@ GFA::GFA(const std::string& path) : parser(path), version_string("")
             while (file.good() && file.peek() != '\n' && file.peek() != '\t') name += file.get(); // load the name
             segments.emplace_back(GFA_segment(name)); // create the segment
             GFA_segment& segment = segments.back(); // reference it
-            segment_lookup.emplace(segment.getName(), segments.size()-1);
             while(file.peek() == '\t') file.get(); // remove the tab(s)
             try{
                 segment.setSequence(file, path); // input the sequence through the stream

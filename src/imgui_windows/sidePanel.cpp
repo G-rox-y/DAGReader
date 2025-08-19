@@ -20,8 +20,11 @@ void sidePanel::draw()
     {
         float availX = ImGui::GetContentRegionAvail().x;
         float w = (availX - ImGui::GetStyle().ItemSpacing.y) * 0.75f;
-        
-        if(channel->graph_loaded.load())
+
+        if (channel->loading_file_in_progress.load()){
+            ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(0.0f, 0.0f), "Loading a file...");
+        }
+        else if(channel->graph_loaded.load())
         {
             std::string name{channel->graph_name_get()};
             ImGui::SeparatorText(name.c_str());
@@ -29,26 +32,31 @@ void sidePanel::draw()
             ImGui::Text("Links: %i", channel->graph_data_link_num.load());
             ImGui::Separator();
 
-            if (ImGui::Button("Layout the graph!")){
-                channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
-                channel->addControllerTask(tasks::LAYOUT_GRAPH);
+            if (channel->layout_in_progress.load()){
+                ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(0.0f, 0.0f), "Laying out the graph...");
             }
-            if(channel->graph_param_change.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "*");
-                if (ImGui::BeginItemTooltip()){
-                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-                    ImGui::TextUnformatted("You have made updates, click the button to redraw");
-                    ImGui::PopTextWrapPos();
-                    ImGui::EndTooltip();
+            else{
+                if (ImGui::Button("Layout the graph!")){
+                    channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
+                    channel->addControllerTask(tasks::LAYOUT_GRAPH);
                 }
+                if(channel->graph_param_change.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "*");
+                    if (ImGui::BeginItemTooltip()){
+                        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                        ImGui::TextUnformatted("You have made updates, click the button to redraw");
+                        ImGui::PopTextWrapPos();
+                        ImGui::EndTooltip();
+                    }
+                }
+                ImGui::SameLine();
+                HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
+    
+                bool copy_gau = channel->graph_auto_update.load();
+                if (ImGui::Checkbox("Auto update graph layout", &copy_gau))
+                    channel->graph_auto_update.store(copy_gau);
             }
-            ImGui::SameLine();
-            HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
-
-            bool copy_gau = channel->graph_auto_update.load();
-            if (ImGui::Checkbox("Auto update graph layout", &copy_gau))
-                channel->graph_auto_update.store(copy_gau);
 
             if(ImGui::TreeNode("Layout settings"))
             {

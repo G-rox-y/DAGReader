@@ -67,7 +67,7 @@ void GRIP::compute_vertex_neighbourhoods(
             int d = q.front(); q.pop(); // extract depth vertex is on
 
             if (visited.find(id) != visited.end()) continue;
-            visited.insert(id);
+            visited.emplace(id);
 
             if (
                 ( i < K && f_c[i].find(id) != f_c[i].end())  // if present in the filter they are neighbours
