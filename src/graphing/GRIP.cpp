@@ -24,6 +24,7 @@ float GRIP::find_dist(int id1, int id2) const {
 
         if (id == id2){
             alr_found[refpair] = d;
+            if (d <= 0.f) grip_error("Error: Impossible distance between 2 vertices");
             return static_cast<float>(d);
         }
 
@@ -98,35 +99,36 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
     mr_graph->vertices[base[1]].pos = glm::vec3(dist01, 0.f, 0.f);
 
     if (base.size() < 3 || m_dimensions+1 < 3) return;
-
     float dist02 = find_dist(base[0], base[2]);
     float dist12 = find_dist(base[1], base[2]);
+    float x2 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / dist01 / 2.f;
+    float y2 = std::sqrt(dist02*dist02 - x2*x2);
+    mr_graph->vertices[base[2]].pos = glm::vec3(x2, y2, 0.f);
     
-    float x3 = (glm::pow(dist01, 2) + glm::pow(dist02, 2) - glm::pow(dist12, 2)) / dist01 / 2.f;
-    float y3 = glm::sqrt(glm::pow(dist02, 2) - glm::pow(x3, 2));
+    if (base.size() == 4 && m_dimensions+1 == 4) return;
+    float dist03 = find_dist(base[0], base[3]);
+    float dist13 = find_dist(base[1], base[3]);
+    float dist23 = find_dist(base[2], base[3]);
 
-    mr_graph->vertices[base[2]].pos = glm::vec3(x3, y3, 0.f);
+    if (abs(y2) < 1e-5){ // if first three were colinear
+        float x3 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / dist01 / 2.f;
+        float y3 = std::sqrt(dist02*dist02 - x3*x3);
+        mr_graph->vertices[base[2]].pos = glm::vec3(x3, y3, 0.f);
+    }
+    else{
+        float x3 = (dist01*dist01 + dist03*dist03 - dist13*dist13) / (2.0f * dist01);
+        float y3 = (x2*x2 + y2*y2 + dist03*dist03 - dist23*dist23 - 2.0f*x2*x3) / (2.0f * y2);
+        float z3 = std::sqrt(dist03*dist03 - x3*x3 - y3*y3);
+        mr_graph->vertices[base[3]].pos = glm::vec3(x3, y3, z3);
+    }
 
-    if (base.size() < 4 || m_dimensions+1 < 4) return;
-
-    float r1 = find_dist(base[0], base[3]);
-    float r2 = find_dist(base[1], base[3]);
-    float r3 = find_dist(base[2], base[3]);
-
-    float X = (dist01*dist01 + r1*r1 - r2*r2) / (2.0f * dist01);
-    float Y = (x3*x3 + y3*y3 + r1*r1 - r3*r3 - 2.0f*x3*X) / (2.0f * y3);
-    float zz = r1*r1 - X*X - Y*Y;
-    // if zz < 0 its tehnically not correct to abs it, but eh
-    float Z = sqrt(max(0.f, abs(zz)));
-
-    mr_graph->vertices[base[3]].pos = glm::vec3(X, Y, Z);
 }
 
 void GRIP::vertex_initial_placement(int ID, const vector<pair<int, int>>& n, const unordered_set<int>& placed) const {
     // since neighbourhoods are built with a BFS, its vector is already sorted by graph distance from v
     int found = 0;
-    array<int, 3> ids{};
-    for(size_t i = 0; i < n.size() && found < 3; i++){ // first find closest 3 placed vertices
+    array<int, 4> ids{};
+    for(size_t i = 0; i < n.size() && found < m_dimensions+1; i++){ // first find closest placed vertices
         if (placed.find(n[i].first) == placed.end()) continue;
         ids[found++] = i; // increment the found variable after use
     }
@@ -154,12 +156,14 @@ void GRIP::vertex_initial_placement(int ID, const vector<pair<int, int>>& n, con
 void GRIP::calc_temp(float& oldTemp, float& oldCos, const glm::vec3& oldDisp, const glm::vec3& force) const {
     if (glm::length(oldDisp) == 0.f) return;
     
-    float heat, cos = glm::dot(force, oldDisp) / (glm::length(force) * glm::length(oldDisp));
-    if (oldCos * cos > 0)
-        heat = oldTemp * cos * m_temperatureGain * m_temperatureNarrowGainIncrease;
+    float heat = oldTemp, cos = glm::dot(force, oldDisp) / (glm::length(force) * glm::length(oldDisp));
+    if (oldCos * cos > 0.f)
+        heat += oldTemp * cos * m_temperatureGain * m_temperatureNarrowGainIncrease;
     else
-        heat = oldTemp * cos * m_temperatureGain;
+        heat += oldTemp * cos * m_temperatureGain;
     
+    heat = std::max<float>(0.f, heat);
+
     oldCos = cos;
     oldTemp = heat;
 }
@@ -183,13 +187,13 @@ glm::vec3 GRIP::compute_FRforce(int ID, const vector<pair<int, int>>& n) const {
     for(auto& OTHER_ID:m_adjListG.at(ID)){
         glm::vec3 delta = mr_graph->vertices.at(OTHER_ID).pos - POS;
         float edgeL = find_edge_length(ID, OTHER_ID);
-        float factor = glm::length2(delta) / glm::pow<float>(edgeL, 2);
+        float factor = glm::length2(delta) / (edgeL*edgeL);
         force += delta * factor;
     }
     for(auto& [OTHER_ID, d]:n){
         glm::vec3 delta = POS - mr_graph->vertices.at(OTHER_ID).pos;
         float edgeL = find_edge_length(ID, OTHER_ID);
-        float factor = glm::pow<float>(edgeL, 2) / std::max<float>(glm::length2(delta), 1e-4f);
+        float factor = edgeL*edgeL / std::max<float>(glm::length2(delta), 1e-4f);
         force += delta * factor * m_scalingFactor;
     }
     return force;
@@ -397,7 +401,7 @@ void GRIP::runGraph(int graphId)
                 glm::vec3 force;
                 if (i == 0) force = compute_FRforce(ID, neighbourhoods[ID][i]); // last filter special treatment
                 else force = compute_KKforce(ID, neighbourhoods[ID][i]);
-                
+
                 if (glm::length(force) < 1e-4) continue;
 
                 calc_temp(heat[ID], oldCos[ID], displacements[ID], force);
@@ -406,11 +410,18 @@ void GRIP::runGraph(int graphId)
             for(int ID:current_filter)
                 mr_graph->vertices.at(ID).pos += displacements[ID];
         }
+
+        for(int ID:current_filter){
+            auto& POS = mr_graph->vertices.at(ID).pos;
+            float l = glm::length(POS);
+            if (l != l) spdlog::warn("Grip: NaN Detected for ID {} at filter {} of {}", ID, i, K-1);
+        }
     }
 }
 
 void GRIP::run(){
-    double dist = 0.0;
+    double totalRadius = 0.f;
+    vector<pair<double, int>> graphRadii; // pairs of nodsu graph id and its radius
     for(size_t i = 0; i < mr_noDsu_Graphs.size(); i++){
         runGraph(i);
 
@@ -418,7 +429,7 @@ void GRIP::run(){
         glm::dvec3 bc(0.0);
         for(auto ID:mr_noDsu_Graphs.at(i))
             bc += mr_graph->vertices.at(ID).pos;
-        bc /= static_cast<double>(mr_noDsu_Graphs.size());
+        bc /= static_cast<double>(mr_noDsu_Graphs.at(i).size());
         
         // and its radius
         double radius = 0.0;
@@ -429,11 +440,29 @@ void GRIP::run(){
 
         radius += 0.5; // add some clearance
 
-        // translate the graph not to collide with others
-        if (dist != 0.0)
-            for(auto ID:mr_noDsu_Graphs.at(i))
-                mr_graph->vertices.at(ID).pos += glm::vec3(dist, 0.f, 0.f);
-
-        dist += radius;
+        // center the graph
+        for(auto ID:mr_noDsu_Graphs.at(i))
+            mr_graph->vertices.at(ID).pos -= bc;
+        
+        graphRadii.emplace_back(std::make_pair(radius, i));
+        totalRadius += radius;
     }
+
+    std::sort(graphRadii.begin(), graphRadii.end());
+    
+    // now allign then all
+    double sqrad = std::sqrt(totalRadius);
+    double ypos = 0.0, xpos = 0.0;
+    for(auto& [radius, GraphID]:graphRadii){      
+        if (xpos + radius > sqrad && xpos != 0.0){
+            xpos = 0.0;
+            ypos += radius;
+        }
+        
+        for(auto ID:mr_noDsu_Graphs.at(GraphID))
+            mr_graph->vertices.at(ID).pos += glm::vec3(xpos + radius, ypos + radius, 0.f);
+        
+        xpos += radius;
+    }
+
 }

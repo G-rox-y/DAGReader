@@ -246,6 +246,18 @@ void Controller::run()
                             b.start, -b.startOri, b.end, b.endOri, b.dims, channel->segment_color_packed.load()
                         );
                     
+                    // now just set the camera to look at the right place
+                    float maxX = 0.f, maxY = 0.f;
+                    for (auto& s:g.vertices){
+                        maxX = std::max<float>(maxX, s.pos.x);
+                        maxY = std::max<float>(maxY, s.pos.y);
+                    }
+                    float halfFov = channel->cam->getFOV() / 2.f;
+                    float camZ = glm::sin(glm::radians(90.f) - halfFov) * maxY / 2.f / std::sin(halfFov);
+                    float scale = channel->cam->getFarCP() / camZ / 400.f;
+                    channel->cam->setDefPos(glm::vec3(maxX/2.f, maxY/2.f, camZ * 1.5f));
+                    channel->cam->setDefScale(scale);
+                    channel->cam->resetView();
 
                     channel->graph_param_change.store(false); // update has been drawn, bool false now
                     channel->renderer->setShouldUpdate(); // but notify the renderer that it now has updates

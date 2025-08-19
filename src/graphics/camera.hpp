@@ -4,10 +4,15 @@
 
 class Camera {
 private:
-    glm::vec3 m_position; // the camera position
+    // the camera position
+    glm::vec3 m_default_position = glm::vec3(0.f);
+    glm::vec3 m_position;
+
     glm::quat m_rot; // the model rotation
-    float m_scale = 1.f; // this parameter will be used for zooming (model scale)
-    // m_scale is atomic because 
+
+    // this parameter will be used for zooming (model scale)
+    float m_default_scale = 1.f;
+    float m_scale;
 
     // the (camera) view matrix
     glm::mat4 m_mat;
@@ -18,13 +23,17 @@ private:
 
     // control sensitivities
     float m_scale_sens = 0.02f;
-    float m_rotate_sens = glm::radians(0.75f); // in degrees per update (one update per frame)
+    float m_rotate_sens = glm::radians(1.f); // in degrees per update (one update per frame)
     float m_pan_sens = 0.02f;
     // TODO: this will rotate slower if the framerate drops, the update functions should get a dt parameter
     // and sensitivities should be calculated in degrees/second not per update at some point
 
     // camera FOV
     float m_FOV = glm::radians(60.f);
+
+    // clipping planes
+    float m_nearCP = 0.05f;
+    float m_farCP = 500.f;
 
 public:
     Camera();
@@ -41,9 +50,13 @@ public:
 
     void resetView();
 
+    void setDefScale(const float newscale) { m_default_scale = newscale; }
+    void setDefPos(const glm::vec3& newpos) { m_default_position = -newpos; }
+
     bool& getRecalc() { return m_shouldRecalculate; }
     const glm::mat4& getMat() const { return m_mat; }
     const glm::vec3 getPos() const { return -m_position / m_scale; } // returning the negative because it makes more sense
     const float getFOV() const { return m_FOV; }
     const float getScale() const { return m_scale; }
+    const float getFarCP() const { return m_farCP; }
 };

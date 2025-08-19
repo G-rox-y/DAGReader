@@ -1,6 +1,6 @@
 #include "camera.hpp"
 
-Camera::Camera() : m_position(glm::vec3(0.f, 0.f, -1.f)), m_rot(glm::identity<glm::quat>()), m_shouldRecalculate(true) 
+Camera::Camera() : m_position(m_default_position), m_rot(glm::identity<glm::quat>()), m_scale(m_default_scale), m_shouldRecalculate(true) 
 {}
 
 void Camera::move(bool up, bool left, bool down, bool right, bool in, bool out, bool fast){
@@ -49,9 +49,9 @@ void Camera::rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw
 }
 
 void Camera::resetView(){ 
-    m_scale = 1.f;
+    m_scale = m_default_scale;
     m_rot = glm::identity<glm::quat>(); 
-    m_position = glm::vec3(0.f, 0.f, -1.f);
+    m_position = m_default_position * m_default_scale;
 
     m_shouldRecalculate = true;
 }
@@ -62,7 +62,7 @@ void Camera::update(int window_w, int window_h){
     m_shouldRecalculate = false;
     
     // recalculate
-    m_mat = glm::perspective(m_FOV, (float)window_w/window_h, 0.05f, 500.f)
+    m_mat = glm::perspective(m_FOV, (float)window_w/window_h, m_nearCP, m_farCP)
         * glm::mat4(m_rot) * glm::translate(glm::mat4(1.0f), m_position) * glm::scale(glm::mat4(1), glm::vec3(m_scale));
     ;
 }
