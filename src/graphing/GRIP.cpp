@@ -420,7 +420,7 @@ void GRIP::runGraph(int graphId)
 }
 
 void GRIP::run(){
-    double totalRadius = 0.f;
+    double totalRadius = 0.0;
     vector<pair<double, int>> graphRadii; // pairs of nodsu graph id and its radius
     for(size_t i = 0; i < mr_noDsu_Graphs.size(); i++){
         runGraph(i);
@@ -438,7 +438,7 @@ void GRIP::run(){
             radius = std::max<double>(radius, glm::distance(bc, loc));
         }
 
-        radius += 0.5; // add some clearance
+        radius = std::max<double>(radius + 0.5, radius * 1.05); // add some clearance
 
         // center the graph
         for(auto ID:mr_noDsu_Graphs.at(i))
@@ -451,10 +451,10 @@ void GRIP::run(){
     std::sort(graphRadii.begin(), graphRadii.end());
     
     // now allign then all
-    double sqrad = std::sqrt(totalRadius);
+    double sqdim = std::max<double>(std::sqrt(totalRadius * 2.0), graphRadii.back().first * 2.0);
     double ypos = 0.0, xpos = 0.0;
     for(auto& [radius, GraphID]:graphRadii){      
-        if (xpos + radius > sqrad && xpos != 0.0){
+        if (xpos + radius > sqdim && xpos != 0.0){
             xpos = 0.0;
             ypos += radius;
         }
@@ -462,7 +462,7 @@ void GRIP::run(){
         for(auto ID:mr_noDsu_Graphs.at(GraphID))
             mr_graph->vertices.at(ID).pos += glm::vec3(xpos + radius, ypos + radius, 0.f);
         
-        xpos += radius;
+        xpos += 2.0 * radius;
     }
 
 }

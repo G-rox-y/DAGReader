@@ -14,8 +14,12 @@ void sidePanel::draw()
 
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings 
         | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
-
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.f, 0.f, 0.f, 0.6f));
+    
+    if (channel->light_mode.load())
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 0.4f));
+    else
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 0.4f));
+    
     if (ImGui::Begin("Side Panel", NULL, flags))
     {
         float availX = ImGui::GetContentRegionAvail().x;
@@ -40,7 +44,7 @@ void sidePanel::draw()
                     channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
                     channel->addControllerTask(tasks::LAYOUT_GRAPH);
                 }
-                if(channel->graph_param_change.load() && !channel->graph_auto_update.load() && channel->graph_loaded.load()){
+                if(channel->graph_param_change.load() && channel->graph_loaded.load()){
                     ImGui::SameLine();
                     ImGui::TextColored(ImVec4(0.8f, 0.1f, 0.1f, 1.0f), "*");
                     if (ImGui::BeginItemTooltip()){
@@ -52,10 +56,6 @@ void sidePanel::draw()
                 }
                 ImGui::SameLine();
                 HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
-    
-                bool copy_gau = channel->graph_auto_update.load();
-                if (ImGui::Checkbox("Auto update graph layout", &copy_gau))
-                    channel->graph_auto_update.store(copy_gau);
             }
 
             if(ImGui::TreeNode("Layout settings"))

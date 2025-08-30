@@ -53,6 +53,16 @@ void menuBar::draw()
             if (ImGui::MenuItem("Position info", NULL, iws))
                 channel->info_window_shown.store(!iws);
 
+            ImGui::Separator();
+
+            bool lm = channel->light_mode.load();
+            if (ImGui::MenuItem("Light mode", NULL, lm)){
+                channel->light_mode.store(!lm);
+                channel->update_window_vars.store(true);
+                if (!lm) ImGui::StyleColorsLight();
+                else ImGui::StyleColorsDark();
+            }
+
             ImGui::EndMenu();
         }
 

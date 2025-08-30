@@ -68,7 +68,7 @@ void main(){
 
     // calculate the normal and the binormal
     vec3 N = N0 * cos(flipAngle) + cross(T, N0) * sin(flipAngle) + T * dot(T, N0) * (1.0 - cos(flipAngle));
-    teOUT.N = N;
+    teOUT.N = normalize(N);
     teOUT.B = normalize(cross(T, N));
 
     // copy over the extension dimensions

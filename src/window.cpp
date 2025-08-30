@@ -45,6 +45,13 @@ void Window::drawStuff()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // set background color
+    if (channel->update_window_vars.load()){
+        if (channel->light_mode.load()) glClearColor(1.f, 1.f, 1.f, 1.f);
+        else glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+        channel->update_window_vars.store(false);
+    }
+
     m_renderer->draw();
 
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
@@ -226,9 +233,6 @@ void Window::run()
     // fetch framebuffer dimensions
     glfwGetFramebufferSize(m_window, &m_fb_width, &m_fb_height);
 
-    // set background color
-    glClearColor(0.1f, 0.1f, 0.1f, 1.f);
-
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
     glfwFocusWindow(m_window);
@@ -240,12 +244,6 @@ void Window::run()
 
         // system events
         this->manageInputs();
-
-        // check if the graph should be auto-updated
-        if (channel->graph_auto_update.load() && channel->graph_param_change.load()){
-            m_renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
-            channel->addControllerTask(tasks::LAYOUT_GRAPH);
-        }
 
         // we should update the camera before drawing;
         m_cam->update(m_fb_width, m_fb_height);

@@ -80,16 +80,19 @@ public:
     std::atomic<int> graph_data_seg_num{0};
     std::atomic<int> graph_data_link_num{0};
 
+    // window variables
+    std::atomic<bool> update_window_vars{true};
+    std::atomic<bool> light_mode{false};
+
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
-    std::atomic<bool> graph_auto_update{false};
     std::atomic<bool> graph_param_change{false};
     std::atomic<long long int> graph_segment_length{100000};
     std::atomic<bool> graph_auto_determine_segment_length{true};
 
     // graph appearance variables
-    std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(220, 30, 150, 175)};
-    std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(130, 100, 30, 255)};
+    std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(255, 50, 180, 175)};
+    std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(230, 190, 80, 255)};
     std::atomic<bool> randomize_segment_colors = {false};
     std::atomic<bool> randomize_link_colors = {false};
     std::atomic<float> link_widths{0.015f};

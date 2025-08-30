@@ -63,6 +63,6 @@ void Camera::update(int window_w, int window_h){
     
     // recalculate
     m_mat = glm::perspective(m_FOV, (float)window_w/window_h, m_nearCP, m_farCP)
-        * glm::mat4(m_rot) * glm::translate(glm::mat4(1.0f), m_position) * glm::scale(glm::mat4(1), glm::vec3(m_scale));
+        * glm::mat4(m_rot) * glm::translate(glm::mat4(1.0f), m_position) * glm::scale(glm::mat4(1), glm::vec3(m_scale))
     ;
 }

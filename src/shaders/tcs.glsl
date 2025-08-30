@@ -12,7 +12,6 @@ struct Appearance{
 };
 
 layout(std430, binding = 0) buffer Points { ControlPoints pts[]; };
-layout(std430, binding = 1) buffer Appearances { Appearance aps[]; };
 
 in flat uint vInstanceID[];
 patch out uint patchID;
@@ -27,7 +26,6 @@ void main(){
     if (gl_InvocationID != 0) return; // safety
 
     patchID = vInstanceID[0] + SSBOffset;
-    Appearance a = aps[patchID];
     ControlPoints b = pts[patchID];
 
     // calculate the initial frame
@@ -47,8 +45,6 @@ void main(){
         closeness = min(closeness, L);
         if (L > 1e-6) R[n++] = C[i] / L;
     }
-    float maxExt = max(a.halfExt.x, a.halfExt.y);
-    closeness /= maxExt;
     float maxAng = 0.0;
     if (n > 1)
         for (int i = 0; i < n; ++i)
@@ -66,23 +62,20 @@ void main(){
         );
     } else {
         flatness = max(
-            length(cross(b.P[1].xyz - b.P[0].xyz, ln))/lnL,
-            length(cross(b.P[2].xyz - b.P[0].xyz, ln))/lnL
-        );
+            length(cross(b.P[1].xyz - b.P[0].xyz, ln)),
+            length(cross(b.P[2].xyz - b.P[0].xyz, ln))
+        )/lnL;
     }
 
-    // calculate how many segments to use
-    float minPx = 40.0, maxPx = 130.0;
-    float pxSize = PxPerRad * maxAng;
+    // calculate resolution to use
+    float minPx = 40.0, maxPx = 150.0;
+    float minR = 1.0, maxR = clamp(flatness / lnL * 32.0, 8.0, 32.0);
 
-    float minSeg = 1.0;
-    float maxSeg = clamp(flatness / maxExt * 4.0, 8.0, 32.0);
-
+    // set tesselation levels
     gl_TessLevelOuter[0] = 1.0;
-
-    if (closeness < 40.0) gl_TessLevelOuter[1] = maxSeg;
+    if (closeness < 2 * lnL) gl_TessLevelOuter[1] = maxR;
     else{
-        float t = clamp((pxSize - minPx) / (maxPx - minPx), 0.0, 1.0);
-        gl_TessLevelOuter[1] = clamp(mix(minSeg, maxSeg, t), minSeg, maxSeg);
+        float t = clamp((PxPerRad * maxAng - minPx) / (maxPx - minPx), 0.0, 1.0);
+        gl_TessLevelOuter[1] = mix(minR, maxR, t);
     }
 }

@@ -117,6 +117,7 @@ void Renderer::updateBuffers()
     size_t m_old_link_indexSize = m_link_indexSize;
     m_seg_indexSize = m_seg_controlPoints.size();
     m_link_indexSize = m_link_controlPoints.size();
+    bool updated = (m_old_seg_indexSize != m_seg_indexSize) || (m_old_link_indexSize != m_link_indexSize);
 
     static size_t arrsize = sizeof(std::array<glm::vec4, 4>), appsize = sizeof(appearance);
 
@@ -124,10 +125,10 @@ void Renderer::updateBuffers()
 
     if (m_seg_pointsUpdated || m_link_pointsUpdated){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB0);
-        if (m_old_seg_indexSize == m_seg_indexSize){
-            if (m_link_pointsUpdated)
+        if (!updated){
+            if (m_link_pointsUpdated && m_link_indexSize != 0)
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_link_indexSize * arrsize, m_link_controlPoints.data());
-            if (m_seg_pointsUpdated)
+            if (m_seg_pointsUpdated && m_seg_indexSize != 0)
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, m_link_indexSize * arrsize, m_seg_indexSize * arrsize, m_seg_controlPoints.data());
         }
         else{
@@ -141,10 +142,10 @@ void Renderer::updateBuffers()
     }
     if (m_seg_appearanceUpdated || m_link_appearanceUpdated){
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB1);
-        if (m_old_link_indexSize == m_link_indexSize){
-            if (m_link_appearanceUpdated)
+        if (!updated){
+            if (m_link_appearanceUpdated && m_link_indexSize != 0)
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_link_indexSize * appsize, m_link_appearances.data());
-            if (m_seg_appearanceUpdated)
+            if (m_seg_appearanceUpdated && m_seg_indexSize != 0)
                 glBufferSubData(GL_SHADER_STORAGE_BUFFER, m_link_indexSize * appsize, m_seg_indexSize * appsize, m_seg_appearances.data());
         }
         else{
@@ -166,8 +167,11 @@ void Renderer::draw()
         glBindVertexArray(m_VA);
         glPatchParameteri(GL_PATCH_VERTICES, 1);
         program.setUniform1i("SSBOffset", 0);
-        glDrawArraysInstanced(GL_PATCHES, 0, 1, m_link_indexSize);
-        program.setUniform1i("SSBOffset", (int)m_link_indexSize);
-        glDrawArraysInstanced(GL_PATCHES, 0, 1, m_seg_indexSize);
+        if (m_link_indexSize != 0){
+            glDrawArraysInstanced(GL_PATCHES, 0, 1, m_link_indexSize);
+            program.setUniform1i("SSBOffset", (int)m_link_indexSize);
+        }
+        if (m_seg_indexSize != 0)
+            glDrawArraysInstanced(GL_PATCHES, 0, 1, m_seg_indexSize);
     }
 }
