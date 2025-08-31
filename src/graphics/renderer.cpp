@@ -20,7 +20,7 @@ void Renderer::addSegment(
     const glm::vec3& end, const glm::vec3& endNormal, 
     const glm::vec2& dimensions, glm::u8vec4 color
 ){
-    float segment = glm::length(end - begin) / 3.f;
+    float segment = glm::length(end - begin) / 3.f * 1.5f;
     glm::vec3 pt1 = begin + beginNormal * segment;
     glm::vec3 pt2 = end - endNormal * segment;
 

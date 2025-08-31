@@ -206,38 +206,56 @@ void Controller::run()
                             b.start = g.vertices.at(e.start).pos;
                             b.end = g.vertices.at(e.end).pos;
                             b.dims =  glm::vec2(segmentWidth);
-                            b.startOri = glm::normalize(b.end - b.start);
+                            b.startOri = glm::normalize(b.start - b.end);
                             b.endOri = -b.startOri;
                         }
                         else{
-                            SegBoxData& bStart = segBoxes.at(e.start/2);
-                            SegBoxData& bEnd = segBoxes.at(e.end/2);
+                            SegBoxData& bFirst = segBoxes.at(e.start/2);
+                            SegBoxData& bSecond = segBoxes.at(e.end/2);
 
                             // set barycenter of edge start box and end box
-                            bStart.endBcCounter++;
-                            bStart.endBc += g.vertices.at(e.end).pos;
-                            bEnd.startBcCounter++;
-                            bEnd.startBc += g.vertices.at(e.start).pos;
+                            if (e.start % 2 == 0){
+                                bFirst.startBcCounter++;
+                                bFirst.startBc += g.vertices.at(e.end).pos;
+                            }
+                            else{
+                                bFirst.endBcCounter++;
+                                bFirst.endBc += g.vertices.at(e.end).pos;
+                            }
+                            if (e.end % 2 == 0){
+                                bSecond.startBcCounter++;
+                                bSecond.startBc += g.vertices.at(e.start).pos;
+                            }
+                            else{
+                                bSecond.endBcCounter++;
+                                bSecond.endBc += g.vertices.at(e.start).pos;
+                            }
                         }
                     }
 
                     // calculate the orientation out of baryceters
                     for(auto& b:segBoxes){
-                        b.startBc /= static_cast<float>(b.startBcCounter);
-                        b.endBc /= static_cast<float>(b.endBcCounter);
-                        glm::vec3 l_startOri = b.start - b.startBc;
-                        glm::vec3 l_endOri = b.end - b.endBc;
-                        if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
-                        if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
+                        if (b.startBcCounter == 0 && b.endBcCounter == 0) continue;
+
+                        if (b.startBcCounter != 0){
+                            b.startBc /= static_cast<float>(b.startBcCounter);
+                            glm::vec3 l_startOri = b.startBc - b.start;
+                            if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
+                        }
+                        if (b.endBcCounter != 0){
+                            b.endBc /= static_cast<float>(b.endBcCounter);
+                            glm::vec3 l_endOri = b.endBc - b.end;
+                            if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
+                        }
                     }
 
                     for(auto& e:g.edges){
                         if(!e.segPart){
                             channel->renderer->addLink(
                                 g.vertices.at(e.start).pos,
-                                -segBoxes.at(e.start/2).endOri,
+                                (e.start % 2 == 0) ? segBoxes.at(e.start/2).startOri : segBoxes.at(e.start/2).endOri,
                                 g.vertices.at(e.end).pos,
-                                segBoxes.at(e.end/2).startOri,
+                                (e.end % 2 == 0) ? -segBoxes.at(e.end/2).startOri : -segBoxes.at(e.end/2).endOri,
                                 glm::vec2(edgeWidth),
                                 channel->link_color_packed.load()
                             );
@@ -258,7 +276,7 @@ void Controller::run()
                     }
                     float halfFov = channel->cam->getFOV() / 2.f;
                     float camZ = glm::sin(glm::radians(90.f) - halfFov) * maxX / 2.f / std::sin(halfFov);
-                    float scale = channel->cam->getFarCP() / camZ / 400.f;
+                    float scale = channel->cam->getFarCP() / camZ / 150.f;
                     channel->cam->setDefPos(glm::vec3(maxX/2.f, maxX/2.f, camZ * 1.5f));
                     channel->cam->setDefScale(scale);
                     channel->cam->resetView();

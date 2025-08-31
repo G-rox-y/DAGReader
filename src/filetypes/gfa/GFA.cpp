@@ -325,8 +325,8 @@ void GFA::fillGraph(Graph& g) const {
     }
 
     for(auto& l:links){
-        int id1 = verts[l.getFromName() + "START"];
-        int id2 = verts[l.getToName() + "END"];
+        int id1 = verts[l.getFromName() + ((l.getFromOrientation() == "+") ? "END" : "START")];
+        int id2 = verts[l.getToName() + ((l.getToOrientation() == "+") ? "START" : "END")];
         g.edges.emplace_back(id1, id2);
     }
 }

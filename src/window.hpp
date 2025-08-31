@@ -29,8 +29,6 @@ private:
     int m_w_width, m_w_height; // window width and height
     int m_fb_width, m_fb_height; // framebuffer width and height
 
-    // TODO: for now quads do draw calls individually, this should be made into a batch
-
     std::shared_ptr<Camera> m_cam;
     std::shared_ptr<Renderer> m_renderer;
 
