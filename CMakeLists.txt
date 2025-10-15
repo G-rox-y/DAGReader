@@ -48,7 +48,7 @@ FetchContent_MakeAvailable(glfw)
 # add glew-cmake
 FetchContent_Declare(glew
     GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
-    GIT_TAG 9758219375d923a008feef93c0955931d801740f # master branch Jun 26 2023
+    GIT_TAG b51c5193091d48203da8b6e1ed70e6d468bcb532 # master branch Oct 10 2025
 )
 # if no debugging is happening i can turn off the building of utility programs (glewinfo and visualinfo)
 # this is because glewinfo is used to list extensions and visualinfo to list visual/pixel formats
@@ -61,7 +61,7 @@ FetchContent_MakeAvailable(glew)
 # add glm
 FetchContent_Declare(glm
     GIT_REPOSITORY https://github.com/g-truc/glm
-    GIT_TAG 0.9.9.8
+    GIT_TAG 1.0.2
 )
 FetchContent_MakeAvailable(glm)
 
@@ -92,7 +92,7 @@ FetchContent_MakeAvailable(spdlog)
 # add inipp
 FetchContent_Declare(inipp
     GIT_REPOSITORY https://github.com/mcmtroffaes/inipp
-    GIT_TAG 46248e4e93a2e63f9a1d0d8d9ad40bd6b3725df5 # develop branch 12 Oct 2021
+    GIT_TAG 3f224f1eed7a67d5d7e5fc8cab72de02a056b966 # develop branch 2 Aug 2025
 )
 FetchContent_MakeAvailable(inipp)
 
@@ -162,6 +162,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # add definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     NFD_THROWS_EXCEPTIONS # for the nfd-extended library
+    GLM_ENABLE_EXPERIMENTAL
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

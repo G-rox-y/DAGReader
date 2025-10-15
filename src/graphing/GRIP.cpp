@@ -288,8 +288,8 @@ void GRIP::runGraph(int graphId)
                 if (layer_copy_indmap.find(id) != layer_copy_indmap.end()){
                     size_t index = layer_copy_indmap.at(id); // get its index
                     layer_copy[index] = layer_copy.back(); // swap with last
-                    layer_copy.pop_back(); // and pop so removal is O(1)
                     layer_copy_indmap[layer_copy[index]] = index; // update the index value of the swapped element
+                    layer_copy.pop_back(); // and pop so removal is O(1)
                 }
 
                 if (d < maxDepth){
