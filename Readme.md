@@ -47,4 +47,48 @@ cmake --build build
 ```
 
 ## Building the project on windows
-This is possible via standard Windows CMake building methods, but i havent tested it yet so thats coming soon.
+
+The following method uses MSYS2 to build the program, I am aware this is also possible to do with Visual Studio, but this method requires less external tools.
+
+### Installing dependencies
+
+First, you will have to install MSYS2 (https://www.msys2.org/).
+
+After that, you should run the newly installed UCRT64 shell.
+
+> [!WARNING]
+> If MSYS2 was already installed on your system you should open the MSYS2 shell and run `pacman -Syu`, then close it and do the same in the UCRT64 shell, this is important to make sure the environment is up to date. If MSYS2 was not on your system you can safely ignore this warning
+
+After starting the shell install dependencies
+```bash
+pacman -S --needed git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+```
+
+
+### Building the project
+> [!IMPORTANT]
+> Use only the UCRT64 shell for the build steps below. Don’t mix different shells (UCRT, MINGW, CLANG) within the same build directory.
+
+1. From inside the **MSYS2 UCRT64 shell**, navigate to the folder where you want to clone the project, and clone the repo
+
+```bash
+git clone "https://github.com/G-rox-y/DAGReader" && cd ./DAGReader
+```
+
+> [!INFO]
+> If you dont know how to navigate, doing `cd /c/` will put you on the root of the C drive, same goes for `cd /d/` and the D drive, then you can cd into the correct folder
+
+2. After that, create the build
+```bash
+cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+```
+
+3. And build the project
+```bash
+cmake --build build -j
+```
+
+4. And finally run the newly created binary
+```bash
+./build/DAGReader.exe
+```
