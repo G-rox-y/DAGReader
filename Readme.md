@@ -75,7 +75,7 @@ pacman -S --needed git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake min
 git clone "https://github.com/G-rox-y/DAGReader" && cd ./DAGReader
 ```
 
-> [!INFO]
+> [!NOTE]
 > If you dont know how to navigate, doing `cd /c/` will put you on the root of the C drive, same goes for `cd /d/` and the D drive, then you can cd into the correct folder
 
 2. After that, create the build
