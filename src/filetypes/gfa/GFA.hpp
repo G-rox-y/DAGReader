@@ -35,7 +35,7 @@ public:
     // the constructor of this class parses a GFA file from the path provided
     GFA(const std::string& path);
 
-    void fillGraph(Graph& g) const override;
+    void fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const override;
 
     const int segmentNum() const { return segments.size(); }
     const int containmentNum() const { return containments.size(); }

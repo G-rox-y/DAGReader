@@ -13,6 +13,7 @@ target_sources(${PROJECT_NAME} PUBLIC
     "graphics/GLProgram.cpp"
     "graphics/camera.cpp"
     "graphics/renderer.cpp"
+    "graphing/Graphs.cpp"
     "graphing/GRIP.cpp"
 )
 

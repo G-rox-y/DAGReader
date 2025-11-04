@@ -47,5 +47,6 @@ _deps
 #other
 build/
 .vscode
+.cache
 *.ini
 heaptrack.*

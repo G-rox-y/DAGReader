@@ -141,8 +141,11 @@ void Controller::run()
                 channel->loading_file_in_progress.store(true);
                 GFA gfa(path.string());
 
-                g.clear();
-                gfa.fillGraph(g);
+                gc.clear();
+                std::vector<Vertex> v;
+                std::vector<Edge> e;
+                gfa.fillData(v, e);
+                gc.setGraphs(v, e);
 
                 channel->graph_data_seg_num.store(gfa.segmentNum());
                 channel->graph_data_link_num.store(gfa.linkNum());
@@ -155,124 +158,166 @@ void Controller::run()
         else if (t == tasks::LAYOUT_GRAPH)
         {
             spdlog::info("Task: LAYOUT_GRAPH");
-            if (!g.empty()){
+            if (!gc.empty()){
                 spdlog::info("Laying out the graph");
                 channel->layout_in_progress.store(true);
 
-                if (channel->graph_auto_determine_segment_length.load() && !g.edges.empty()){
+                // Determine the segment length
+                if (channel->graph_auto_determine_segment_length.load()){
                     long long int maxSize = std::numeric_limits<long long int>::min();
-                    for(auto& e:g.edges) if (maxSize < e.length) maxSize = e.length;
-                    channel->graph_segment_length.store((maxSize / 15) + 1);
+                    for (auto& G:gc.graphs)
+                        for(auto& e:G.edges)
+                            if (maxSize < e.length) maxSize = e.length;
+                    channel->graph_segment_length.store(maxSize/15 +1);
                 }
-                {
-                    long long int gsl = channel->graph_segment_length.load();
-                    for(auto& e:g.edges) e.length = (e.length / gsl) + 1;
-                }
-
-
-                GRIP layout(g);
-                layout.setFRscaling(channel->grip_scalingFactor.load());
-                layout.setRoundsNumber(channel->grip_roundsNum.load());
-                layout.setTempGain(channel->grip_tempGain.load());
-                layout.setTempNarrowGainInc(channel->grip_tempNarrowGain.load());
-                layout.run();
                 
-                channel->layout_in_progress.store(false);
+                // adjust the segment lengths
+                long long int gsl = channel->graph_segment_length.load();
+                for (auto& G:gc.graphs)
+                    for(auto& e:G.edges)
+                        e.length = (e.length / gsl) + 1;
 
-                if (channel->renderer){
+                // layout the graphs
+                for(auto& G:gc.graphs){
+                    GRIP layout(G);
+                    layout.setFRscaling(channel->grip_scalingFactor.load());
+                    layout.setRoundsNumber(channel->grip_roundsNum.load());
+                    layout.setTempGain(channel->grip_tempGain.load());
+                    layout.setTempNarrowGainInc(channel->grip_tempNarrowGain.load());
+                    layout.run();
+                }
+                
+                { // place the graphs on correct places
+                    double totalRadius = 0.0;
+                    std::vector<std::pair<double, int>> graphRadii; // pairs of nodsu graph id and its radius
+                    for(size_t i = 0; i < gc.graphs.size(); i++){
+                        double rad = gc.graphs.at(i).radius;
+                        totalRadius += rad;
+                        graphRadii.emplace_back(std::make_pair(rad, i));
+                    }
+                    
+                    sort(graphRadii.begin(), graphRadii.end());
+                    
+                    // now allign then all
+                    double sqdim = std::max<double>(std::sqrt(totalRadius * 2.0), graphRadii.back().first * 2.0);
+                    double ypos = 0.0, xpos = 0.0;
+                    for(auto& [radius, GraphID]:graphRadii){      
+                        if (xpos + radius > sqdim && xpos != 0.0){
+                            xpos = 0.0;
+                            ypos += radius;
+                        }
+                        gc.graphs.at(GraphID).translate(glm::dvec3(xpos + radius, ypos + radius, 0.0));
+                        xpos += 2.0 * radius;
+                    }
+                }
+
+                channel->layout_in_progress.store(false); // layout phase done
+                
+                // render the graphs
+                if (channel->renderer) [[likely]] {
                     float segmentWidth = channel->segment_widths.load();
                     float edgeWidth = channel->link_widths.load();
 
                     struct SegBoxData{
-                        glm::vec3 start, end;
-                        glm::vec3 startOri, endOri;
-                        glm::vec2 dims;
+                        glm::dvec3 start, end;
+                        glm::dvec3 startOri, endOri;
+                        glm::dvec2 dims;
                         
                         // barycenter of connection endpoints to calculate orientation
-                        glm::vec3 startBc, endBc;
+                        glm::dvec3 startBc, endBc;
                         int startBcCounter, endBcCounter;
 
                         SegBoxData() 
-                        : startBc(0.f, 0.f, 0.f), endBc(0.f, 0.f, 0.f), startBcCounter(0), endBcCounter(0) {}
+                        : startBc(0.0, 0.0, 0.0), endBc(0.0, 0.0, 0.0), startBcCounter(0), endBcCounter(0) {}
                     };
-                    std::vector<SegBoxData> segBoxes(g.vertices.size() / 2);
 
-                    // in this for loop we are relying on the fact that all of the inter-segment edges are defined
-                    // before the other edges, so the first if will fire for all elements tat are segparts and then
-                    // the else will fire for all other elements
-                    for(auto& e:g.edges){
-                        if (e.segPart){
-                            SegBoxData& b = segBoxes.at(e.start / 2);
-                            b.start = g.vertices.at(e.start).pos;
-                            b.end = g.vertices.at(e.end).pos;
-                            b.dims =  glm::vec2(segmentWidth);
-                            b.startOri = glm::normalize(b.start - b.end);
-                            b.endOri = -b.startOri;
-                        }
-                        else{
-                            SegBoxData& bFirst = segBoxes.at(e.start/2);
-                            SegBoxData& bSecond = segBoxes.at(e.end/2);
+                    for(auto& G:gc.graphs){
+                        std::vector<SegBoxData> segBoxes;
+                        std::unordered_map<int, size_t> boxIndices;
 
-                            // set barycenter of edge start box and end box
-                            if (e.start % 2 == 0){
-                                bFirst.startBcCounter++;
-                                bFirst.startBc += g.vertices.at(e.end).pos;
-                            }
-                            else{
-                                bFirst.endBcCounter++;
-                                bFirst.endBc += g.vertices.at(e.end).pos;
-                            }
-                            if (e.end % 2 == 0){
-                                bSecond.startBcCounter++;
-                                bSecond.startBc += g.vertices.at(e.start).pos;
-                            }
-                            else{
-                                bSecond.endBcCounter++;
-                                bSecond.endBc += g.vertices.at(e.start).pos;
+                        for(auto& e:G.edges){
+                            if (e.segPart){
+                                segBoxes.emplace_back();
+                                SegBoxData& b = segBoxes.back();
+                                boxIndices[e.start] = segBoxes.size() - 1;
+                                boxIndices[e.end] = segBoxes.size() - 1;
+                                b.start = G.vertices.at(e.start).pos;
+                                b.end = G.vertices.at(e.end).pos;
+                                b.dims =  glm::dvec2(segmentWidth);
+                                b.startOri = glm::normalize(b.start - b.end);
+                                b.endOri = -b.startOri;
                             }
                         }
-                    }
-
-                    // calculate the orientation out of baryceters
-                    for(auto& b:segBoxes){
-                        if (b.startBcCounter == 0 && b.endBcCounter == 0) continue;
-
-                        if (b.startBcCounter != 0){
-                            b.startBc /= static_cast<float>(b.startBcCounter);
-                            glm::vec3 l_startOri = b.startBc - b.start;
-                            if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
+                        for(auto& e:G.edges){
+                            if (!e.segPart){
+                                SegBoxData& bFirst = segBoxes.at(boxIndices[e.start]);
+                                SegBoxData& bSecond = segBoxes.at(boxIndices[e.end]);
+    
+                                // set barycenter of edge start box and end box
+                                if (e.startOri){
+                                    bFirst.startBcCounter++;
+                                    bFirst.startBc += G.vertices.at(e.end).pos;
+                                }
+                                else{
+                                    bFirst.endBcCounter++;
+                                    bFirst.endBc += G.vertices.at(e.end).pos;
+                                }
+                                if (e.endOri){
+                                    bSecond.startBcCounter++;
+                                    bSecond.startBc += G.vertices.at(e.start).pos;
+                                }
+                                else{
+                                    bSecond.endBcCounter++;
+                                    bSecond.endBc += G.vertices.at(e.start).pos;
+                                }
+                            }
                         }
-                        if (b.endBcCounter != 0){
-                            b.endBc /= static_cast<float>(b.endBcCounter);
-                            glm::vec3 l_endOri = b.endBc - b.end;
-                            if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
+                        
+                        // calculate the orientation out of baryceters
+                        for(auto& b:segBoxes){
+                            if (b.startBcCounter == 0 && b.endBcCounter == 0) continue;
+    
+                            if (b.startBcCounter != 0){
+                                b.startBc /= static_cast<double>(b.startBcCounter);
+                                glm::dvec3 l_startOri = b.startBc - b.start;
+                                if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
+                            }
+                            if (b.endBcCounter != 0){
+                                b.endBc /= static_cast<double>(b.endBcCounter);
+                                glm::dvec3 l_endOri = b.endBc - b.end;
+                                if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
+                            }
                         }
-                    }
-
-                    for(auto& e:g.edges){
-                        if(!e.segPart){
-                            channel->renderer->addLink(
-                                g.vertices.at(e.start).pos,
-                                (e.start % 2 == 0) ? segBoxes.at(e.start/2).startOri : segBoxes.at(e.start/2).endOri,
-                                g.vertices.at(e.end).pos,
-                                (e.end % 2 == 0) ? -segBoxes.at(e.end/2).startOri : -segBoxes.at(e.end/2).endOri,
-                                glm::vec2(edgeWidth),
-                                channel->link_color_packed.load()
+    
+                        // create boxes for links
+                        for(auto& e:G.edges){
+                            if (!e.segPart){
+                                channel->renderer->addLink(
+                                    G.vertices.at(e.start).pos,
+                                    (e.startOri) ? segBoxes.at(boxIndices[e.start]).startOri : segBoxes.at(boxIndices[e.start]).endOri,
+                                    G.vertices.at(e.end).pos,
+                                    (e.endOri) ? segBoxes.at(boxIndices[e.end]).endOri : segBoxes.at(boxIndices[e.end]).startOri,
+                                    glm::dvec2(edgeWidth),
+                                    channel->link_color_packed.load()
+                                );
+                            }
+                        }
+    
+                        // and write the boxes to buffer
+                        for(auto& b : segBoxes)
+                            channel->renderer->addSegment(
+                                b.start, -b.startOri, b.end, b.endOri, 
+                                b.dims, channel->segment_color_packed.load()
                             );
-                        }
                     }
 
-                    // and write to buffer
-                    for(auto& b : segBoxes)
-                        channel->renderer->addSegment(
-                            b.start, -b.startOri, b.end, b.endOri, b.dims, channel->segment_color_packed.load()
-                        );
-                    
                     // now just set the camera to look at the right place
-                    float maxX = 0.f, maxY = 0.f;
-                    for (auto& s:g.vertices){
-                        maxX = std::max<float>(maxX, s.pos.x);
-                        maxY = std::max<float>(maxY, s.pos.y);
+                    double maxX = 0.0, maxY = 0.0;
+                    for (auto& G:gc.graphs){
+                        for(auto& v:G.vertices){
+                            maxX = std::max<double>(maxX, std::abs(v.pos.x));
+                            maxY = std::max<double>(maxY, std::abs(v.pos.y));
+                        }
                     }
                     float halfFov = channel->cam->getFOV() / 2.f;
                     float camZ = glm::sin(glm::radians(90.f) - halfFov) * maxX / 2.f / std::sin(halfFov);

@@ -17,7 +17,7 @@ private:
     inipp::Ini<char> ini; // inipp handler
 	std::filesystem::path iniPath; // ini file stream
 
-    Graph g;
+    graphCollection gc;
 
 public:
     Controller(infoExchange* c);

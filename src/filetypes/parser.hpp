@@ -16,5 +16,5 @@ public:
     // the constructor of this class parses a GFA file from the path provided
     parser(const std::string& path) : m_filepath(path) {}
 
-    virtual void fillGraph(Graph& g) const = 0;
+    virtual void fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const = 0;
 };
