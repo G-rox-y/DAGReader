@@ -21,7 +21,7 @@ int main()
     spdlog::set_level(spdlog::level::info);
     spdlog::info("logging set to async mode");
 #endif
-    spdlog::info("Starting the program!");
+    spdlog::debug("Starting the program!");
 
     // initialize the communication channel for threads
     infoExchange channel;
@@ -34,19 +34,19 @@ int main()
 
     // TODO: if the main function keeps not doing anything later on in the project, the window can run here rather than in its own thread
     std::thread t_window([window_w, window_h, &channel](){
-        spdlog::info("Window thread starting");
+        spdlog::debug("Window thread starting");
         Window window(&channel, window_w, window_h);
         window.run();
-        spdlog::info("Window thread exiting");
+        spdlog::debug("Window thread exiting");
     }); // run the window in a thread
 
     // run the controller
-    spdlog::info("Controller starting");
+    spdlog::debug("Controller starting");
     controller.run();
 
     // TODO: add sigint and sigterm handling
 
     t_window.join(); // wait for the window to close before ending the program
-    spdlog::info("Program exiting...");
+    spdlog::debug("Program exiting...");
     spdlog::shutdown();
 }

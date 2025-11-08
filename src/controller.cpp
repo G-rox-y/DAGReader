@@ -85,14 +85,14 @@ void Controller::run()
 {
     bool shouldExit = false;
     while(!shouldExit){
-        spdlog::info("Controller waiting for a task...");
+        spdlog::debug("Controller waiting for a task...");
         std::unique_lock lk(channel->controller_tasks_mut);
         channel->controller_tasks_cv.wait(lk, [&](){ return !channel->controller_tasks.empty(); });
         auto t = channel->controller_tasks.front();
         channel->controller_tasks.pop();
         lk.unlock();
 
-        spdlog::info("Controller recieved a task");
+        spdlog::debug("Controller recieved a task");
 
         if (t == tasks::OPEN_NFD || t == tasks::OPEN_PATH)
         {
@@ -159,7 +159,6 @@ void Controller::run()
         {
             spdlog::info("Task: LAYOUT_GRAPH");
             if (!gc.empty()){
-                spdlog::info("Laying out the graph");
                 channel->layout_in_progress.store(true);
 
                 // Determine the segment length
@@ -339,6 +338,7 @@ void Controller::run()
         }
         else if (t == tasks::REFRESH_GRAPH)
         {
+            spdlog::info("Task: REFRESH_GRAPH");
             // memory
             static glm::u8vec4 prevSegColor, prevLinkColor;
             static float prevSegWidth = 0.f, prevLinkWidth = 0.f;
@@ -389,6 +389,8 @@ void Controller::run()
             spdlog::info("Task: EXIT");
             shouldExit = true;
         } // exit shouldnt be checked like this but by some atomic bool in infochannel that shuts down the while
+
+        spdlog::info("TASK DONE");
     }
 }
 

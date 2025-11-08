@@ -43,14 +43,16 @@ void Renderer::randomizeGroupColors(){
     static std::uniform_int_distribution<int> dist(0, 255);
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
-            for(size_t i = p.first; i <= p.second; i++)
-                m_appearances[i].color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), 255);
+            for(size_t i = p.first; i <= p.second; i++){
+                int alpha = m_appearances[i].color.w; // preserve transparancy value
+                m_appearances[i].color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), alpha);
+            }
             m_needUpdating.push(p);
         }
     }
 }
 
-void Renderer::changeGroupDims(const glm::vec2 dims){
+void Renderer::changeGroupDims(const glm::vec2& dims){
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
             for(size_t i = p.first; i <= p.second; i++)

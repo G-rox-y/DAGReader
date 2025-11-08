@@ -89,7 +89,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
 
     // create the window
     m_window = glfwCreateWindow(m_w_width, m_w_height, "DAGReader", NULL, NULL);
-    if (!m_window){
+    if (!m_window) [[unlikely]] {
         spdlog::error("Window init failed!");
         glfwTerminate();
         throw std::runtime_error("Window init failed!");
@@ -101,7 +101,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     // load opengl functions using glew
     glewExperimental = true;
     GLenum err = glewInit();
-    if(err != GLEW_OK){
+    if(err != GLEW_OK) [[unlikely]] {
         spdlog::error("GLEW init failed:\n{}", (char*)glewGetErrorString(err));
         glfwDestroyWindow(m_window);
         glfwTerminate();
@@ -166,7 +166,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
 #endif
     // add custom imgui windows
     m_imguis.emplace_back(std::make_unique<menuBar>(channel));
-    m_imguis.emplace_back(std::make_unique<sidePanel>(channel, 300.f));
+    m_imguis.emplace_back(std::make_unique<sidePanel>(channel));
     m_imguis.emplace_back(std::make_unique<about>(channel));
     m_imguis.emplace_back(std::make_unique<controls>(channel));
     m_imguis.emplace_back(std::make_unique<info>(channel));
@@ -236,7 +236,7 @@ void Window::run()
     // reveal the window (the window is hidden in the beginning to avoid showing the window while its loading)
     glfwShowWindow(m_window);
     glfwFocusWindow(m_window);
-    spdlog::info("Starting the window loop");
+    spdlog::debug("Starting the window loop");
     while(!glfwWindowShouldClose(m_window)) // window is running
     {
         // clear the buffer
@@ -263,6 +263,6 @@ void Window::run()
         // TODO: consider using glfwSwapInterval
         glFlush();
     }
-    spdlog::info("Window Closed, notifiyng file controller to close...");
+    spdlog::debug("Window Closed, notifiyng file controller to close...");
     channel->addControllerTask(tasks::EXIT);
 }

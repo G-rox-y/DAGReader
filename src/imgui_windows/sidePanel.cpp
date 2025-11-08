@@ -4,13 +4,12 @@ void sidePanel::draw()
 {
     if(!channel->sidebar_window_shown.load()) return;
 
-    ImGuiIO& io = ImGui::GetIO();
-
     const ImGuiViewport* viewport = ImGui::GetMainViewport(); // get the viewport
 
     // force the panel to be under the menu and one the right side
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - m_width, viewport->WorkPos.y), ImGuiCond_Always);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(m_width, 0), ImVec2(m_width, viewport->WorkSize.y));
+    ImVec2 ll(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y);
+    ImGui::SetNextWindowPos(ll, ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 0), ImVec2(viewport->WorkSize.x*0.55, viewport->WorkSize.y*0.9));
 
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings 
         | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
@@ -26,7 +25,7 @@ void sidePanel::draw()
         float w = (availX - ImGui::GetStyle().ItemSpacing.y) * 0.75f;
 
         if (channel->loading_file_in_progress.load()){
-            ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(0.0f, 0.0f), "Loading a file...");
+            ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(w, 0.0f), "Loading a file...");
         }
         else if(channel->graph_loaded.load())
         {
@@ -37,7 +36,7 @@ void sidePanel::draw()
             ImGui::Separator();
 
             if (channel->layout_in_progress.load()){
-                ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(0.0f, 0.0f), "Laying out the graph...");
+                ImGui::ProgressBar(-1.0f * (float)ImGui::GetTime(), ImVec2(w, 0.0f), "Laying out the graph...");
             }
             else{
                 if (ImGui::Button("Layout the graph!")){
@@ -68,7 +67,6 @@ void sidePanel::draw()
 
                 ImGui::TextWrapped("Segment fragment size");
                 ImGui::BeginDisabled(copy_gadsl);
-                ImGui::SetNextItemWidth(m_width * 0.7f);
                 long long step = 1, step_fast = std::max<long long int>(channel->graph_segment_length.load() / 100, 10);
                 long long int copy_gsl = channel->graph_segment_length.load();
                 if (ImGui::InputScalar("##segment_fragment_size", ImGuiDataType_S64, &copy_gsl, &step, &step_fast) && copy_gsl > 0){

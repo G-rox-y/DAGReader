@@ -55,7 +55,7 @@ public:
 
     void changeGroupColors(const glm::u8vec4 newColor);
     void randomizeGroupColors();
-    void changeGroupDims(const glm::vec2 dims);
+    void changeGroupDims(const glm::vec2& dims);
 
     void activateGroup(const int id) { m_active_groups.insert(id); }
     void deactivateGroup(const int id) { m_active_groups.erase(id); }

@@ -26,7 +26,7 @@ struct infoExchange
     std::queue<std::filesystem::path> controller_tasks_paths;
     // helper functions for those variables
     void addControllerTask(tasks::controllerTask task){
-        spdlog::info("Sending a task to the controller");
+        spdlog::debug("Sending a task to the controller");
         {   std::scoped_lock lk(controller_tasks_mut);
             controller_tasks.push(task);
         }
