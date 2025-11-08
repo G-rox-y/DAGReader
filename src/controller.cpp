@@ -215,43 +215,39 @@ void Controller::run()
                 
                 // render the graphs
                 if (channel->renderer) [[likely]] {
-                    float segmentWidth = channel->segment_widths.load();
-                    float edgeWidth = channel->link_widths.load();
 
-                    struct SegBoxData{
-                        glm::dvec3 start, end;
-                        glm::dvec3 startOri, endOri;
-                        glm::dvec2 dims;
-                        
+                    struct BezierBoxMetadata{
                         // barycenter of connection endpoints to calculate orientation
                         glm::dvec3 startBc, endBc;
                         int startBcCounter, endBcCounter;
 
-                        SegBoxData() 
+                        BezierBoxMetadata() 
                         : startBc(0.0, 0.0, 0.0), endBc(0.0, 0.0, 0.0), startBcCounter(0), endBcCounter(0) {}
                     };
 
-                    for(auto& G:gc.graphs){
-                        std::vector<SegBoxData> segBoxes;
+                    for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+                        auto& G = gc.graphs.at(graphGroupID);
+                        std::vector<BezierBox> segBoxes;
+                        std::vector<BezierBoxMetadata> metadata;
                         std::unordered_map<int, size_t> boxIndices;
 
                         for(auto& e:G.edges){
                             if (e.segPart){
                                 segBoxes.emplace_back();
-                                SegBoxData& b = segBoxes.back();
+                                metadata.emplace_back();
+                                BezierBox& b = segBoxes.back();
                                 boxIndices[e.start] = segBoxes.size() - 1;
                                 boxIndices[e.end] = segBoxes.size() - 1;
                                 b.start = G.vertices.at(e.start).pos;
                                 b.end = G.vertices.at(e.end).pos;
-                                b.dims =  glm::dvec2(segmentWidth);
                                 b.startOri = glm::normalize(b.start - b.end);
                                 b.endOri = -b.startOri;
                             }
                         }
                         for(auto& e:G.edges){
                             if (!e.segPart){
-                                SegBoxData& bFirst = segBoxes.at(boxIndices[e.start]);
-                                SegBoxData& bSecond = segBoxes.at(boxIndices[e.end]);
+                                BezierBoxMetadata& bFirst = metadata.at(boxIndices[e.start]);
+                                BezierBoxMetadata& bSecond = metadata.at(boxIndices[e.end]);
     
                                 // set barycenter of edge start box and end box
                                 if (e.startOri){
@@ -274,41 +270,50 @@ void Controller::run()
                         }
                         
                         // calculate the orientation out of baryceters
-                        for(auto& b:segBoxes){
-                            if (b.startBcCounter == 0 && b.endBcCounter == 0) continue;
+                        for(size_t i = 0; i < segBoxes.size(); i++){
+                            auto& md = metadata.at(i);
+                            auto& b = segBoxes.at(i);
+                            if (md.startBcCounter == 0 && md.endBcCounter == 0) continue;
     
-                            if (b.startBcCounter != 0){
-                                b.startBc /= static_cast<double>(b.startBcCounter);
-                                glm::dvec3 l_startOri = b.startBc - b.start;
+                            if (md.startBcCounter != 0){
+                                md.startBc /= static_cast<double>(md.startBcCounter);
+                                glm::dvec3 l_startOri = b.start - md.startBc;
                                 if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
                             }
-                            if (b.endBcCounter != 0){
-                                b.endBc /= static_cast<double>(b.endBcCounter);
-                                glm::dvec3 l_endOri = b.endBc - b.end;
+                            if (md.endBcCounter != 0){
+                                md.endBc /= static_cast<double>(md.endBcCounter);
+                                glm::dvec3 l_endOri = b.end - md.endBc;
                                 if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
                             }
                         }
     
                         // create boxes for links
-                        for(auto& e:G.edges){
-                            if (!e.segPart){
-                                channel->renderer->addLink(
+                        std::vector<BezierBox> linkBoxes;
+                        for(auto& e:G.edges)
+                            if (!e.segPart)
+                                linkBoxes.emplace_back(BezierBox{
                                     G.vertices.at(e.start).pos,
-                                    (e.startOri) ? segBoxes.at(boxIndices[e.start]).startOri : segBoxes.at(boxIndices[e.start]).endOri,
                                     G.vertices.at(e.end).pos,
-                                    (e.endOri) ? segBoxes.at(boxIndices[e.end]).endOri : segBoxes.at(boxIndices[e.end]).startOri,
-                                    glm::dvec2(edgeWidth),
-                                    channel->link_color_packed.load()
-                                );
-                            }
-                        }
+                                    (e.startOri) ? -segBoxes.at(boxIndices[e.start]).startOri : -segBoxes.at(boxIndices[e.start]).endOri,
+                                    (e.endOri) ? segBoxes.at(boxIndices[e.end]).endOri : segBoxes.at(boxIndices[e.end]).startOri
+                                });
     
                         // and write the boxes to buffer
-                        for(auto& b : segBoxes)
-                            channel->renderer->addSegment(
-                                b.start, -b.startOri, b.end, b.endOri, 
-                                b.dims, channel->segment_color_packed.load()
-                            );
+                        channel->renderer->activateGroup(graphGroupID);
+                        
+                        channel->renderer->activateGroup(-1); // -1 is the Segments group ID
+                        channel->renderer->addBoxes(segBoxes);
+                        channel->renderer->changeGroupColors(channel->segment_color_packed.load());
+                        channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
+                        channel->renderer->deactivateGroup(-1);
+                        
+                        channel->renderer->activateGroup(-2); // -2 is the Links group ID
+                        channel->renderer->addBoxes(linkBoxes);
+                        channel->renderer->changeGroupColors(channel->link_color_packed.load());
+                        channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
+                        channel->renderer->deactivateGroup(-2);
+
+                        channel->renderer->deactivateGroup(graphGroupID);
                     }
 
                     // now just set the camera to look at the right place
@@ -327,7 +332,6 @@ void Controller::run()
                     channel->cam->resetView();
 
                     channel->graph_param_change.store(false); // update has been drawn, bool false now
-                    channel->renderer->setShouldUpdate(); // but notify the renderer that it now has updates
                 }
                 else spdlog::warn("Shared datastructure pointer is not defined");
             }
@@ -346,32 +350,39 @@ void Controller::run()
             bool segRandom = channel->randomize_segment_colors.load();
             bool linkRandom = channel->randomize_link_colors.load();
 
-            if (linkRandom != prevLinkRandom){
-                if (linkRandom) channel->renderer->randomizeLinkColors();
-                else channel->renderer->changeLinkColors(linkColor);
-                prevLinkRandom = linkRandom;
-            }
-            else if (segRandom != prevSegRandom){
-                if (segRandom) channel->renderer->randomizeSegmentColors();
-                else channel->renderer->changeSegmentColors(segColor);
+            // segment updates
+            channel->renderer->activateGroup(-1);
+            if (segRandom != prevSegRandom){
+                if (segRandom) channel->renderer->randomizeGroupColors();
+                else channel->renderer->changeGroupColors(segColor);
                 prevSegRandom = segRandom;
             }
-            else if (!linkRandom && prevLinkColor != linkColor){
-                channel->renderer->changeLinkColors(linkColor);
-                prevLinkColor = linkColor;
-            }
-            else if (!segRandom && prevSegColor != segColor){
-                channel->renderer->changeSegmentColors(segColor);
+            if (!segRandom && prevSegColor != segColor){
+                channel->renderer->changeGroupColors(segColor);
                 prevSegColor = segColor;
             }
-            else if (linkWidth != prevLinkWidth){
-                channel->renderer->changeLinkDims(glm::vec2(channel->link_widths.load()));
-                prevLinkWidth = linkWidth;
-            }
-            else if (segWidth != prevSegWidth){
-                channel->renderer->changeSegmentDims(glm::vec2(channel->segment_widths.load()));
+            if (segWidth != prevSegWidth){
+                channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
                 prevSegWidth = segWidth;
             }
+            channel->renderer->deactivateGroup(-1);
+
+            // link updates
+            channel->renderer->activateGroup(-2);
+            if (linkRandom != prevLinkRandom){
+                if (linkRandom) channel->renderer->randomizeGroupColors();
+                else channel->renderer->changeGroupColors(linkColor);
+                prevLinkRandom = linkRandom;
+            }
+            if (!linkRandom && prevLinkColor != linkColor){
+                channel->renderer->changeGroupColors(linkColor);
+                prevLinkColor = linkColor;
+            }
+            if (linkWidth != prevLinkWidth){
+                channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
+                prevLinkWidth = linkWidth;
+            }
+            channel->renderer->deactivateGroup(-2);
         }
         else if (t == tasks::EXIT)
         {

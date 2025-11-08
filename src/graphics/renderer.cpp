@@ -1,5 +1,19 @@
 #include "renderer.hpp"
 
+void Renderer::boxInsert(const BezierBox& b){
+    double segment = glm::length(b.end - b.start) / 3.f;
+    glm::vec3 pt1 = b.start + b.startOri * segment;
+    glm::vec3 pt2 = b.end + b.endOri * segment;
+
+    m_controlPoints.emplace_back(std::array<glm::vec4, 4>{
+        glm::vec4(b.start, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(b.end, 1.f)
+    });
+    m_appearances.emplace_back(appearance{
+        b.color, 
+        0, // padding
+        b.dims
+    });
+}
 
 Renderer::Renderer() : program()
 {
@@ -15,163 +29,121 @@ Renderer::~Renderer()
     glDeleteVertexArrays(1, &m_VA);
 }
 
-void Renderer::addSegment(
-    const glm::vec3& begin, const glm::vec3& beginNormal, 
-    const glm::vec3& end, const glm::vec3& endNormal, 
-    const glm::vec2& dimensions, glm::u8vec4 color
-){
-    float segment = glm::length(end - begin) / 3.f;
-    glm::vec3 pt1 = begin + beginNormal * segment;
-    glm::vec3 pt2 = end - endNormal * segment;
-
-    m_seg_controlPoints.emplace_back(std::array<glm::vec4, 4>{
-        glm::vec4(begin, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(end, 1.f)
-    });
-    m_seg_appearances.emplace_back(appearance{
-        color, 
-        0, // padding
-        dimensions
-    });
+void Renderer::changeGroupColors(const glm::u8vec4 newColor){
+    for(const auto group:m_active_groups){
+        for(const auto& p:m_groupIndices[group]){
+            for(size_t i = p.first; i <= p.second; i++)
+                m_appearances[i].color = newColor;
+            m_needUpdating.push(p);
+        }
+    }
 }
 
-void Renderer::addLink(
-    const glm::vec3& begin, const glm::vec3& beginNormal, 
-    const glm::vec3& end, const glm::vec3& endNormal, 
-    const glm::vec2& dimensions, glm::u8vec4 color
-){
-    float segment = glm::length(end - begin) / 3.f;
-    glm::vec3 pt1 = begin + beginNormal * segment;
-    glm::vec3 pt2 = end - endNormal * segment;
-
-    m_link_controlPoints.emplace_back(std::array<glm::vec4, 4>{
-        glm::vec4(begin, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(end, 1.f)
-    });
-    m_link_appearances.emplace_back(appearance{
-        color, 
-        0, // padding
-        dimensions
-    });
-}
-
-void Renderer::changeSegmentColors(glm::u8vec4 newColor){
-    for(auto& e:m_seg_appearances) e.color = newColor;
-    m_seg_appearanceUpdated = true;
-    m_seg_colorsRandomized = false;
-}
-
-void Renderer::changeLinkColors(glm::u8vec4 newColor){
-    for(auto& e:m_link_appearances) e.color = newColor;
-    m_link_appearanceUpdated = true;
-    m_link_colorsRandomized = false;
-}
-
-void Renderer::randomizeSegmentColors(){
-    if (m_seg_colorsRandomized) return;
+void Renderer::randomizeGroupColors(){
     static std::uniform_int_distribution<int> dist(0, 255);
-    for(auto& e:m_seg_appearances)
-        e.color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), 255);
-    m_seg_colorsRandomized = true;
-    m_seg_appearanceUpdated = true;
+    for(const auto group:m_active_groups){
+        for(const auto& p:m_groupIndices[group]){
+            for(size_t i = p.first; i <= p.second; i++)
+                m_appearances[i].color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), 255);
+            m_needUpdating.push(p);
+        }
+    }
 }
 
-void Renderer::randomizeLinkColors(){
-    if (m_link_colorsRandomized) return;
-    static std::uniform_int_distribution<int> dist(0, 255);
-    for(auto& e:m_link_appearances)
-        e.color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), 255);
-    m_link_colorsRandomized = true;
-    m_link_appearanceUpdated = true;
+void Renderer::changeGroupDims(const glm::vec2 dims){
+    for(const auto group:m_active_groups){
+        for(const auto& p:m_groupIndices[group]){
+            for(size_t i = p.first; i <= p.second; i++)
+                m_appearances[i].halfExt = dims;
+            m_needUpdating.push(p);
+        }
+    }
 }
 
-void Renderer::changeSegmentDims(glm::vec2 dims){
-    for(auto& e:m_seg_appearances) e.halfExt = dims;
-    m_seg_appearanceUpdated = true;
+void Renderer::addBox(const BezierBox& box){
+    boxInsert(box);
+    size_t newS = m_controlPoints.size() -1;
+
+    for(const auto& group:m_active_groups)
+        m_groupIndices[group].emplace_back(std::make_pair(newS, newS));
+    
+    m_resizeHappened = true;
 }
 
-void Renderer::changeLinkDims(glm::vec2 dims){
-    for(auto& e:m_link_appearances) e.halfExt = dims;
-    m_link_appearanceUpdated = true;
+void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
+    if (boxes.empty()) return;
+
+    size_t oldS = m_controlPoints.size();
+    for(const auto& b:boxes) boxInsert(b);
+    size_t newS = m_controlPoints.size() -1;
+    
+    for(const auto group:m_active_groups)
+        m_groupIndices[group].emplace_back(std::make_pair(oldS, newS));
+    
+    m_resizeHappened = true;
 }
 
 void Renderer::clearAll()
 {
-    m_seg_controlPoints.clear();
-    m_seg_appearances.clear();
-    m_seg_indexSize = 0;
+    m_controlPoints.clear();
+    m_appearances.clear();
+    m_indexSize = 0;
 
-    m_seg_appearanceUpdated = m_seg_pointsUpdated = true;
-
-    m_link_controlPoints.clear();
-    m_link_appearances.clear();
-    m_link_indexSize = 0;
-
-    m_link_appearanceUpdated = m_link_pointsUpdated = true;
+    deactivateAllGroups();
+    m_groupIndices.clear();
+    
+    while(!m_needUpdating.empty()) m_needUpdating.pop();
+    
+    m_resizeHappened = true;
 }
 
 void Renderer::updateBuffers()
-{    
-    if (m_seg_controlPoints.size() != m_seg_appearances.size() || m_link_controlPoints.size() != m_link_appearances.size())
-        spdlog::error("Renderer error: Mismatch in bezier box array sizes");
-    
-    size_t m_old_seg_indexSize = m_seg_indexSize;
-    size_t m_old_link_indexSize = m_link_indexSize;
-    m_seg_indexSize = m_seg_controlPoints.size();
-    m_link_indexSize = m_link_controlPoints.size();
-    bool updated = (m_old_seg_indexSize != m_seg_indexSize) || (m_old_link_indexSize != m_link_indexSize);
-
+{
     static size_t arrsize = sizeof(std::array<glm::vec4, 4>), appsize = sizeof(appearance);
 
-    // save control points in the buffer 0 and appearance data in the buffer 1
+    if (m_appearances.size() != m_controlPoints.size())
+        spdlog::error("Renderer error: Mismatch in bezier box array sizes");
 
-    if (m_seg_pointsUpdated || m_link_pointsUpdated){
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB0);
-        if (!updated){
-            if (m_link_pointsUpdated && m_link_indexSize != 0)
-                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_link_indexSize * arrsize, m_link_controlPoints.data());
-            if (m_seg_pointsUpdated && m_seg_indexSize != 0)
-                glBufferSubData(GL_SHADER_STORAGE_BUFFER, m_link_indexSize * arrsize, m_seg_indexSize * arrsize, m_seg_controlPoints.data());
-        }
-        else{
-            std::vector<std::array<glm::vec4, 4>> pts(m_seg_controlPoints);
-            pts.insert(pts.begin(), m_link_controlPoints.begin(), m_link_controlPoints.end());
-            glBufferData(GL_SHADER_STORAGE_BUFFER, pts.size() * arrsize, pts.data(), GL_DYNAMIC_DRAW);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_VB0);
-        }
-        m_link_pointsUpdated = m_seg_pointsUpdated = false;
-        
+    size_t old_indexSize = m_indexSize;
+    m_indexSize = m_controlPoints.size();
+
+    if (m_indexSize == 0){
+        m_resizeHappened = false;
+        return;
     }
-    if (m_seg_appearanceUpdated || m_link_appearanceUpdated){
+
+    if (m_resizeHappened || m_indexSize != old_indexSize){
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB0);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, m_indexSize * arrsize, m_controlPoints.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_VB0);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB1);
-        if (!updated){
-            if (m_link_appearanceUpdated && m_link_indexSize != 0)
-                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_link_indexSize * appsize, m_link_appearances.data());
-            if (m_seg_appearanceUpdated && m_seg_indexSize != 0)
-                glBufferSubData(GL_SHADER_STORAGE_BUFFER, m_link_indexSize * appsize, m_seg_indexSize * appsize, m_seg_appearances.data());
+        glBufferData(GL_SHADER_STORAGE_BUFFER, m_indexSize * appsize, m_appearances.data(), GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_VB1);
+
+        while(!m_needUpdating.empty()) m_needUpdating.pop();
+        m_resizeHappened = false;
+    }
+    else{
+        while(!m_needUpdating.empty()){
+            auto[start, end] = m_needUpdating.front(); m_needUpdating.pop();
+            if (end >= m_indexSize) continue;
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB0);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, start * arrsize, (end-start+1)*arrsize, m_controlPoints.data() + start);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB1);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, start * appsize, (end-start+1)*appsize, m_appearances.data() + start);
         }
-        else{
-            std::vector<appearance> apps(m_seg_appearances);
-            apps.insert(apps.begin(), m_link_appearances.begin(), m_link_appearances.end());
-            glBufferData(GL_SHADER_STORAGE_BUFFER, apps.size() * appsize, apps.data(), GL_DYNAMIC_DRAW);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_VB1);
-        }
-        m_link_appearanceUpdated = m_seg_appearanceUpdated = false;
     }
 }
 
 void Renderer::draw()
 {
-    if (m_seg_appearanceUpdated || m_seg_pointsUpdated || m_link_appearanceUpdated || m_link_pointsUpdated)
+    if (!m_needUpdating.empty() || m_resizeHappened)
         updateBuffers();
 
-    if (m_seg_indexSize || m_link_indexSize){
+    if (m_indexSize){
         glBindVertexArray(m_VA);
         glPatchParameteri(GL_PATCH_VERTICES, 1);
         program.setUniform1i("SSBOffset", 0);
-        if (m_link_indexSize != 0){
-            glDrawArraysInstanced(GL_PATCHES, 0, 1, m_link_indexSize);
-            program.setUniform1i("SSBOffset", (int)m_link_indexSize);
-        }
-        if (m_seg_indexSize != 0)
-            glDrawArraysInstanced(GL_PATCHES, 0, 1, m_seg_indexSize);
+        glDrawArraysInstanced(GL_PATCHES, 0, 1, m_indexSize);
     }
 }

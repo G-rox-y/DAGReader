@@ -6,6 +6,13 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include "GLProgram.hpp"
 
+struct BezierBox{
+    glm::dvec3 start, end;
+    glm::dvec3 startOri, endOri;
+    glm::dvec2 dims;
+    glm::u8vec4 color;
+};
+
 // this class is thread safe since elements will be added through one thread and displayed through the other
 class Renderer {
 private:
@@ -15,36 +22,30 @@ private:
         glm::vec2 halfExt; // dimensions of the box cross-section
     };
 
-    // --- data for segments
+    // --- data
 
-    std::vector<std::array<glm::vec4, 4>> m_seg_controlPoints;
-    std::vector<appearance> m_seg_appearances;
-    GLuint m_seg_indexSize = 0; // the saved vector size between updates
+    std::vector<std::array<glm::vec4, 4>> m_controlPoints;
+    std::vector<appearance> m_appearances;
+    GLuint m_indexSize = 0; // last saved vector size
+    std::queue<std::pair<size_t, size_t>> m_needUpdating;
+    bool m_resizeHappened = false;
 
-    bool m_seg_pointsUpdated = false;
-    bool m_seg_appearanceUpdated = false;
+    // groupIndices[x] contains all indices that are a part of group x
+    // groupIndices[1] = vector[<1, 3>, <7,8>, <10, 10>] means 1,2,3,7,8,10 are elements of group 1
+    std::unordered_map<int, std::vector<std::pair<size_t, size_t>>> m_groupIndices;
+    std::unordered_set<int> m_active_groups;
 
-    bool m_seg_colorsRandomized = false;
-
-    // --- data for links
-
-    std::vector<std::array<glm::vec4, 4>> m_link_controlPoints;
-    std::vector<appearance> m_link_appearances;
-    GLuint m_link_indexSize = 0; // the saved vector size between updates
-
-    bool m_link_pointsUpdated = false;
-    bool m_link_appearanceUpdated = false;
-
-    bool m_link_colorsRandomized = false;
-
-    // --- other / common data
+    // --- opengl data
 
     GLuint m_VA; // id of the vertex array
     GLuint m_VB0; // id of the vertex buffer 0
     GLuint m_VB1; // id of the vertex buffer 1
     // ^ 2 buffers because we need 2 arrays, one for pts, and one for appearance
 
+    // --- other
     mutable std::mt19937 m_rng{std::random_device{}()};
+
+    void boxInsert(const BezierBox& b);
 
 public:
     GLProgram program; // the shaders
@@ -52,34 +53,22 @@ public:
     Renderer();
     ~Renderer();
 
-    void addSegment(
-        const glm::vec3& begin, const glm::vec3& beginNormal, 
-        const glm::vec3& end, const glm::vec3& endNormal, 
-        const glm::vec2& dimensions, glm::u8vec4 color
-    );
-    void addLink(
-        const glm::vec3& begin, const glm::vec3& beginNormal, 
-        const glm::vec3& end, const glm::vec3& endNormal, 
-        const glm::vec2& dimensions, glm::u8vec4 color
-    );
+    void changeGroupColors(const glm::u8vec4 newColor);
+    void randomizeGroupColors();
+    void changeGroupDims(const glm::vec2 dims);
 
-    void changeSegmentColors(glm::u8vec4 newColor);
-    void changeLinkColors(glm::u8vec4 newColor);
+    void activateGroup(const int id) { m_active_groups.insert(id); }
+    void deactivateGroup(const int id) { m_active_groups.erase(id); }
+    void deactivateAllGroups() { m_active_groups.clear(); }
+    void setAsOnlyGroup(const int id) { deactivateAllGroups(); activateGroup(id); }
 
-    void randomizeSegmentColors();
-    void randomizeLinkColors();
-
-    void changeSegmentDims(glm::vec2 dims);
-    void changeLinkDims(glm::vec2 dims);
+    void addBox(const BezierBox& box);
+    void addBoxes(const std::vector<BezierBox>& boxes);
 
     void clearAll();
 
     // this function is going to fill the vertex buffer object with data and properly assign its vertex array
     void updateBuffers();
-
-    void setSegShouldUpdate() { m_seg_appearanceUpdated = m_seg_pointsUpdated = true; }
-    void setLinkShouldUpdate() { m_link_appearanceUpdated = m_link_pointsUpdated = true; }
-    void setShouldUpdate() { setSegShouldUpdate(); setLinkShouldUpdate(); }
 
     void draw();
 };
