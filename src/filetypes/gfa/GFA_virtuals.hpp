@@ -40,10 +40,10 @@ public:
 // abstract class for adding the hash property to classes
 class hash{
 private:
-    std::string hash; // sha256 checksum of the sequence (if provided)
+    std::string hash_sha256; // sha256 checksum of the sequence (if provided)
 public:
     virtual ~hash() = default;
-    void setHash(const std::string& h) { hash = h; }
+    void setHash(const std::string& h) { hash_sha256 = h; }
 };
 
 // abstract class for adding the mapping_quality property to classes
@@ -76,9 +76,9 @@ public:
 // abstract class for adding the overlap property to classes
 class overlap{
 private:
-    std::string overlap; // Optional CIGAR string describing overlap
+    std::string overlap_cigar; // Optional CIGAR string describing overlap
 public:
     virtual ~overlap() = default;
-    void setOverlap(const std::string& ov) { overlap = (ov == "*") ? "" : ov; } // if ov is '*' that means no CIGAR string is provided
-    const std::string& getOverlap() const { return overlap; }
+    void setOverlap(const std::string& ov) { overlap_cigar = (ov == "*") ? "" : ov; } // if ov is '*' that means no CIGAR string is provided
+    const std::string& getOverlap() const { return overlap_cigar; }
 };

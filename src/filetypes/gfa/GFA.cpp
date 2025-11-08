@@ -5,6 +5,8 @@ void GFA::parser_warning(const std::string& description, const int line_n) const
     if (line_n != -1) spdlog::warn("GFA Parser warning [at line {}]: {}", line_n, description);
     else spdlog::warn("GFA Parser warning: {}", description);
 }
+
+[[noreturn]]
 void GFA::parser_error(const std::string& description, const int line_n) const {
     if (line_n != -1) spdlog::error("GFA Parser error [at line {}]: {}", line_n, description);
     else spdlog::error("GFA Parser error: {}", description);

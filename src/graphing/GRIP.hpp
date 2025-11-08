@@ -57,7 +57,7 @@ private:
     glm::dvec3 compute_FRforce(int ID, const std::vector<std::pair<int, int>>& n) const;
 
     // just a function for reporting errors
-    void grip_error(const std::string& description) const;
+    [[noreturn]] void grip_error(const std::string& description) const;
 
 public:
     GRIP(Graph& G);

@@ -29,7 +29,7 @@ private:
     // TODO: implement a custom hashing function to be able to relpace map with unordered_map
 
     void parser_warning(const std::string& description, const int line_n) const override;
-    void parser_error(const std::string& description, const int line_n) const override;
+    [[noreturn]] void parser_error(const std::string& description, const int line_n) const override;
 
 public:
     // the constructor of this class parses a GFA file from the path provided

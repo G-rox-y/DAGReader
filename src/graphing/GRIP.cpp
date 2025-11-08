@@ -9,6 +9,7 @@ double GRIP::find_edge_length(int id1, int id2) const {
     else return m_defaultEdgeLength * m_edgeLengths.at(p);
 }
 
+[[noreturn]]
 void GRIP::grip_error(const string& description) const {
     spdlog::error("GRIP error: {}", description);
     throw runtime_error("GRIP error (check logs)");
@@ -166,7 +167,7 @@ void GRIP::vertex_initial_placement(int ID, const vector<pair<int, int>>& n, con
         ids[found++] = i; // increment the found variable after use
     }
 
-    if (found == 0)
+    if (found == 0) [[unlikely]]
         grip_error("vertex initial placement found no neighbouring vertices?");
     
     // do a placement using a simple barycenter method
