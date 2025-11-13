@@ -145,7 +145,6 @@ void Renderer::draw()
     if (m_indexSize){
         glBindVertexArray(m_VA);
         glPatchParameteri(GL_PATCH_VERTICES, 1);
-        program.setUniform1i("SSBOffset", 0);
         glDrawArraysInstanced(GL_PATCHES, 0, 1, m_indexSize);
     }
 }

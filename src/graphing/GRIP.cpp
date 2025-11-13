@@ -343,8 +343,4 @@ void GRIP::run()
             if (l != l) spdlog::warn("Grip: NaN Detected for ID {} at filter {} of {}", ID, i, K-1);
         }
     }
-
-    // --- GRAPH POST PROCESSING ---
-    glm::dvec3 bc = mr_g->calculateBarycenter();
-    mr_g->translate(bc);
 }

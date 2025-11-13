@@ -18,9 +18,10 @@ struct Edge{
     bool endOri = true;
 
     long long int length;
+    long long int originalLength;
     bool segPart = false;
 
-    Edge(int v1, int v2, long long int v3 = 1) : start(v1), end(v2), length(v3) {}
+    Edge(int v1, int v2, long long int v3 = 1) : start(v1), end(v2), originalLength(v3) {}
     void addLength(int v3) { length = v3; }
     void isSegmentPart(bool is) { segPart = is; }
     void setOrientations(bool s, bool e) { startOri = s; endOri = e; }

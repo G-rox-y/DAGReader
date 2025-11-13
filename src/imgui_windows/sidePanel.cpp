@@ -9,7 +9,7 @@ void sidePanel::draw()
     // force the panel to be under the menu and one the right side
     ImVec2 ll(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y);
     ImGui::SetNextWindowPos(ll, ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 0), ImVec2(viewport->WorkSize.x*0.55, viewport->WorkSize.y*0.9));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 0), ImVec2(viewport->WorkSize.x*0.55, viewport->WorkSize.y*0.9));
 
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings 
         | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
@@ -33,6 +33,10 @@ void sidePanel::draw()
             ImGui::SeparatorText(name.c_str());
             ImGui::Text("Segments: %i", channel->graph_data_seg_num.load());
             ImGui::Text("Links: %i", channel->graph_data_link_num.load());
+
+            size_t subgraphNum = channel->subgraphAmount();
+            ImGui::Text("Subgraphs: %zu", subgraphNum);
+            
             ImGui::Separator();
 
             if (channel->layout_in_progress.load()){
@@ -42,6 +46,7 @@ void sidePanel::draw()
                 if (ImGui::Button("Layout the graph!")){
                     channel->renderer->clearAll(); // has to be cleared here cause this thread has the opengl context
                     channel->addControllerTask(tasks::LAYOUT_GRAPH);
+                    channel->addControllerTask(tasks::RESET_GRAPH);
                 }
                 if(channel->graph_param_change.load() && channel->graph_loaded.load()){
                     ImGui::SameLine();
@@ -59,21 +64,6 @@ void sidePanel::draw()
 
             if(ImGui::TreeNode("Layout settings"))
             {
-                bool copy_gadsl = channel->graph_auto_determine_segment_length.load();
-                if (ImGui::Checkbox("Auto calculate segment fragment size", &copy_gadsl)){
-                    channel->graph_auto_determine_segment_length.store(copy_gadsl);
-                    if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
-                }
-
-                ImGui::TextWrapped("Segment fragment size");
-                ImGui::BeginDisabled(copy_gadsl);
-                long long step = 1, step_fast = std::max<long long int>(channel->graph_segment_length.load() / 100, 10);
-                long long int copy_gsl = channel->graph_segment_length.load();
-                if (ImGui::InputScalar("##segment_fragment_size", ImGuiDataType_S64, &copy_gsl, &step, &step_fast) && copy_gsl > 0){
-                    channel->graph_segment_length.store(copy_gsl);
-                    if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
-                }
-
                 int copy_grm = channel->grip_roundsNum.load();
                 if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
                     channel->grip_roundsNum.store(copy_grm);
@@ -98,13 +88,7 @@ void sidePanel::draw()
                     if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
                 }
 
-                ImGui::SameLine();
-                HelpMarker("This number controls how big the segments will end up being\n---\n"
-                    "Example: if a segment is 5000 base pairs long, and this number is set to 1000, "
-                    "the segment size will be 5\n[minimal size is 1]\n---\n"
-                    "Pro tip: you can hold CTRL while holding the - + buttons to quickly tune the values");
                 ImGui::TreePop();
-                ImGui::EndDisabled();
             }
             if (ImGui::TreeNode("Appearance"))
             {
@@ -184,6 +168,54 @@ void sidePanel::draw()
                     ImVec4(colors2[0], colors2[1], colors2[2], colors2[3]), ImGuiColorEditFlags_None, ImVec2(w, 0)
                 );
 
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNode("Subgraph selection"))
+            {
+                if(ImGui::Button("Hide All")){
+                    for(size_t i = 0; i < subgraphNum; i++)
+                        channel->hideGroup(i);
+                    channel->addControllerTask(tasks::RESET_GRAPH);
+                }
+                ImGui::SameLine();
+                if(ImGui::Button("Unhide All")){
+                    for(size_t i = 0; i < subgraphNum; i++)
+                        channel->unhideGroup(i);
+                    channel->addControllerTask(tasks::RESET_GRAPH);
+                }
+
+                bool tableCausedUpdates = false;
+                static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY;
+                if (ImGui::BeginTable("subgraphTable", 4, table_flags)){
+                    ImGui::TableSetupColumn("ID");
+                    ImGui::TableSetupColumn("segments");
+                    ImGui::TableSetupColumn("edges");
+                    ImGui::TableSetupColumn("show");
+                    ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible
+                    ImGui::TableHeadersRow();
+
+                    for (size_t graphID = 0; graphID < subgraphNum; graphID++){
+                        auto& D = channel->getSubgraphData(graphID);
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%zu", graphID);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%zu", D.segment_num);
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%zu", D.edge_num);
+                        ImGui::TableSetColumnIndex(3);
+                        bool val = !channel->isGroupHidden(graphID);
+                        if (ImGui::Checkbox(fmt::format("##{}", graphID).c_str(), &val)){
+                            if (!val) channel->hideGroup(graphID);
+                            else channel->unhideGroup(graphID);
+                            tableCausedUpdates = true;
+                        }
+                    }
+                    ImGui::EndTable();
+                }
+                if (tableCausedUpdates)
+                    channel->addControllerTask(tasks::RESET_GRAPH);
                 ImGui::TreePop();
             }
         }

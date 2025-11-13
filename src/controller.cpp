@@ -147,6 +147,11 @@ void Controller::run()
                 gfa.fillData(v, e);
                 gc.setGraphs(v, e);
 
+                channel->clearSubGraphData();
+                for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+                    auto& G = gc.graphs.at(graphGroupID);
+                    channel->addSubgraphData(infoExchange::SubgraphData{G.vertices.size(), G.edges.size()});
+                }
                 channel->graph_data_seg_num.store(gfa.segmentNum());
                 channel->graph_data_link_num.store(gfa.linkNum());
                 channel->graph_name_set(path.filename().string());
@@ -161,20 +166,18 @@ void Controller::run()
             if (!gc.empty()){
                 channel->layout_in_progress.store(true);
 
-                // Determine the segment length
-                if (channel->graph_auto_determine_segment_length.load()){
-                    long long int maxSize = std::numeric_limits<long long int>::min();
-                    for (auto& G:gc.graphs)
-                        for(auto& e:G.edges)
-                            if (maxSize < e.length) maxSize = e.length;
-                    channel->graph_segment_length.store(maxSize/15 +1);
-                }
-                
-                // adjust the segment lengths
-                long long int gsl = channel->graph_segment_length.load();
+                // Normalize segment lengths
+                // TODO: make an actually functional segment length system
+                long long int maxSize = std::numeric_limits<long long int>::min();
                 for (auto& G:gc.graphs)
                     for(auto& e:G.edges)
-                        e.length = (e.length / gsl) + 1;
+                        if (maxSize < e.originalLength) maxSize = e.originalLength;
+                long long int segLen = maxSize / 20;
+
+                // adjust the segment lengths
+                for (auto& G:gc.graphs)
+                    for(auto& e:G.edges)
+                        e.length = (e.originalLength / segLen) + 1;
 
                 // layout the graphs
                 for(auto& G:gc.graphs){
@@ -185,35 +188,55 @@ void Controller::run()
                     layout.setTempNarrowGainInc(channel->grip_tempNarrowGain.load());
                     layout.run();
                 }
-                
-                { // place the graphs on correct places
+
+                channel->layout_in_progress.store(false); // layout phase done
+                channel->graph_param_change.store(false); // update has been applied, bool false now
+            }
+            else spdlog::warn("No graph found!");
+        }
+        else if (t == tasks::RESET_GRAPH)
+        {
+            spdlog::info("Task: RESET_GRAPH");
+            if (!gc.empty())
+            {
+                {
+                    // place the graphs on correct places
                     double totalRadius = 0.0;
                     std::vector<std::pair<double, int>> graphRadii; // pairs of nodsu graph id and its radius
-                    for(size_t i = 0; i < gc.graphs.size(); i++){
-                        double rad = gc.graphs.at(i).radius;
+                    for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+                        if (channel->isGroupHidden(graphGroupID)) continue; // if the graph is hidden just skip it
+                        auto& G = gc.graphs.at(graphGroupID);
+
+                        // recenter the graph
+                        glm::dvec3 bc = G.calculateBarycenter();
+                        G.translate(-bc);
+
+                        // remember its radius
+                        double rad = G.radius;
                         totalRadius += rad;
-                        graphRadii.emplace_back(std::make_pair(rad, i));
+                        graphRadii.emplace_back(std::make_pair(rad, graphGroupID));
                     }
                     
-                    sort(graphRadii.begin(), graphRadii.end());
-                    
-                    // now allign then all
-                    double sqdim = std::max<double>(std::sqrt(totalRadius * 2.0), graphRadii.back().first * 2.0);
-                    double ypos = 0.0, xpos = 0.0;
-                    for(auto& [radius, GraphID]:graphRadii){      
-                        if (xpos + radius > sqdim && xpos != 0.0){
-                            xpos = 0.0;
-                            ypos += radius;
+                    if (!graphRadii.empty()){
+                        sort(graphRadii.begin(), graphRadii.end());
+                        
+                        // now allign then all
+                        double sqdim = std::max<double>(std::sqrt(totalRadius * 2.0), graphRadii.back().first * 2.0);
+                        double ypos = 0.0, xpos = 0.0;
+                        for(auto& [radius, GraphID]:graphRadii){      
+                            if (xpos + radius > sqdim && xpos != 0.0){
+                                xpos = 0.0;
+                                ypos += radius;
+                            }
+                            gc.graphs.at(GraphID).translate(glm::dvec3(xpos + radius, ypos + radius, 0.0));
+                            xpos += 2.0 * radius;
                         }
-                        gc.graphs.at(GraphID).translate(glm::dvec3(xpos + radius, ypos + radius, 0.0));
-                        xpos += 2.0 * radius;
                     }
                 }
 
-                channel->layout_in_progress.store(false); // layout phase done
-                
                 // render the graphs
                 if (channel->renderer) [[likely]] {
+                    channel->renderer->clearAll();
 
                     struct BezierBoxMetadata{
                         // barycenter of connection endpoints to calculate orientation
@@ -225,6 +248,8 @@ void Controller::run()
                     };
 
                     for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+                        if (channel->isGroupHidden(graphGroupID)) continue;
+
                         auto& G = gc.graphs.at(graphGroupID);
                         std::vector<BezierBox> segBoxes;
                         std::vector<BezierBoxMetadata> metadata;
@@ -302,22 +327,32 @@ void Controller::run()
                         
                         channel->renderer->activateGroup(-1); // -1 is the Segments group ID
                         channel->renderer->addBoxes(segBoxes);
-                        channel->renderer->changeGroupColors(channel->segment_color_packed.load());
-                        channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
                         channel->renderer->deactivateGroup(-1);
-                        
+
                         channel->renderer->activateGroup(-2); // -2 is the Links group ID
                         channel->renderer->addBoxes(linkBoxes);
-                        channel->renderer->changeGroupColors(channel->link_color_packed.load());
-                        channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
                         channel->renderer->deactivateGroup(-2);
-
+                        
                         channel->renderer->deactivateGroup(graphGroupID);
                     }
 
+                    // set the colors and sizes for the links and segments
+                    channel->renderer->activateGroup(-1);
+                    channel->renderer->changeGroupColors(channel->segment_color_packed.load());
+                    channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
+                    channel->renderer->deactivateGroup(-1);
+
+                    channel->renderer->activateGroup(-2);
+                    channel->renderer->changeGroupColors(channel->link_color_packed.load());
+                    channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
+                    channel->renderer->deactivateGroup(-2);
+
                     // now just set the camera to look at the right place
                     double maxX = 0.0, maxY = 0.0;
-                    for (auto& G:gc.graphs){
+                    for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+                        if (channel->isGroupHidden(graphGroupID)) continue;
+
+                        auto& G = gc.graphs.at(graphGroupID);
                         for(auto& v:G.vertices){
                             maxX = std::max<double>(maxX, std::abs(v.pos.x));
                             maxY = std::max<double>(maxY, std::abs(v.pos.y));
@@ -329,8 +364,6 @@ void Controller::run()
                     channel->cam->setDefPos(glm::vec3(maxX/2.f, maxX/2.f, camZ * 1.5f));
                     channel->cam->setDefScale(scale);
                     channel->cam->resetView();
-
-                    channel->graph_param_change.store(false); // update has been drawn, bool false now
                 }
                 else spdlog::warn("Shared datastructure pointer is not defined");
             }

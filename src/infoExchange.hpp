@@ -8,7 +8,7 @@ namespace tasks{
     // tasks that the fileController could have
     enum controllerTask {
         OPEN_NFD, OPEN_PATH,
-        LAYOUT_GRAPH, REFRESH_GRAPH,
+        LAYOUT_GRAPH, RESET_GRAPH, REFRESH_GRAPH,
         EXIT
     };
 }
@@ -87,9 +87,6 @@ public:
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
     std::atomic<bool> graph_param_change{false};
-    std::atomic<long long int> graph_segment_length{100000};
-    std::atomic<bool> graph_auto_determine_segment_length{true};
-
     // graph appearance variables
     std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(255, 50, 180, 175)};
     std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(230, 190, 80, 255)};
@@ -97,6 +94,53 @@ public:
     std::atomic<bool> randomize_link_colors = {false};
     std::atomic<float> link_widths{0.015f};
     std::atomic<float> segment_widths{0.06f};
+
+    // what to hide
+private:
+    std::unordered_set<int> groupBlacklist;
+    std::mutex groupBlacklist_mut;
+public:
+    void hideGroup(const int id){
+        std::lock_guard lk(groupBlacklist_mut);
+        groupBlacklist.insert(id);
+    }
+    void unhideGroup(const int id){
+        std::lock_guard lk(groupBlacklist_mut);
+        if(groupBlacklist.find(id) != groupBlacklist.end()) [[likely]]
+            groupBlacklist.erase(id);
+    }
+    bool isGroupHidden(const int id){
+        std::lock_guard lk(groupBlacklist_mut);
+        return (groupBlacklist.find(id) != groupBlacklist.end());
+    }
+    const size_t numOfHiddenGroups(){
+        std::lock_guard lk(groupBlacklist_mut);
+        return groupBlacklist.size();
+    }
+
+    struct SubgraphData{size_t segment_num, edge_num; };
+private:
+    std::vector<SubgraphData> subgraphData;
+    std::mutex subgraphData_mut;
+public:
+    const SubgraphData getSubgraphData(const size_t id){
+        std::lock_guard lk(subgraphData_mut);
+        if (subgraphData.size() <= id)
+            throw std::runtime_error("Error: Wrong subgraph data ID");
+        return subgraphData.at(id);
+    }
+    const size_t subgraphAmount(){
+        std::lock_guard lk(subgraphData_mut);
+        return subgraphData.size();
+    }
+    void addSubgraphData(const SubgraphData data){
+        std::lock_guard lk(subgraphData_mut);
+        subgraphData.emplace_back(data);
+    }
+    void clearSubGraphData(){
+        std::lock_guard lk(subgraphData_mut);
+        subgraphData.clear();
+    }
 
     // grip variables
     std::atomic<float> grip_scalingFactor{0.05f};

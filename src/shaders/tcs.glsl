@@ -20,12 +20,11 @@ patch out vec3 N0; // normal for first point
 
 uniform vec3 CamPos;
 uniform float PxPerRad;
-uniform int SSBOffset;
 
 void main(){
     if (gl_InvocationID != 0) return; // safety
 
-    patchID = vInstanceID[0] + SSBOffset;
+    patchID = vInstanceID[0];
     ControlPoints b = pts[patchID];
 
     // calculate the initial frame
