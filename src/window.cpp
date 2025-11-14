@@ -45,6 +45,49 @@ void Window::drawStuff()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // colors
+    ImVec4 c0(1.f, 0.65f, 0.65f, 0.85f);
+    ImVec4 c1(1.f, 0.65f, 0.65f, 0.7f);
+    ImVec4 c2(1.f, 0.65f, 0.65f, 0.4f);
+    ImVec4 c3(1.f, 0.65f, 0.65f, 0.2f);
+
+    if (channel->light_mode.load()){
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 0.4f));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.8f, 0.8f, 0.8f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableHeaderBg,  ImVec4(0.8f, 0.8f, 0.8f, 0.4f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  c1);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, c2);
+        ImGui::PushStyleColor(ImGuiCol_Button,  c1);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,  c2);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  c3);
+        ImGui::PushStyleColor(ImGuiCol_CheckMark,  c1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg,  c3);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  c1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,  c2);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab,  c1);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,  c0);
+        ImGui::PushStyleColor(ImGuiCol_TitleBg,  c1);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive,  c1);
+    }
+    else{
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 0.4f));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.05f, 0.05f, 0.05f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableHeaderBg,  ImVec4(0.05f, 0.05f, 0.05f, 0.4f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, c1);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, c2);
+        ImGui::PushStyleColor(ImGuiCol_Button, c1);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c2);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, c3);
+        ImGui::PushStyleColor(ImGuiCol_CheckMark, c1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, c3);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, c1);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, c2);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, c1);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, c0);
+        ImGui::PushStyleColor(ImGuiCol_TitleBg, c1);
+        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, c1);
+    }
+
     // set background color
     if (channel->update_window_vars.load()){
         if (channel->light_mode.load()) glClearColor(1.f, 1.f, 1.f, 1.f);
@@ -55,7 +98,9 @@ void Window::drawStuff()
     m_renderer->draw();
 
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
-    // ImGui::ShowDemoWindow();
+    ImGui::PopStyleColor(16);
+    
+    //ImGui::ShowDemoWindow();
     
     // render imgui things
     ImGui::Render();

@@ -13,12 +13,7 @@ void sidePanel::draw()
 
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings 
         | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
-    
-    if (channel->light_mode.load())
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 0.4f));
-    else
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 0.4f));
-    
+
     if (ImGui::Begin("Side Panel", NULL, flags))
     {
         float availX = ImGui::GetContentRegionAvail().x;
@@ -62,7 +57,8 @@ void sidePanel::draw()
                 HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
             }
 
-            if(ImGui::TreeNode("Layout settings"))
+            bool openLayoutSettings = ImGui::CollapsingHeader("Layout settings");
+            if(openLayoutSettings)
             {
                 int copy_grm = channel->grip_roundsNum.load();
                 if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
@@ -87,10 +83,9 @@ void sidePanel::draw()
                     channel->grip_scalingFactor.store(copy_gsf);
                     if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
                 }
-
-                ImGui::TreePop();
             }
-            if (ImGui::TreeNode("Appearance"))
+            bool openAppearance = ImGui::CollapsingHeader("Appearance");
+            if (openAppearance)
             {
                 float sw = channel->segment_widths.load();
 
@@ -167,11 +162,10 @@ void sidePanel::draw()
                 ImGui::ColorButton("##Link_preview", 
                     ImVec4(colors2[0], colors2[1], colors2[2], colors2[3]), ImGuiColorEditFlags_None, ImVec2(w, 0)
                 );
-
-                ImGui::TreePop();
             }
 
-            if (ImGui::TreeNode("Subgraph selection"))
+            bool openSubgraphSelection = ImGui::CollapsingHeader("Subgraph selection");
+            if (openSubgraphSelection)
             {
                 if(ImGui::Button("Hide All")){
                     for(size_t i = 0; i < subgraphNum; i++)
@@ -216,7 +210,6 @@ void sidePanel::draw()
                 }
                 if (tableCausedUpdates)
                     channel->addControllerTask(tasks::RESET_GRAPH);
-                ImGui::TreePop();
             }
         }
         else{
@@ -229,6 +222,6 @@ void sidePanel::draw()
             ImGui::TextWrapped("I will add a brief tutorial here soon");
         }
     }
+
     ImGui::End();
-    ImGui::PopStyleColor();
 }
