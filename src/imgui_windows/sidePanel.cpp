@@ -178,14 +178,23 @@ void sidePanel::draw()
                         channel->unhideGroup(i);
                     channel->addControllerTask(tasks::RESET_GRAPH);
                 }
+                ImGui::SameLine();
+                if(ImGui::Button("Select All"))
+                    for(size_t i = 0; i < subgraphNum; i++)
+                        channel->selectSubGraph(i);
+                ImGui::SameLine();
+                if(ImGui::Button("Unselect All"))
+                    for(size_t i = 0; i < subgraphNum; i++)
+                        channel->unselectSubGraph(i);
 
                 bool tableCausedUpdates = false;
                 static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY;
-                if (ImGui::BeginTable("subgraphTable", 4, table_flags)){
+                if (ImGui::BeginTable("subgraphTable", 5, table_flags)){
                     ImGui::TableSetupColumn("ID");
                     ImGui::TableSetupColumn("segments");
                     ImGui::TableSetupColumn("edges");
                     ImGui::TableSetupColumn("show");
+                    ImGui::TableSetupColumn("select");
                     ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible
                     ImGui::TableHeadersRow();
 
@@ -200,10 +209,16 @@ void sidePanel::draw()
                         ImGui::Text("%zu", D.edge_num);
                         ImGui::TableSetColumnIndex(3);
                         bool val = !channel->isGroupHidden(graphID);
-                        if (ImGui::Checkbox(fmt::format("##{}", graphID).c_str(), &val)){
+                        if (ImGui::Checkbox(fmt::format("##Hide{}", graphID).c_str(), &val)){
                             if (!val) channel->hideGroup(graphID);
                             else channel->unhideGroup(graphID);
                             tableCausedUpdates = true;
+                        }
+                        ImGui::TableSetColumnIndex(4);
+                        val = D.selected;
+                        if (ImGui::Checkbox(fmt::format("##Select{}", graphID).c_str(), &val)){
+                            if (!val) channel->unselectSubGraph(graphID);
+                            else channel->selectSubGraph(graphID);
                         }
                     }
                     ImGui::EndTable();

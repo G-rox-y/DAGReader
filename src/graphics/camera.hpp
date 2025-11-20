@@ -19,7 +19,7 @@ private:
 
     // when a change in position or rotation occurs update() should recalculate the matrix
     // this bool is used to make sure that no unnecesarry updates happen
-    bool m_shouldRecalculate;
+    bool m_shouldRecalculate = true;
 
     // control sensitivities
     float m_scale_sens = 0.02f;
@@ -35,6 +35,12 @@ private:
     float m_nearCP = 0.05f;
     float m_farCP = 500.f;
 
+    // animation related variables
+    bool m_orbitingActive = false;
+    float m_orbitDistance;
+    glm::vec3 m_orbitPoint, m_orbitPointNormal;
+    void orbitUpdate();
+
 public:
     Camera();
     ~Camera() = default;
@@ -43,6 +49,9 @@ public:
     void scale(bool in, bool out);
 
     void rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw, bool fast);
+
+    void engageOrbit(const glm::vec3& center, const float distance);
+    void disengageOrbit();
 
     // this should get called before drawing the frame
     // checks if camera matrix recalculation is needed, if yes then it recalculates

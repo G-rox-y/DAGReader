@@ -150,7 +150,9 @@ void Controller::run()
                 channel->clearSubGraphData();
                 for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
                     auto& G = gc.graphs.at(graphGroupID);
-                    channel->addSubgraphData(infoExchange::SubgraphData{G.vertices.size(), G.edges.size()});
+                    channel->addSubgraphData(infoExchange::SubgraphData{
+                        G.vertices.size(), G.edges.size()
+                    });
                 }
                 channel->graph_data_seg_num.store(gfa.segmentNum());
                 channel->graph_data_link_num.store(gfa.linkNum());
@@ -230,6 +232,9 @@ void Controller::run()
                             }
                             gc.graphs.at(GraphID).translate(glm::dvec3(xpos + radius, ypos + radius, 0.0));
                             xpos += 2.0 * radius;
+
+                            channel->setSubGraphPosition(GraphID, gc.graphs.at(GraphID).calculateBarycenter());
+                            channel->setSubGraphRadius(GraphID, radius);
                         }
                     }
                 }

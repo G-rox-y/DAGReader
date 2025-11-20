@@ -129,20 +129,20 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
     mr_g->vertices[base[0]].pos = glm::dvec3(0.0);
 
     if (base.size() < 2) return;
-    double dist01 = static_cast<double>(mr_g->findDist(base[0], base[1]));
+    double dist01 = static_cast<double>(mr_g->findDist(base[0], base[1]) * find_edge_length(base[0], base[1]));
     mr_g->vertices[base[1]].pos = glm::dvec3(dist01, 0.0, 0.0);
 
     if (base.size() < 3 || m_dimensions+1 < 3) return;
-    double dist02 = static_cast<double>(mr_g->findDist(base[0], base[2]));
-    double dist12 = static_cast<double>(mr_g->findDist(base[1], base[2]));
+    double dist02 = static_cast<double>(mr_g->findDist(base[0], base[2]) * find_edge_length(base[0], base[2]));
+    double dist12 = static_cast<double>(mr_g->findDist(base[1], base[2]) * find_edge_length(base[1], base[2]));
     double x2 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / dist01 / 2.0;
     double y2 = sqrt(dist02*dist02 - x2*x2);
     mr_g->vertices[base[2]].pos = glm::dvec3(x2, y2, 0.0);
     
     if (base.size() == 4 && m_dimensions+1 == 4) return;
-    double dist03 = static_cast<double>(mr_g->findDist(base[0], base[3]));
-    double dist13 = static_cast<double>(mr_g->findDist(base[1], base[3]));
-    double dist23 = static_cast<double>(mr_g->findDist(base[2], base[3]));
+    double dist03 = static_cast<double>(mr_g->findDist(base[0], base[3]) * find_edge_length(base[0], base[3]));
+    double dist13 = static_cast<double>(mr_g->findDist(base[1], base[3]) * find_edge_length(base[1], base[3]));
+    double dist23 = static_cast<double>(mr_g->findDist(base[2], base[3]) * find_edge_length(base[2], base[3]));
 
     if (abs(y2) < 1e-5){ // if first three were colinear
         double x3 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / dist01 / 2.0;

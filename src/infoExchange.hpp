@@ -118,7 +118,13 @@ public:
         return groupBlacklist.size();
     }
 
-    struct SubgraphData{size_t segment_num, edge_num; };
+    // subgraph data, and data control
+    struct SubgraphData{
+        size_t segment_num, edge_num;
+        glm::vec3 pos;
+        float radius;
+        bool selected = false;
+    };
 private:
     std::vector<SubgraphData> subgraphData;
     std::mutex subgraphData_mut;
@@ -140,6 +146,30 @@ public:
     void clearSubGraphData(){
         std::lock_guard lk(subgraphData_mut);
         subgraphData.clear();
+    }
+    void selectSubGraph(const size_t id){
+        std::lock_guard lk(subgraphData_mut);
+        if (subgraphData.size() <= id)
+            throw std::runtime_error("Error: Wrong subgraph data ID");
+        subgraphData.at(id).selected = true;
+    }
+    void unselectSubGraph(const size_t id){
+        std::lock_guard lk(subgraphData_mut);
+        if (subgraphData.size() <= id)
+            throw std::runtime_error("Error: Wrong subgraph data ID");
+        subgraphData.at(id).selected = false;
+    }
+    void setSubGraphPosition(const size_t id, const glm::vec3& pos){
+        std::lock_guard lk(subgraphData_mut);
+        if (subgraphData.size() <= id)
+            throw std::runtime_error("Error: Wrong subgraph data ID");
+        subgraphData.at(id).pos = pos;
+    }
+    void setSubGraphRadius(const size_t id, const float rad){
+        std::lock_guard lk(subgraphData_mut);
+        if (subgraphData.size() <= id)
+            throw std::runtime_error("Error: Wrong subgraph data ID");
+        subgraphData.at(id).radius = rad;
     }
 
     // grip variables
