@@ -90,8 +90,9 @@ public:
     // graph appearance variables
     std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(255, 50, 180, 175)};
     std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(230, 190, 80, 255)};
-    std::atomic<bool> randomize_segment_colors = {false};
-    std::atomic<bool> randomize_link_colors = {false};
+    std::atomic<glm::u8vec4> selected_color_packed{glm::u8vec4(140, 180, 220, 230)};
+    std::atomic<bool> randomize_segment_colors{false};
+    std::atomic<bool> randomize_link_colors{false};
     std::atomic<float> link_widths{0.015f};
     std::atomic<float> segment_widths{0.06f};
 

@@ -187,7 +187,7 @@ void sidePanel::draw()
                     for(size_t i = 0; i < subgraphNum; i++)
                         channel->unselectSubGraph(i);
 
-                bool tableCausedUpdates = false;
+                bool tableCausedReset = false, tableCausedRefresh = false;
                 static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY;
                 if (ImGui::BeginTable("subgraphTable", 5, table_flags)){
                     ImGui::TableSetupColumn("ID");
@@ -212,19 +212,20 @@ void sidePanel::draw()
                         if (ImGui::Checkbox(fmt::format("##Hide{}", graphID).c_str(), &val)){
                             if (!val) channel->hideGroup(graphID);
                             else channel->unhideGroup(graphID);
-                            tableCausedUpdates = true;
+                            tableCausedReset = true;
                         }
                         ImGui::TableSetColumnIndex(4);
                         val = D.selected;
                         if (ImGui::Checkbox(fmt::format("##Select{}", graphID).c_str(), &val)){
                             if (!val) channel->unselectSubGraph(graphID);
                             else channel->selectSubGraph(graphID);
+                            tableCausedRefresh = true;
                         }
                     }
                     ImGui::EndTable();
                 }
-                if (tableCausedUpdates)
-                    channel->addControllerTask(tasks::RESET_GRAPH);
+                if (tableCausedReset) channel->addControllerTask(tasks::RESET_GRAPH);
+                if (tableCausedRefresh) channel->addControllerTask(tasks::REFRESH_GRAPH);
             }
         }
         else{

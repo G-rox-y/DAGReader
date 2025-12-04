@@ -384,43 +384,55 @@ void Controller::run()
 
             glm::u8vec4 segColor = channel->segment_color_packed.load();
             glm::u8vec4 linkColor = channel->link_color_packed.load();
+            glm::u8vec4 selectionColor = channel->selected_color_packed.load();
             float segWidth = channel->segment_widths.load(), linkWidth = channel->link_widths.load();
             bool segRandom = channel->randomize_segment_colors.load();
             bool linkRandom = channel->randomize_link_colors.load();
 
+            // refresh unselected groups
+            
+
             // segment updates
             channel->renderer->activateGroup(-1);
-            if (segRandom != prevSegRandom){
-                if (segRandom) channel->renderer->randomizeGroupColors();
-                else channel->renderer->changeGroupColors(segColor);
-                prevSegRandom = segRandom;
-            }
-            if (!segRandom && prevSegColor != segColor){
-                channel->renderer->changeGroupColors(segColor);
-                prevSegColor = segColor;
-            }
-            if (segWidth != prevSegWidth){
+
+            channel->renderer->changeGroupColors(segColor);
+            if (segRandom && segRandom != prevSegRandom)
+                channel->renderer->randomizeGroupColors();
+
+            if (segWidth != prevSegWidth)
                 channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
-                prevSegWidth = segWidth;
-            }
+            
+            prevSegRandom = segRandom;
+            prevSegColor = segColor;
+            prevSegWidth = segWidth;
+            
             channel->renderer->deactivateGroup(-1);
 
             // link updates
             channel->renderer->activateGroup(-2);
-            if (linkRandom != prevLinkRandom){
-                if (linkRandom) channel->renderer->randomizeGroupColors();
-                else channel->renderer->changeGroupColors(linkColor);
-                prevLinkRandom = linkRandom;
-            }
-            if (!linkRandom && prevLinkColor != linkColor){
-                channel->renderer->changeGroupColors(linkColor);
-                prevLinkColor = linkColor;
-            }
-            if (linkWidth != prevLinkWidth){
+
+            channel->renderer->changeGroupColors(linkColor);
+            if (linkRandom && linkRandom != prevLinkRandom)
+                channel->renderer->randomizeGroupColors();
+            
+            if (linkWidth != prevLinkWidth)
                 channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
-                prevLinkWidth = linkWidth;
-            }
+            
+            prevLinkRandom = linkRandom;
+            prevLinkWidth = linkWidth;
+            prevLinkColor = linkColor;
+            
             channel->renderer->deactivateGroup(-2);
+
+            // refresh selected groups
+            for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+                if (channel->isGroupHidden(graphGroupID)) continue;
+                if (channel->getSubgraphData(graphGroupID).selected){
+                    channel->renderer->activateGroup(graphGroupID);
+                    channel->renderer->changeGroupColors(selectionColor);
+                    channel->renderer->deactivateGroup(graphGroupID);
+                }
+            }
         }
         else if (t == tasks::EXIT)
         {

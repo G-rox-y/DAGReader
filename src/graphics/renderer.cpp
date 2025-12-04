@@ -85,6 +85,14 @@ void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
     m_resizeHappened = true;
 }
 
+void Renderer::modifyPointColor(const size_t ID, const glm::u8vec4 color) {
+    if (m_appearances.size() < ID){
+        spdlog::warn("Trying to modify appearance out of range!");
+        return;
+    }
+    m_appearances[ID].color = color;
+}
+
 void Renderer::clearAll()
 {
     m_controlPoints.clear();

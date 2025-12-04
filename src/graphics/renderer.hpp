@@ -65,6 +65,8 @@ public:
     void addBox(const BezierBox& box);
     void addBoxes(const std::vector<BezierBox>& boxes);
 
+    void modifyPointColor(const size_t ID, const glm::u8vec4 color);
+
     void clearAll();
 
     // this function is going to fill the vertex buffer object with data and properly assign its vertex array
