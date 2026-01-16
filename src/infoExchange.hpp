@@ -96,6 +96,8 @@ public:
     std::atomic<float> link_widths{0.015f};
     std::atomic<float> segment_widths{0.06f};
 
+    std::atomic<bool> selection_mode{false};
+
     // what to hide
 private:
     std::unordered_set<int> groupBlacklist;
@@ -153,12 +155,14 @@ public:
         if (subgraphData.size() <= id)
             throw std::runtime_error("Error: Wrong subgraph data ID");
         subgraphData.at(id).selected = true;
+        renderer->makeXSubgroupOfY(id, -3);
     }
     void unselectSubGraph(const size_t id){
         std::lock_guard lk(subgraphData_mut);
         if (subgraphData.size() <= id)
             throw std::runtime_error("Error: Wrong subgraph data ID");
         subgraphData.at(id).selected = false;
+        renderer->removeXAsSubgroupOfY(id, -3);
     }
     void setSubGraphPosition(const size_t id, const glm::vec3& pos){
         std::lock_guard lk(subgraphData_mut);

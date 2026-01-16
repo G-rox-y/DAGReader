@@ -33,6 +33,8 @@ private:
     // groupIndices[x] contains all indices that are a part of group x
     // groupIndices[1] = vector[<1, 3>, <7,8>, <10, 10>] means 1,2,3,7,8,10 are elements of group 1
     std::unordered_map<int, std::vector<std::pair<size_t, size_t>>> m_groupIndices;
+    // grouplinks[x] contains ids of all subgroups
+    std::unordered_map<int, std::unordered_set<int>> m_groupSubgroups;
     std::unordered_set<int> m_active_groups;
 
     // --- opengl data
@@ -41,6 +43,17 @@ private:
     GLuint m_VB0; // id of the vertex buffer 0
     GLuint m_VB1; // id of the vertex buffer 1
     // ^ 2 buffers because we need 2 arrays, one for pts, and one for appearance
+    GLuint m_VB2; // this one is for the selection retrieval data
+    GLuint m_AC0; // the atomic counter sor the VB2
+
+    // --- shader info return
+
+    struct selections {
+        int ids[16];
+        float dists[16];
+    };
+
+    int m_selectionID = -1;
 
     // --- other
     mutable std::mt19937 m_rng{std::random_device{}()};
@@ -57,10 +70,16 @@ public:
     void randomizeGroupColors();
     void changeGroupDims(const glm::vec2& dims);
 
-    void activateGroup(const int id) { m_active_groups.insert(id); }
-    void deactivateGroup(const int id) { m_active_groups.erase(id); }
-    void deactivateAllGroups() { m_active_groups.clear(); }
-    void setAsOnlyGroup(const int id) { deactivateAllGroups(); activateGroup(id); }
+    void activateGroup(const int id);
+    void deactivateGroup(const int id);
+    void deactivateAllGroups();
+    void setAsOnlyGroup(const int id);
+    void makeXSubgroupOfY(const int X, const int Y);
+    void removeXAsSubgroupOfY(const int X, const int Y);
+
+    bool isEntryInGroup(const std::pair<size_t, size_t>& entry, const int id);
+    void addEntryToGroup(const std::pair<size_t, size_t>& entry, const int id);
+    void removeEntryFromGroup(const std::pair<size_t, size_t>& entry, const int id);
 
     void addBox(const BezierBox& box);
     void addBoxes(const std::vector<BezierBox>& boxes);
@@ -73,4 +92,7 @@ public:
     void updateBuffers();
 
     void draw();
+
+    // returns -1 if nothing is near the mouse
+    int getNearestToMouse() const { return m_selectionID; }
 };

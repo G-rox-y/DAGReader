@@ -134,7 +134,6 @@ target_sources(${PROJECT_NAME} PUBLIC
     "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
     "${imgui_SOURCE_DIR}/imgui.cpp"
     "${imgui_SOURCE_DIR}/imgui_draw.cpp"
-    "${imgui_SOURCE_DIR}/imgui_demo.cpp"  # imgui demo (optional)
     "${imgui_SOURCE_DIR}/imgui_tables.cpp"
     "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
@@ -168,6 +167,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME} PUBLIC DEBUG_LOGGING)
+    target_sources(${PROJECT_NAME} PUBLIC "${imgui_SOURCE_DIR}/imgui_demo.cpp")
 endif()
 
 # --- Add the font to the binary ---

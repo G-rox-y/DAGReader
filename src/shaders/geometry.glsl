@@ -1,7 +1,7 @@
 #version 430 core
 
 layout(lines) in;
-layout(triangle_strip, max_vertices = 14) out;
+layout(triangle_strip, max_vertices = 20) out;
 
 in teData{
     vec4 color;
@@ -15,6 +15,8 @@ in teData{
 flat out vec4 gsColor;
 
 uniform mat4 MVP;
+uniform float Scale;
+uniform int Selection;
 
 const ivec2 corners[4] = ivec2[4](ivec2(-1,-1), ivec2(+1,-1), ivec2(+1,+1), ivec2(-1,+1));
 const ivec2 endCorners[4] = ivec2[4](ivec2(+1,+1), ivec2(+1,-1), ivec2(-1,+1), ivec2(-1,-1));
@@ -40,6 +42,21 @@ void makePoint(int i, int j, bool end){
     EmitVertex();
 }
 
+void makeSelectionPoint(int j){
+    vec4 pos = MVP * vec4(gsIN[j].pos, 1.0);
+    pos.z = 0.0;
+    float dim = gsIN[j].halfExt.x * Scale;
+    gsColor = vec4(1.0, 1.0, 1.0, 2.0) - gsIN[j].color;
+
+    gl_Position = pos + vec4(dim, 0.0, 0.0, 0.0);
+    EmitVertex();
+    gl_Position = pos + vec4(-dim * 0.5, -dim, 0.0, 0.0);
+    EmitVertex();
+    gl_Position = pos + vec4(-dim * 0.5, dim, 0.0, 0.0);
+    EmitVertex();
+    EndPrimitive();
+}
+
 void main(){
     for(int i = 0; i <= 4; i++)
         for(int j = 0; j < 2; j++)
@@ -56,4 +73,10 @@ void main(){
             makePoint(i, 1, true);
         EndPrimitive();
     }
+
+    // draw selection point
+    if (Selection == 0) return;
+    makeSelectionPoint(1);
+    if (gsIN[0].u == 0.0f)
+        makeSelectionPoint(0);
 }

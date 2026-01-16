@@ -20,10 +20,14 @@ Renderer::Renderer() : program()
     glGenVertexArrays(1, &m_VA);
     glGenBuffers(1, &m_VB0);
     glGenBuffers(1, &m_VB1);
+    glGenBuffers(1, &m_VB2);
+    glGenBuffers(1, &m_AC0);
 }
 
 Renderer::~Renderer()
 {
+    glDeleteBuffers(1, &m_AC0);
+    glDeleteBuffers(1, &m_VB2);
     glDeleteBuffers(1, &m_VB1);
     glDeleteBuffers(1, &m_VB0);
     glDeleteVertexArrays(1, &m_VA);
@@ -60,6 +64,54 @@ void Renderer::changeGroupDims(const glm::vec2& dims){
             m_needUpdating.push(p);
         }
     }
+}
+
+void Renderer::activateGroup(const int id){
+    if (m_active_groups.find(id) != m_active_groups.end()) return;
+    m_active_groups.insert(id);
+    for(const auto group: m_groupSubgroups[id])
+        activateGroup(group);
+}
+
+void Renderer::deactivateGroup(const int id){
+    if (m_active_groups.find(id) == m_active_groups.end()) return;
+    m_active_groups.erase(id);
+    for(const auto group: m_groupSubgroups[id])
+        deactivateGroup(group);
+}
+
+void Renderer::deactivateAllGroups(){
+    m_active_groups.clear();
+}
+
+void Renderer::setAsOnlyGroup(const int id){
+    deactivateAllGroups();
+    activateGroup(id);
+}
+
+void Renderer::makeXSubgroupOfY(const int X, const int Y){
+    m_groupSubgroups[Y].insert(X);
+}
+
+void Renderer::removeXAsSubgroupOfY(const int X, const int Y){
+    m_groupSubgroups[Y].erase(X);
+}
+
+bool Renderer::isEntryInGroup(const std::pair<size_t, size_t>& entry, const int id){
+    size_t i = m_groupIndices[id].size() -1;
+    while(i+1 != 0 && m_groupIndices[id][i] != entry) i--;
+    return i+1!=0;
+}
+
+void Renderer::addEntryToGroup(const std::pair<size_t, size_t>& entry, const int id){
+    m_groupIndices[id].push_back(entry);
+}
+
+void Renderer::removeEntryFromGroup(const std::pair<size_t, size_t>& entry, const int id){
+    size_t i = m_groupIndices[id].size() -1;
+    while(i+1 != 0 && m_groupIndices[id][i] != entry) i--;
+    if (i+1==0) return;
+    m_groupIndices[id].erase(m_groupIndices[id].begin() + i);
 }
 
 void Renderer::addBox(const BezierBox& box){
@@ -101,6 +153,7 @@ void Renderer::clearAll()
 
     deactivateAllGroups();
     m_groupIndices.clear();
+    m_groupSubgroups.clear();
     
     while(!m_needUpdating.empty()) m_needUpdating.pop();
     
@@ -129,6 +182,12 @@ void Renderer::updateBuffers()
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB1);
         glBufferData(GL_SHADER_STORAGE_BUFFER, m_indexSize * appsize, m_appearances.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_VB1);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(selections), nullptr, GL_DYNAMIC_READ);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_VB2);
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
+        glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
 
         while(!m_needUpdating.empty()) m_needUpdating.pop();
         m_resizeHappened = false;
@@ -150,9 +209,39 @@ void Renderer::draw()
     if (!m_needUpdating.empty() || m_resizeHappened)
         updateBuffers();
 
+    
     if (m_indexSize){
+        // reset ac0
+        static GLuint zero = 0;
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
+        glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
+        
         glBindVertexArray(m_VA);
         glPatchParameteri(GL_PATCH_VERTICES, 1);
         glDrawArraysInstanced(GL_PATCHES, 0, 1, m_indexSize);
+
+        // read shader output (closest point to mouse vector)
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
+    
+        static GLuint count;
+        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
+        glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &count);
+        count = std::min<int>(count, 16);
+    
+        if (count == 0) return;
+    
+        static selections results;
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
+    
+        int bestID = -1; float bestDist = 1e5;
+        for(GLuint i = 0; i < count; i++){
+            if (results.dists[i] < bestDist){
+                bestID = results.ids[i];
+                bestDist = results.dists[i];
+            }
+        }
+        m_selectionID = bestID;
     }
+
 }

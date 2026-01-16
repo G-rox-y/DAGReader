@@ -12,7 +12,8 @@ void controls::draw()
         "R - Reset camera position",
         "I, O - Increase / decrease camera speed",
         "LShift(hold) - Speed up movement",
-        "H - Hide/Show this window"
+        "X - Toggle selection mode",
+        "H - Toggle this window"
     };
 
     for(auto& l:lines)

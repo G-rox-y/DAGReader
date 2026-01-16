@@ -425,14 +425,11 @@ void Controller::run()
             channel->renderer->deactivateGroup(-2);
 
             // refresh selected groups
-            for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
-                if (channel->isGroupHidden(graphGroupID)) continue;
-                if (channel->getSubgraphData(graphGroupID).selected){
-                    channel->renderer->activateGroup(graphGroupID);
-                    channel->renderer->changeGroupColors(selectionColor);
-                    channel->renderer->deactivateGroup(graphGroupID);
-                }
-            }
+            channel->renderer->activateGroup(-3);
+
+            channel->renderer->changeGroupColors(selectionColor);
+            
+            channel->renderer->deactivateGroup(-3);
         }
         else if (t == tasks::EXIT)
         {

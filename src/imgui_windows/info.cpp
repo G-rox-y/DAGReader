@@ -15,10 +15,18 @@ void info::draw()
         | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground;
 
     if (ImGui::Begin("Lower-Right HUD", nullptr, flags)){
-        float avail = ImGui::GetContentRegionAvail().x;
+        float width, avail = ImGui::GetContentRegionAvail().x;
         
+        if (channel->selection_mode.load()){
+            std::string text = "SELECTION MODE ACTIVE";
+            width = ImGui::CalcTextSize(text.c_str()).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
+            ImGui::SetNextItemWidth(width);
+            ImGui::Text(text.c_str());
+        }
+
         std::string version = "DAGReader v" DAGR_VERSION_STRING;
-        float width = ImGui::CalcTextSize(version.c_str()).x;
+        width = ImGui::CalcTextSize(version.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
         ImGui::SetNextItemWidth(width);
         ImGui::Text(version.c_str());
