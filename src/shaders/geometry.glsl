@@ -10,6 +10,7 @@ in teData{
     vec3 B;
     vec2 halfExt;
     float u;
+    int displayTriangles;
 } gsIN[];
 
 flat out vec4 gsColor;
@@ -76,7 +77,6 @@ void main(){
 
     // draw selection point
     if (Selection == 0) return;
-    makeSelectionPoint(1);
-    if (gsIN[0].u == 0.0f)
-        makeSelectionPoint(0);
+    if (gsIN[1].displayTriangles == 1) makeSelectionPoint(1);
+    if (gsIN[0].u == 0.0f && gsIN[0].displayTriangles == 1) makeSelectionPoint(0);
 }

@@ -56,11 +56,15 @@ void menuBar::draw()
             ImGui::Separator();
 
             bool lm = channel->light_mode.load();
-            if (ImGui::MenuItem("Light mode", NULL, lm)){
+            if (ImGui::MenuItem("Light mode", NULL, lm) && !lm){
                 channel->light_mode.store(!lm);
                 channel->update_window_vars.store(true);
-                if (!lm) ImGui::StyleColorsLight();
-                else ImGui::StyleColorsDark();
+                ImGui::StyleColorsLight();
+            }
+            if (ImGui::MenuItem("Dark mode", NULL, !lm) && lm){
+                channel->light_mode.store(!lm);
+                channel->update_window_vars.store(true);
+                ImGui::StyleColorsDark();
             }
 
             ImGui::Separator();

@@ -30,6 +30,7 @@ out teData{
     vec3 B; // RMF binormal
     vec2 halfExt;
     float u;
+    int displayTriangles;
 } teOUT;
 
 uniform vec3 MouseNear;
@@ -103,6 +104,9 @@ void main(){
         }
     }
     else teOUT.color = unpackUnorm4x8(a.color);
+
+    if (idist < a.halfExt.x * 30.0 && Selection != 0) teOUT.displayTriangles = 1;
+    else teOUT.displayTriangles = 0;
 
     gl_Position = vec4(pos, 1.0);
 };

@@ -69,7 +69,8 @@ struct infoExchange
 
     // variable for controlling imgui windows
     std::atomic<bool> about_window_shown{false};
-    std::atomic<bool> controls_window_shown{true};
+    std::atomic<bool> controls_window_shown{true}; // if the window is visible
+    std::atomic<bool> controls_window_toggled{false}; // if help is printed within the window
     std::atomic<bool> sidebar_window_shown{true};
     std::atomic<bool> info_window_shown{true};
 

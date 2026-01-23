@@ -282,7 +282,7 @@ void Window::run()
     glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods){
         if (key == GLFW_KEY_H && action == GLFW_RELEASE) {
             CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
-            data->channel->controls_window_shown.store(!data->channel->controls_window_shown.load());
+            data->channel->controls_window_toggled.store(!data->channel->controls_window_toggled.load());
         }
         if (key == GLFW_KEY_X && action == GLFW_RELEASE) {
             CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));

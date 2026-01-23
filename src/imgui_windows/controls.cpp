@@ -13,7 +13,7 @@ void controls::draw()
         "I, O - Increase / decrease camera speed",
         "LShift(hold) - Speed up movement",
         "X - Toggle selection mode",
-        "H - Toggle this window"
+        "H - Toggle controls"
     };
 
     for(auto& l:lines)
@@ -34,7 +34,9 @@ void controls::draw()
     
     if (ImGui::Begin("Controls", NULL, flags)){
         ImGui::SeparatorText("Controls:");
-        for(auto& l:lines) ImGui::Text(l.c_str());
+        if (channel->controls_window_toggled.load())
+            for(auto& l:lines) ImGui::Text("%s", l.c_str());
+        else ImGui::Text("press H to show");
         ImGui::End();
     }
     ImGui::PopStyleVar(2);
