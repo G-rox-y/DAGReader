@@ -300,17 +300,9 @@ void Window::run()
 
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
             CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
-            if (data->channel->selection_mode.load()){
-                int id = data->channel->renderer->getNearestToMouse();
-                auto entry = std::make_pair(id, id);
-                if (id != -1){
-                    if (data->channel->renderer->isEntryInGroup(entry, -3))
-                        data->channel->renderer->removeEntryFromGroup(entry, -3);
-                    else data->channel->renderer->addEntryToGroup(entry, -3);
-
+            if (data->channel->selection_mode.load())
+                if(data->channel->renderer->addMouseSelectionToGroup(groups::SELECTION))
                     data->channel->addControllerTask(tasks::REFRESH_GRAPH);
-                }
-            }
         }
     });
 

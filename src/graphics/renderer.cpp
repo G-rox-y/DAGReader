@@ -67,17 +67,11 @@ void Renderer::changeGroupDims(const glm::vec2& dims){
 }
 
 void Renderer::activateGroup(const int id){
-    if (m_active_groups.find(id) != m_active_groups.end()) return;
     m_active_groups.insert(id);
-    for(const auto group: m_groupSubgroups[id])
-        activateGroup(group);
 }
 
 void Renderer::deactivateGroup(const int id){
-    if (m_active_groups.find(id) == m_active_groups.end()) return;
     m_active_groups.erase(id);
-    for(const auto group: m_groupSubgroups[id])
-        deactivateGroup(group);
 }
 
 void Renderer::deactivateAllGroups(){
@@ -89,29 +83,79 @@ void Renderer::setAsOnlyGroup(const int id){
     activateGroup(id);
 }
 
-void Renderer::makeXSubgroupOfY(const int X, const int Y){
-    m_groupSubgroups[Y].insert(X);
-}
-
-void Renderer::removeXAsSubgroupOfY(const int X, const int Y){
-    m_groupSubgroups[Y].erase(X);
-}
-
 bool Renderer::isEntryInGroup(const std::pair<size_t, size_t>& entry, const int id){
-    size_t i = m_groupIndices[id].size() -1;
-    while(i+1 != 0 && m_groupIndices[id][i] != entry) i--;
-    return i+1!=0;
+    // this will have to be a linear search (list)
+    for(const auto& p:m_groupIndices[id])
+        if (p.first <= entry.first && p.second >= entry.second) return true;
+    
+    return false;    
 }
 
 void Renderer::addEntryToGroup(const std::pair<size_t, size_t>& entry, const int id){
-    m_groupIndices[id].push_back(entry);
+    auto& ranges = m_groupIndices[id];
+    size_t mergedStart = entry.first;
+    size_t mergedEnd = entry.second;
+    
+    // find and merge all overlapping/adjacent ranges
+    for (auto it = ranges.begin(); it != ranges.end(); ) {
+        auto& p = *it;
+        
+        if (entry.second < p.first) {
+            ranges.insert(it, {mergedStart, mergedEnd});
+            return;
+        }
+        if (entry.first > p.second) {
+            it++;
+            continue;
+        }
+        
+        mergedStart = std::min(mergedStart, p.first);
+        mergedEnd = std::max(mergedEnd, p.second);
+        it = ranges.erase(it);
+    }
+    spdlog::info("hi");
+    // insert merged range at the end if we reached this pt
+    ranges.push_back({mergedStart, mergedEnd});
 }
 
 void Renderer::removeEntryFromGroup(const std::pair<size_t, size_t>& entry, const int id){
-    size_t i = m_groupIndices[id].size() -1;
-    while(i+1 != 0 && m_groupIndices[id][i] != entry) i--;
-    if (i+1==0) return;
-    m_groupIndices[id].erase(m_groupIndices[id].begin() + i);
+    auto& ranges = m_groupIndices[id];
+
+    for(auto it = ranges.begin(); it != ranges.end(); ){
+        auto& p = *it;
+        
+        if (entry.second < p.first) return;
+        
+        if (entry.first > p.second) it++;
+        else{
+            if (entry.first <= p.first){
+                if (entry.second >= p.second) it = ranges.erase(it);
+                else{
+                    p.first = entry.second+1;
+                    return;
+                }
+            }
+            else{
+                auto remember = p.second;
+                p.second = entry.first-1;
+                if (entry.second < remember){
+                    ranges.insert(it, {entry.second+1, remember});
+                    return;
+                }
+                it++;
+            }
+        }
+    }
+}
+
+void Renderer::addGroupXToY(const int X, const int Y){
+    for(const auto& entry:m_groupIndices[X])
+        addEntryToGroup(entry, Y);
+}
+
+void Renderer::removeGroupXFromY(const int X, const int Y){
+    for(const auto& entry:m_groupIndices[X])
+        removeEntryFromGroup(entry, Y);
 }
 
 void Renderer::addBox(const BezierBox& box){
@@ -153,7 +197,6 @@ void Renderer::clearAll()
 
     deactivateAllGroups();
     m_groupIndices.clear();
-    m_groupSubgroups.clear();
     
     while(!m_needUpdating.empty()) m_needUpdating.pop();
     
@@ -227,9 +270,7 @@ void Renderer::draw()
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
         glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &count);
         count = std::min<int>(count, 16);
-    
-        if (count == 0) return;
-    
+        
         static selections results;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
@@ -244,4 +285,15 @@ void Renderer::draw()
         m_selectionID = bestID;
     }
 
+}
+
+bool Renderer::addMouseSelectionToGroup(const int id){
+    if (m_selectionID != -1){
+        auto entry = std::make_pair(m_selectionID, m_selectionID);
+        if (isEntryInGroup(entry, id))
+            removeEntryFromGroup(entry, id);
+        else addEntryToGroup(entry, id);
+        return true;
+    }
+    else return false;
 }

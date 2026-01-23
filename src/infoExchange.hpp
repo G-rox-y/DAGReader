@@ -13,6 +13,14 @@ namespace tasks{
     };
 }
 
+namespace groups{
+    enum rendererGroup {
+        SELECTION = -3,
+        LINK = -2,
+        SEGMENT = -1
+    };
+}
+
 // this struct will be used to exchange information between window and controller threads
 // it contains data which can be used by either thread, all data will be either atomic (a_) or just have a mutex (s_)
 // this struct will be created on main and its pointer passed to window and controller threads
@@ -155,14 +163,14 @@ public:
         if (subgraphData.size() <= id)
             throw std::runtime_error("Error: Wrong subgraph data ID");
         subgraphData.at(id).selected = true;
-        renderer->makeXSubgroupOfY(id, -3);
+        renderer->addGroupXToY(id, groups::SELECTION);
     }
     void unselectSubGraph(const size_t id){
         std::lock_guard lk(subgraphData_mut);
         if (subgraphData.size() <= id)
             throw std::runtime_error("Error: Wrong subgraph data ID");
         subgraphData.at(id).selected = false;
-        renderer->removeXAsSubgroupOfY(id, -3);
+        renderer->removeGroupXFromY(id, groups::SELECTION);
     }
     void setSubGraphPosition(const size_t id, const glm::vec3& pos){
         std::lock_guard lk(subgraphData_mut);

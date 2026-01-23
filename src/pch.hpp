@@ -19,6 +19,7 @@
 
 #include <map>
 #include <set>
+#include <list>
 #include <array>
 #include <queue>
 #include <tuple>
@@ -26,6 +27,7 @@
 #include <string>
 #include <sstream>
 #include <utility>
+#include <iterator>
 #include <unordered_map>
 #include <unordered_set>
 

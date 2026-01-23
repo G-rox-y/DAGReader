@@ -179,13 +179,17 @@ void sidePanel::draw()
                     channel->addControllerTask(tasks::RESET_GRAPH);
                 }
                 ImGui::SameLine();
-                if(ImGui::Button("Select All"))
+                if(ImGui::Button("Select All")){
                     for(size_t i = 0; i < subgraphNum; i++)
                         channel->selectSubGraph(i);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
                 ImGui::SameLine();
-                if(ImGui::Button("Unselect All"))
+                if(ImGui::Button("Unselect All")){
                     for(size_t i = 0; i < subgraphNum; i++)
                         channel->unselectSubGraph(i);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
 
                 bool tableCausedReset = false, tableCausedRefresh = false;
                 static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY;

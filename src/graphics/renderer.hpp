@@ -31,10 +31,9 @@ private:
     bool m_resizeHappened = false;
 
     // groupIndices[x] contains all indices that are a part of group x
-    // groupIndices[1] = vector[<1, 3>, <7,8>, <10, 10>] means 1,2,3,7,8,10 are elements of group 1
-    std::unordered_map<int, std::vector<std::pair<size_t, size_t>>> m_groupIndices;
-    // grouplinks[x] contains ids of all subgroups
-    std::unordered_map<int, std::unordered_set<int>> m_groupSubgroups;
+    // groupIndices[1] = list[<1, 3>, <7,8>, <10, 10>] means 1,2,3,7,8,10 are elements of group 1
+    // special care should be taken to keep this list sorted!
+    std::unordered_map<int, std::list<std::pair<size_t, size_t>>> m_groupIndices;
     std::unordered_set<int> m_active_groups;
 
     // --- opengl data
@@ -74,12 +73,12 @@ public:
     void deactivateGroup(const int id);
     void deactivateAllGroups();
     void setAsOnlyGroup(const int id);
-    void makeXSubgroupOfY(const int X, const int Y);
-    void removeXAsSubgroupOfY(const int X, const int Y);
 
     bool isEntryInGroup(const std::pair<size_t, size_t>& entry, const int id);
     void addEntryToGroup(const std::pair<size_t, size_t>& entry, const int id);
     void removeEntryFromGroup(const std::pair<size_t, size_t>& entry, const int id);
+    void addGroupXToY(const int X, const int Y);
+    void removeGroupXFromY(const int X, const int Y);
 
     void addBox(const BezierBox& box);
     void addBoxes(const std::vector<BezierBox>& boxes);
@@ -93,6 +92,6 @@ public:
 
     void draw();
 
-    // returns -1 if nothing is near the mouse
-    int getNearestToMouse() const { return m_selectionID; }
+    // returns false if no changes were made
+    bool addMouseSelectionToGroup(const int id);
 };

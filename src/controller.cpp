@@ -330,27 +330,27 @@ void Controller::run()
                         // and write the boxes to buffer
                         channel->renderer->activateGroup(graphGroupID);
                         
-                        channel->renderer->activateGroup(-1); // -1 is the Segments group ID
+                        channel->renderer->activateGroup(groups::SEGMENT);
                         channel->renderer->addBoxes(segBoxes);
-                        channel->renderer->deactivateGroup(-1);
+                        channel->renderer->deactivateGroup(groups::SEGMENT);
 
-                        channel->renderer->activateGroup(-2); // -2 is the Links group ID
+                        channel->renderer->activateGroup(groups::LINK);
                         channel->renderer->addBoxes(linkBoxes);
-                        channel->renderer->deactivateGroup(-2);
+                        channel->renderer->deactivateGroup(groups::LINK);
                         
                         channel->renderer->deactivateGroup(graphGroupID);
                     }
 
                     // set the colors and sizes for the links and segments
-                    channel->renderer->activateGroup(-1);
+                    channel->renderer->activateGroup(groups::SEGMENT);
                     channel->renderer->changeGroupColors(channel->segment_color_packed.load());
                     channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
-                    channel->renderer->deactivateGroup(-1);
+                    channel->renderer->deactivateGroup(groups::SEGMENT);
 
-                    channel->renderer->activateGroup(-2);
+                    channel->renderer->activateGroup(groups::LINK);
                     channel->renderer->changeGroupColors(channel->link_color_packed.load());
                     channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
-                    channel->renderer->deactivateGroup(-2);
+                    channel->renderer->deactivateGroup(groups::LINK);
 
                     // now just set the camera to look at the right place
                     double maxX = 0.0, maxY = 0.0;
@@ -393,7 +393,7 @@ void Controller::run()
             
 
             // segment updates
-            channel->renderer->activateGroup(-1);
+            channel->renderer->activateGroup(groups::SEGMENT);
 
             channel->renderer->changeGroupColors(segColor);
             if (segRandom && segRandom != prevSegRandom)
@@ -406,10 +406,10 @@ void Controller::run()
             prevSegColor = segColor;
             prevSegWidth = segWidth;
             
-            channel->renderer->deactivateGroup(-1);
+            channel->renderer->deactivateGroup(groups::SEGMENT);
 
             // link updates
-            channel->renderer->activateGroup(-2);
+            channel->renderer->activateGroup(groups::LINK);
 
             channel->renderer->changeGroupColors(linkColor);
             if (linkRandom && linkRandom != prevLinkRandom)
@@ -422,14 +422,14 @@ void Controller::run()
             prevLinkWidth = linkWidth;
             prevLinkColor = linkColor;
             
-            channel->renderer->deactivateGroup(-2);
+            channel->renderer->deactivateGroup(groups::LINK);
 
             // refresh selected groups
-            channel->renderer->activateGroup(-3);
+            channel->renderer->activateGroup(groups::SELECTION);
 
             channel->renderer->changeGroupColors(selectionColor);
             
-            channel->renderer->deactivateGroup(-3);
+            channel->renderer->deactivateGroup(groups::SELECTION);
         }
         else if (t == tasks::EXIT)
         {
