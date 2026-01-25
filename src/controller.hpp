@@ -19,6 +19,11 @@ private:
 
     graphCollection gc;
 
+    void handleFile(tasks::controllerTask t);
+    void getPathNFD(std::filesystem::path& path) const;
+    void layoutGraph();
+    void resetGraph();
+    void refreshGraph();
 public:
     Controller(infoExchange* c);
     ~Controller() = default;
@@ -26,6 +31,4 @@ public:
     // this function is waiting for a signal from other threads to do something
     // when it doesnt need to do anything it is automatically blocked (waiting but not running)
     void run();
-
-    void getPathNFD(std::filesystem::path& path) const;
 };

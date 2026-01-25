@@ -113,7 +113,7 @@ void Renderer::addEntryToGroup(const std::pair<size_t, size_t>& entry, const int
         mergedEnd = std::max(mergedEnd, p.second);
         it = ranges.erase(it);
     }
-    spdlog::info("hi");
+    
     // insert merged range at the end if we reached this pt
     ranges.push_back({mergedStart, mergedEnd});
 }

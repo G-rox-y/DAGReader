@@ -26,12 +26,17 @@ namespace groups{
 // this struct will be created on main and its pointer passed to window and controller threads
 struct infoExchange
 {
+    // controller task handling
+    // remember that the functions below will be run from different threads
+    // for example the controller thread will be using "waitForTask" while the window thread will be using functions to add tasks
+private:
     // a queue containing controller tasks, these tasks are waited on with a condition variable
     std::queue<tasks::controllerTask> controller_tasks;
+    std::queue<std::filesystem::path> controller_tasks_paths;
     std::mutex controller_tasks_mut;
+public:
     std::condition_variable controller_tasks_cv;
     // a queue containing paths for the controller tasks (some tasks get additional path arguments)
-    std::queue<std::filesystem::path> controller_tasks_paths;
     // helper functions for those variables
     void addControllerTask(tasks::controllerTask task){
         spdlog::debug("Sending a task to the controller");
@@ -46,6 +51,19 @@ struct infoExchange
     }
     void addControllerTaskPath(std::string& path){
         addControllerTaskPath(std::filesystem::path(path));
+    }
+    std::string getControllerTaskPath(){
+        std::scoped_lock lk(controller_tasks_mut);
+        std::string ret = controller_tasks_paths.front();
+        controller_tasks_paths.pop();
+        return ret;
+    }
+    tasks::controllerTask waitForTask(){
+        std::unique_lock lk(controller_tasks_mut);
+        controller_tasks_cv.wait(lk, [&](){ return !controller_tasks.empty(); });
+        auto t = controller_tasks.front();
+        controller_tasks.pop();
+        return t;
     }
 
 
