@@ -10,7 +10,7 @@ private:
     GLuint id;
 
     // remember where uniforms are stored so they dont need to be fetched every time
-    std::unordered_map<std::string, int> uniformLocationCache;
+    std::unordered_map<std::string, GLint> uniformLocationCache;
 
     // loads a shader into a program
     GLuint loadShader(const GLuint type);
@@ -18,8 +18,13 @@ private:
 public:
     GLProgram(); // constructor loads and compiles shaders into the program
     ~GLProgram();
+    // dont copy!
+    GLProgram(const GLProgram&) = delete;
+    GLProgram& operator=(const GLProgram&) = delete;
+    GLProgram(GLProgram&&) = delete;
+    GLProgram& operator=(GLProgram&&) = delete;
 
-    int getUniformLocation(const std::string& param);
+    GLint getUniformLocation(const std::string& param);
 
     // set shader uniform
     void setUniformMat4f(const std::string& param, const glm::mat4& matrix);
@@ -28,7 +33,5 @@ public:
     void setUniform1i(const std::string& param, int num);
 
     // activates the program
-    void use() const;
-    // deactivates the currently active program
-    static void programUnbind() { glUseProgram(0); }
+    void use() const { glUseProgram(id); }
 };

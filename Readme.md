@@ -8,15 +8,15 @@ You just need CMake, git and a C++ compiler that supports c++17 or higher.
 ### Installing Dependencies
 #### Debian based systems (Ubuntu, Mint ...)
 ```bash
-sudo apt update && sudo apt install cmake git build-essential
+sudo apt update && sudo apt install cmake git build-essential libomp-dev
 ```
 #### Fedora based systems
 ```bash
-sudo dnf install cmake git gcc-c++
+sudo dnf install cmake git gcc-c++ libomp-devel
 ```
 #### Arch based systems
 ```bash
-sudo pacman -Syu cmake git base-devel
+sudo pacman -Syu cmake git base-devel openmp
 ```
 #### macOS
 1. install Xcode Command Line Tools (includes compiler + git)
@@ -25,7 +25,7 @@ xcode-select --install
 ```
 2. install cmake via homebrew (it will also work if you install it manually)
 ```bash
-brew install cmake
+brew install cmake libomp
 ```
 ---
 ### Building instructions

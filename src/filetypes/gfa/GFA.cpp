@@ -323,7 +323,7 @@ void GFA::fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const {
         v.emplace_back(id + 1);
         verts[s.getName() + "END"] = id + 1;
         e.emplace_back(id, id + 1, s.getSegmentLength());
-        e.back().isSegmentPart(true);
+        e.back().segPart = true;
     }
 
     for(auto& l:links){

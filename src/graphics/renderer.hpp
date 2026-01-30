@@ -18,72 +18,95 @@ class Renderer {
 private:
     struct appearance {
         glm::u8vec4 color;
-        uint32_t _padding0; // padding so that we can pass the data directly and have it comply with glsl std430
+        uint32_t : 32; // padding so that we can pass the data directly and have it comply with glsl std430
         glm::vec2 halfExt; // dimensions of the box cross-section
     };
 
     // --- data
+    // adding this just for better readability
+    using IndexRange = std::pair<size_t, size_t>;
 
     std::vector<std::array<glm::vec4, 4>> m_controlPoints;
     std::vector<appearance> m_appearances;
     GLuint m_indexSize = 0; // last saved vector size
-    std::queue<std::pair<size_t, size_t>> m_needUpdating;
+    std::queue<IndexRange> m_needUpdating;
     bool m_resizeHappened = false;
 
     // groupIndices[x] contains all indices that are a part of group x
     // groupIndices[1] = list[<1, 3>, <7,8>, <10, 10>] means 1,2,3,7,8,10 are elements of group 1
     // special care should be taken to keep this list sorted!
-    std::unordered_map<int, std::list<std::pair<size_t, size_t>>> m_groupIndices;
+    std::unordered_map<int, std::list<IndexRange>> m_groupIndices;
     std::unordered_set<int> m_active_groups;
 
     // --- opengl data
 
-    GLuint m_VA; // id of the vertex array
-    GLuint m_VB0; // id of the vertex buffer 0
-    GLuint m_VB1; // id of the vertex buffer 1
-    // ^ 2 buffers because we need 2 arrays, one for pts, and one for appearance
-    GLuint m_VB2; // this one is for the selection retrieval data
-    GLuint m_AC0; // the atomic counter sor the VB2
+    // RAII wrapper for buffers and arrays
+    struct GLObjectBase {
+        GLuint id = 0;
+
+        // no copy!!
+        GLObjectBase(const GLObjectBase&) = delete;
+        GLObjectBase& operator=(const GLObjectBase&) = delete;
+        
+        // when called without a method, return the ID
+        operator GLuint() const { return id; }
+    protected:
+        GLObjectBase() = default;
+        ~GLObjectBase() = default;
+    };
+    struct GLBuffer : GLObjectBase {
+        GLBuffer() { glGenBuffers(1, &id); }
+        ~GLBuffer() { if (id) glDeleteBuffers(1, &id); }
+    };
+    struct GLVertexArray : GLObjectBase {
+        GLVertexArray() { glGenVertexArrays(1, &id); }
+        ~GLVertexArray() { if (id) glDeleteVertexArrays(1, &id); }
+    };
+
+    // VB0 and VB1 are for control points and appearances
+    // VB2 is for selection retrieval data and AC0 is its atomic counter
+    GLBuffer m_VB0, m_VB1, m_VB2, m_AC0;
+    GLVertexArray m_VA; // id of the vertex array
 
     // --- shader info return
+    static constexpr size_t MAX_SELECTIONS = 16;
 
     struct selections {
-        int ids[16];
-        float dists[16];
+        int ids[MAX_SELECTIONS];
+        float dists[MAX_SELECTIONS];
     };
 
     int m_selectionID = -1;
 
     // --- other
-    mutable std::mt19937 m_rng{std::random_device{}()};
+    std::mt19937 m_rng{std::random_device{}()};
 
     void boxInsert(const BezierBox& b);
 
+    GLProgram m_program; // the shaders
 public:
-    GLProgram program; // the shaders
-
-    Renderer();
-    ~Renderer();
+    Renderer() = default;
+    ~Renderer() = default;
+    // but not meant to be copied!!
+    Renderer(const Renderer&) = delete;
+    Renderer& operator=(const Renderer&) = delete;
+    Renderer(Renderer&&) = delete;
+    Renderer& operator=(Renderer&&) = delete;
 
     void changeGroupColors(const glm::u8vec4 newColor);
     void randomizeGroupColors();
     void changeGroupDims(const glm::vec2& dims);
 
-    void activateGroup(const int id);
-    void deactivateGroup(const int id);
-    void deactivateAllGroups();
-    void setAsOnlyGroup(const int id);
+    void activateGroup(const int id) { m_active_groups.insert(id); }
+    void deactivateGroup(const int id) { m_active_groups.erase(id); }
 
-    bool isEntryInGroup(const std::pair<size_t, size_t>& entry, const int id);
-    void addEntryToGroup(const std::pair<size_t, size_t>& entry, const int id);
-    void removeEntryFromGroup(const std::pair<size_t, size_t>& entry, const int id);
+    bool isEntryInGroup(const IndexRange& entry, const int id);
+    void addEntryToGroup(const IndexRange& entry, const int id);
+    void removeEntryFromGroup(const IndexRange& entry, const int id);
     void addGroupXToY(const int X, const int Y);
     void removeGroupXFromY(const int X, const int Y);
 
-    void addBox(const BezierBox& box);
     void addBoxes(const std::vector<BezierBox>& boxes);
-
-    void modifyPointColor(const size_t ID, const glm::u8vec4 color);
 
     void clearAll();
 
@@ -94,4 +117,7 @@ public:
 
     // returns false if no changes were made
     bool addMouseSelectionToGroup(const int id);
+
+    // reach shaders
+    GLProgram& program() { return m_program; }
 };

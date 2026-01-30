@@ -22,59 +22,65 @@ void Controller::handleFile(tasks::controllerTask t){
         spdlog::info("Task: OPEN_PATH");
         path = channel->getControllerTaskPath();
     }
-    if (path.empty()) spdlog::info("Recieved an empty path");
-    if (!fs::exists(path)) spdlog::warn("Recieved a path that doesnt exist: {}", path.string());
-    else{
-        // save the path to the recently used paths
-        spdlog::info("Updating the .ini ...");
-        {   // now we need to use recent_paths data
-            std::scoped_lock lk2(channel->recent_paths_mut);
-            
-            // remove previous occurences
-            channel->recent_paths.erase(
-                std::remove(channel->recent_paths.begin(), channel->recent_paths.end(), path),
-                channel->recent_paths.end()
-            );
-
-            // then add our path
-            channel->recent_paths.push_back(path);
-            
-            // update the ini file
-            auto& section = ini.sections.at("recentPaths");
-            
-            // save 5 (or less) elements from the back
-            for(int i = (int)channel->recent_paths.size() - 1; i >= 0 && (int)channel->recent_paths.size() - i <= 5; i--)
-                section[std::to_string((int)channel->recent_paths.size() - i - 1)] = channel->recent_paths[i].string();
-        }
-        std::ofstream iniFileOut(iniPath, std::ios::trunc);
-        if (iniFileOut.is_open()) ini.generate(iniFileOut);
-        else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.string());
-        iniFileOut.close();
-
-        spdlog::info("Running the parser on the file");
-        channel->loading_file_in_progress.store(true);
-        GFA gfa(path.string());
-
-        gc.clear();
-        std::vector<Vertex> v;
-        std::vector<Edge> e;
-        gfa.fillData(v, e);
-        gc.setGraphs(v, e);
-
-        channel->clearSubGraphData();
-        for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
-            auto& G = gc.graphs.at(graphGroupID);
-            channel->addSubgraphData(infoExchange::SubgraphData{
-                G.vertices.size(), G.edges.size()
-            });
-        }
-        channel->graph_data_seg_num.store(gfa.segmentNum());
-        channel->graph_data_link_num.store(gfa.linkNum());
-        channel->graph_name_set(path.filename().string());
-        channel->graph_loaded.store(true);
-        channel->graph_param_change.store(true); // new things to draw now available
-        channel->loading_file_in_progress.store(false);
+    if (path.empty()){
+        spdlog::info("Recieved an empty path");
+        return;
     }
+    if (!fs::exists(path)){
+        spdlog::warn("Recieved a path that doesnt exist: {}", path.string());
+        return;
+    }
+    
+    // save the path to the recently used paths
+    spdlog::info("Updating the .ini ...");
+    {   // now we need to use recent_paths data
+        std::scoped_lock lk2(channel->recent_paths_mut);
+        
+        // remove previous occurences
+        channel->recent_paths.erase(
+            std::remove(channel->recent_paths.begin(), channel->recent_paths.end(), path),
+            channel->recent_paths.end()
+        );
+
+        // then add our path
+        channel->recent_paths.push_back(path);
+        
+        // update the ini file
+        auto& section = ini.sections.at("recentPaths");
+        
+        // save 5 (or less) elements from the back
+        for(int i = (int)channel->recent_paths.size() - 1; i >= 0 && (int)channel->recent_paths.size() - i <= 5; i--)
+            section[std::to_string((int)channel->recent_paths.size() - i - 1)] = channel->recent_paths[i].string();
+    }
+    
+    std::ofstream iniFileOut(iniPath, std::ios::trunc);
+    if (iniFileOut.is_open()) ini.generate(iniFileOut);
+    else spdlog::warn("Failed to open the ini file (for updating) at: {}", iniPath.string());
+    iniFileOut.close();
+
+    spdlog::info("Running the parser on the file");
+    channel->loading_file_in_progress.store(true);
+    GFA gfa(path.string());
+
+    gc.clear();
+    std::vector<Vertex> v;
+    std::vector<Edge> e;
+    gfa.fillData(v, e);
+    gc.setGraphs(v, e);
+
+    channel->clearSubGraphData();
+    for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
+        auto& G = gc.graphs.at(graphGroupID);
+        channel->addSubgraphData(infoExchange::SubgraphData{
+            G.vertices.size(), G.edges.size()
+        });
+    }
+    channel->graph_data_seg_num.store(gfa.segmentNum());
+    channel->graph_data_link_num.store(gfa.linkNum());
+    channel->graph_name_set(path.filename().string());
+    channel->graph_loaded.store(true);
+    channel->graph_param_change.store(true); // new things to draw now available
+    channel->loading_file_in_progress.store(false);
 }
 
 void Controller::getPathNFD(std::filesystem::path& path) const
@@ -119,9 +125,14 @@ void Controller::layoutGraph(){
             for(auto& e:G.edges)
                 e.length = (e.originalLength / segLen) + 1;
 
-        // layout the graphs
-        for(auto& G:gc.graphs){
-            GRIP layout(G);
+        // layout the graphs, multithreading ahead!
+        #ifdef HAS_OPENMP
+            unsigned int available_threads = std::max<unsigned int>(std::thread::hardware_concurrency()-2 , 2);
+            spdlog::info("splitting the workload, max threads: {}", available_threads);
+            #pragma omp parallel for num_threads(available_threads) schedule(dynamic, 1)
+        #endif
+        for(size_t i = 0; i < gc.graphs.size(); i++){
+            GRIP layout(gc.graphs.at(i));
             layout.setFRscaling(channel->grip_scalingFactor.load());
             layout.setRoundsNumber(channel->grip_roundsNum.load());
             layout.setTempGain(channel->grip_tempGain.load());
@@ -204,40 +215,40 @@ void Controller::resetGraph(){
         std::unordered_map<int, size_t> boxIndices;
 
         for(auto& e:G.edges){
-            if (e.segPart){
-                segBoxes.emplace_back();
-                metadata.emplace_back();
-                BezierBox& b = segBoxes.back();
-                boxIndices[e.start] = segBoxes.size() - 1;
-                boxIndices[e.end] = segBoxes.size() - 1;
-                b.start = G.vertices.at(e.start).pos;
-                b.end = G.vertices.at(e.end).pos;
-                b.startOri = glm::normalize(b.start - b.end);
-                b.endOri = -b.startOri;
-            }
+            if (!e.segPart) continue;
+            
+            segBoxes.emplace_back();
+            metadata.emplace_back();
+            BezierBox& b = segBoxes.back();
+            boxIndices[e.start] = segBoxes.size() - 1;
+            boxIndices[e.end] = segBoxes.size() - 1;
+            b.start = G.vertices.at(e.start).pos;
+            b.end = G.vertices.at(e.end).pos;
+            b.startOri = glm::normalize(b.start - b.end);
+            b.endOri = -b.startOri;
         }
         for(auto& e:G.edges){
-            if (!e.segPart){
-                BezierBoxMetadata& bFirst = metadata.at(boxIndices[e.start]);
-                BezierBoxMetadata& bSecond = metadata.at(boxIndices[e.end]);
+            if (e.segPart) continue;
 
-                // set barycenter of edge start box and end box
-                if (e.startOri){
-                    bFirst.startBcCounter++;
-                    bFirst.startBc += G.vertices.at(e.end).pos;
-                }
-                else{
-                    bFirst.endBcCounter++;
-                    bFirst.endBc += G.vertices.at(e.end).pos;
-                }
-                if (e.endOri){
-                    bSecond.startBcCounter++;
-                    bSecond.startBc += G.vertices.at(e.start).pos;
-                }
-                else{
-                    bSecond.endBcCounter++;
-                    bSecond.endBc += G.vertices.at(e.start).pos;
-                }
+            BezierBoxMetadata& bFirst = metadata.at(boxIndices[e.start]);
+            BezierBoxMetadata& bSecond = metadata.at(boxIndices[e.end]);
+
+            // set barycenter of edge start box and end box
+            if (e.startOri){
+                bFirst.startBcCounter++;
+                bFirst.startBc += G.vertices.at(e.end).pos;
+            }
+            else{
+                bFirst.endBcCounter++;
+                bFirst.endBc += G.vertices.at(e.end).pos;
+            }
+            if (e.endOri){
+                bSecond.startBcCounter++;
+                bSecond.startBc += G.vertices.at(e.start).pos;
+            }
+            else{
+                bSecond.endBcCounter++;
+                bSecond.endBc += G.vertices.at(e.start).pos;
             }
         }
         

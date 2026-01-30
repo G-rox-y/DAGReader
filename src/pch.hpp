@@ -6,6 +6,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <inipp/inipp.h>
 
+#include <omp.h>
 #include <mutex>
 #include <thread>
 #include <atomic>

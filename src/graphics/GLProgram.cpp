@@ -2,7 +2,7 @@
 
 GLuint GLProgram::loadShader(const GLuint type)
 {   
-    const char* code;
+    const char* code = nullptr;
     
     if (type == GL_VERTEX_SHADER) code = vertexShaderSource;
     else if (type == GL_TESS_CONTROL_SHADER) code = tcsShaderSource;
@@ -15,14 +15,14 @@ GLuint GLProgram::loadShader(const GLuint type)
     if (shader == GL_INVALID_ENUM)
         spdlog::warn("Shader type '{}' is invalid", type);
 
-    glShaderSource(shader, 1, &code, NULL);
+    glShaderSource(shader, 1, &code, nullptr);
     glCompileShader(shader);
 
     GLint success;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success){
         std::array<char, 512> infolog;
-        glGetShaderInfoLog(shader, 512, NULL, infolog.data());
+        glGetShaderInfoLog(shader, infolog.size(), nullptr, infolog.data());
         spdlog::error("Shader fail: {}", infolog.data());
     }
 
@@ -33,20 +33,15 @@ GLProgram::GLProgram()
 {
     id = glCreateProgram();
     
-    GLuint vert = loadShader(GL_VERTEX_SHADER);
-    glAttachShader(id, vert);
+    GLuint shaders[] = {
+        loadShader(GL_VERTEX_SHADER),
+        loadShader(GL_TESS_CONTROL_SHADER),
+        loadShader(GL_TESS_EVALUATION_SHADER),
+        loadShader(GL_GEOMETRY_SHADER),
+        loadShader(GL_FRAGMENT_SHADER)
+    };
     
-    GLuint tcs = loadShader(GL_TESS_CONTROL_SHADER);
-    glAttachShader(id, tcs);
-    
-    GLuint tes = loadShader(GL_TESS_EVALUATION_SHADER);
-    glAttachShader(id, tes);
-
-    GLuint geom = loadShader(GL_GEOMETRY_SHADER);
-    glAttachShader(id, geom);
-    
-    GLuint frag = loadShader(GL_FRAGMENT_SHADER);
-    glAttachShader(id, frag);
+    for (GLuint shader : shaders) glAttachShader(id, shader);
 
     glLinkProgram(id);
 
@@ -54,32 +49,26 @@ GLProgram::GLProgram()
     glGetProgramiv(id, GL_LINK_STATUS, &success);
     if (!success){
         std::array<char, 512> infolog;
-        glGetProgramInfoLog(id, 512, NULL, infolog.data());
+        glGetProgramInfoLog(id, infolog.size(), nullptr, infolog.data());
         spdlog::error("Shader fail: {}", infolog.data());
     }
 
     // we dont need shaders after compilation
-    glDeleteShader(vert);
-    glDeleteShader(tcs);
-    glDeleteShader(tes);
-    glDeleteShader(geom);
-    glDeleteShader(frag);
+    for (GLuint shader : shaders) glDeleteShader(shader);
 
-    this->use();
+    use();
 }
 
-GLProgram::~GLProgram()
-{
+GLProgram::~GLProgram(){
     glDeleteProgram(id);
-    this->programUnbind();
 }
 
 
-int GLProgram::getUniformLocation(const std::string& param)
+GLint GLProgram::getUniformLocation(const std::string& param)
 {
     if (uniformLocationCache.find(param) != uniformLocationCache.end()) return uniformLocationCache[param];
 
-    int location = glGetUniformLocation(id, param.c_str());
+    GLint location = glGetUniformLocation(id, param.c_str());
     
     if (location == -1) spdlog::warn("uniform {} doesnt exist", param);
     
@@ -101,8 +90,4 @@ void GLProgram::setUniform1f(const std::string& param, float num){
 
 void GLProgram::setUniform1i(const std::string& param, int num){
     glUniform1i(this->getUniformLocation(param), num);
-}
-
-void GLProgram::use() const{
-    glUseProgram(id); 
 }

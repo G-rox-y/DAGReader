@@ -95,13 +95,14 @@ public:
     // graph data
 private:
     std::string graph_name_string;
-    std::mutex graph_name_string_mut;
+    mutable std::mutex graph_name_string_mut;
 public:
     void graph_name_set(const std::string& name) {
         std::lock_guard lk(graph_name_string_mut);
         graph_name_string = name;
     }
-    const std::string_view graph_name_get() const {
+    std::string_view graph_name_get() const {
+        std::lock_guard lk(graph_name_string_mut);
         return std::string_view(graph_name_string);
     };
     std::atomic<int> graph_data_seg_num{0};
@@ -128,7 +129,7 @@ public:
     // what to hide
 private:
     std::unordered_set<int> groupBlacklist;
-    std::mutex groupBlacklist_mut;
+    mutable std::mutex groupBlacklist_mut;
 public:
     void hideGroup(const int id){
         std::lock_guard lk(groupBlacklist_mut);
@@ -139,11 +140,11 @@ public:
         if(groupBlacklist.find(id) != groupBlacklist.end()) [[likely]]
             groupBlacklist.erase(id);
     }
-    bool isGroupHidden(const int id){
+    bool isGroupHidden(const int id) const {
         std::lock_guard lk(groupBlacklist_mut);
         return (groupBlacklist.find(id) != groupBlacklist.end());
     }
-    const size_t numOfHiddenGroups(){
+    size_t numOfHiddenGroups() const {
         std::lock_guard lk(groupBlacklist_mut);
         return groupBlacklist.size();
     }
@@ -157,15 +158,15 @@ public:
     };
 private:
     std::vector<SubgraphData> subgraphData;
-    std::mutex subgraphData_mut;
+    mutable std::mutex subgraphData_mut;
 public:
-    const SubgraphData getSubgraphData(const size_t id){
+    const SubgraphData& getSubgraphData(const size_t id) const {
         std::lock_guard lk(subgraphData_mut);
         if (subgraphData.size() <= id)
             throw std::runtime_error("Error: Wrong subgraph data ID");
         return subgraphData.at(id);
     }
-    const size_t subgraphAmount(){
+    size_t subgraphAmount() const {
         std::lock_guard lk(subgraphData_mut);
         return subgraphData.size();
     }

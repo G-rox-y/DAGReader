@@ -101,6 +101,12 @@ FetchContent_MakeAvailable(inipp)
 set(CMAKE_BUILD_TYPE "${root_build_type}" CACHE STRING "Build type" FORCE)
 set(CMAKE_CXX_FLAGS "${root_cxx_flags}")
 
+# OpenMP
+find_package(OpenMP)
+if(NOT OpenMP_CXX_FOUND)
+    message(WARNING "OpenMP not found. Building without multithreading support for layout algorithms.")
+endif()
+
 # -------------------- END OF DEPENDENCIES
 
 # create executable
@@ -158,6 +164,11 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "glfw;libglew_static;nfd;inipp"
 )
+
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE HAS_OPENMP)
+endif()
 
 # add definitions
 target_compile_definitions(${PROJECT_NAME} PUBLIC

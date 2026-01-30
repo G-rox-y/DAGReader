@@ -43,8 +43,8 @@ void Window::manageInputs()
     glm::vec4 mouseNear = invMVP * glm::vec4(mouse_xpos, mouse_ypos, -1.0, 1.0);
     glm::vec4 mouseFar = invMVP * glm::vec4(mouse_xpos, mouse_ypos, 1.0, 1.0);
     mouseNear /= mouseNear.w; mouseFar /= mouseFar.w;
-    m_renderer->program.setUniformVec3f("MouseNear", glm::vec3(mouseNear));
-    m_renderer->program.setUniformVec3f("MouseFar", glm::vec3(mouseFar));
+    m_renderer->program().setUniformVec3f("MouseNear", glm::vec3(mouseNear));
+    m_renderer->program().setUniformVec3f("MouseFar", glm::vec3(mouseFar));
 }
 
 void Window::drawStuff()
@@ -327,11 +327,11 @@ void Window::run()
         m_cam->update(m_fb_width, m_fb_height);
 
         // pass the camera view matrix through uniform
-        m_renderer->program.setUniformMat4f("MVP", m_cam->getMat());
-        m_renderer->program.setUniform1f("Scale", m_cam->getScale());
-        m_renderer->program.setUniform1i("Selection", channel->selection_mode.load());
-        m_renderer->program.setUniformVec3f("CamPos", m_cam->getPos());
-        m_renderer->program.setUniform1f("PxPerRad", (float)m_fb_height / m_cam->getFOV());
+        m_renderer->program().setUniformMat4f("MVP", m_cam->getMat());
+        m_renderer->program().setUniform1f("Scale", m_cam->getScale());
+        m_renderer->program().setUniform1i("Selection", channel->selection_mode.load());
+        m_renderer->program().setUniformVec3f("CamPos", m_cam->getPos());
+        m_renderer->program().setUniform1f("PxPerRad", (float)m_fb_height / m_cam->getFOV());
 
         // which faces to cull (whats the front and whats the back)
         bool mirrored = glm::determinant(m_cam->getMat()) < 0.0f;

@@ -8,29 +8,7 @@ void Renderer::boxInsert(const BezierBox& b){
     m_controlPoints.emplace_back(std::array<glm::vec4, 4>{
         glm::vec4(b.start, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(b.end, 1.f)
     });
-    m_appearances.emplace_back(appearance{
-        b.color, 
-        0, // padding
-        b.dims
-    });
-}
-
-Renderer::Renderer() : program()
-{
-    glGenVertexArrays(1, &m_VA);
-    glGenBuffers(1, &m_VB0);
-    glGenBuffers(1, &m_VB1);
-    glGenBuffers(1, &m_VB2);
-    glGenBuffers(1, &m_AC0);
-}
-
-Renderer::~Renderer()
-{
-    glDeleteBuffers(1, &m_AC0);
-    glDeleteBuffers(1, &m_VB2);
-    glDeleteBuffers(1, &m_VB1);
-    glDeleteBuffers(1, &m_VB0);
-    glDeleteVertexArrays(1, &m_VA);
+    m_appearances.emplace_back(appearance{b.color, b.dims});
 }
 
 void Renderer::changeGroupColors(const glm::u8vec4 newColor){
@@ -48,7 +26,7 @@ void Renderer::randomizeGroupColors(){
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
             for(size_t i = p.first; i <= p.second; i++){
-                int alpha = m_appearances[i].color.w; // preserve transparancy value
+                int alpha = m_appearances[i].color.w; // preserve transparency value
                 m_appearances[i].color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), alpha);
             }
             m_needUpdating.push(p);
@@ -66,24 +44,7 @@ void Renderer::changeGroupDims(const glm::vec2& dims){
     }
 }
 
-void Renderer::activateGroup(const int id){
-    m_active_groups.insert(id);
-}
-
-void Renderer::deactivateGroup(const int id){
-    m_active_groups.erase(id);
-}
-
-void Renderer::deactivateAllGroups(){
-    m_active_groups.clear();
-}
-
-void Renderer::setAsOnlyGroup(const int id){
-    deactivateAllGroups();
-    activateGroup(id);
-}
-
-bool Renderer::isEntryInGroup(const std::pair<size_t, size_t>& entry, const int id){
+bool Renderer::isEntryInGroup(const IndexRange& entry, const int id){
     // this will have to be a linear search (list)
     for(const auto& p:m_groupIndices[id])
         if (p.first <= entry.first && p.second >= entry.second) return true;
@@ -91,7 +52,7 @@ bool Renderer::isEntryInGroup(const std::pair<size_t, size_t>& entry, const int 
     return false;    
 }
 
-void Renderer::addEntryToGroup(const std::pair<size_t, size_t>& entry, const int id){
+void Renderer::addEntryToGroup(const IndexRange& entry, const int id){
     auto& ranges = m_groupIndices[id];
     size_t mergedStart = entry.first;
     size_t mergedEnd = entry.second;
@@ -118,7 +79,7 @@ void Renderer::addEntryToGroup(const std::pair<size_t, size_t>& entry, const int
     ranges.push_back({mergedStart, mergedEnd});
 }
 
-void Renderer::removeEntryFromGroup(const std::pair<size_t, size_t>& entry, const int id){
+void Renderer::removeEntryFromGroup(const IndexRange& entry, const int id){
     auto& ranges = m_groupIndices[id];
 
     for(auto it = ranges.begin(); it != ranges.end(); ){
@@ -158,16 +119,6 @@ void Renderer::removeGroupXFromY(const int X, const int Y){
         removeEntryFromGroup(entry, Y);
 }
 
-void Renderer::addBox(const BezierBox& box){
-    boxInsert(box);
-    size_t newS = m_controlPoints.size() -1;
-
-    for(const auto& group:m_active_groups)
-        m_groupIndices[group].emplace_back(std::make_pair(newS, newS));
-    
-    m_resizeHappened = true;
-}
-
 void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
     if (boxes.empty()) return;
 
@@ -181,21 +132,15 @@ void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
     m_resizeHappened = true;
 }
 
-void Renderer::modifyPointColor(const size_t ID, const glm::u8vec4 color) {
-    if (m_appearances.size() < ID){
-        spdlog::warn("Trying to modify appearance out of range!");
-        return;
-    }
-    m_appearances[ID].color = color;
-}
-
 void Renderer::clearAll()
 {
     m_controlPoints.clear();
     m_appearances.clear();
     m_indexSize = 0;
 
-    deactivateAllGroups();
+    m_selectionID = -1;
+
+    m_active_groups.clear(); 
     m_groupIndices.clear();
     
     while(!m_needUpdating.empty()) m_needUpdating.pop();
@@ -208,7 +153,8 @@ void Renderer::updateBuffers()
     static size_t arrsize = sizeof(std::array<glm::vec4, 4>), appsize = sizeof(appearance);
 
     if (m_appearances.size() != m_controlPoints.size())
-        spdlog::error("Renderer error: Mismatch in bezier box array sizes");
+        spdlog::error("Renderer error: Mismatch in bezier box array sizes; Appearances: {} | ControlPoints: {}",
+            m_appearances.size(), m_controlPoints.size());
 
     size_t old_indexSize = m_indexSize;
     m_indexSize = m_controlPoints.size();
@@ -255,7 +201,7 @@ void Renderer::draw()
     
     if (m_indexSize){
         // reset ac0
-        static GLuint zero = 0;
+        GLuint zero = 0;
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
         glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
         
@@ -266,12 +212,12 @@ void Renderer::draw()
         // read shader output (closest point to mouse vector)
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
     
-        static GLuint count;
+        GLuint count;
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
         glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &count);
-        count = std::min<int>(count, 16);
+        count = std::min<int>(count, MAX_SELECTIONS);
         
-        static selections results;
+        selections results;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
     
