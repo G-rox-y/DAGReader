@@ -12,6 +12,8 @@ void Renderer::boxInsert(const BezierBox& b){
 }
 
 void Renderer::changeGroupColors(const glm::u8vec4 newColor){
+    std::lock_guard lk(m_ownership);
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
             for(size_t i = p.first; i <= p.second; i++)
@@ -22,6 +24,8 @@ void Renderer::changeGroupColors(const glm::u8vec4 newColor){
 }
 
 void Renderer::randomizeGroupColors(){
+    std::lock_guard lk(m_ownership);
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     static std::uniform_int_distribution<int> dist(0, 255);
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
@@ -35,6 +39,8 @@ void Renderer::randomizeGroupColors(){
 }
 
 void Renderer::changeGroupDims(const glm::vec2& dims){
+    std::lock_guard lk(m_ownership);
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
             for(size_t i = p.first; i <= p.second; i++)
@@ -44,7 +50,18 @@ void Renderer::changeGroupDims(const glm::vec2& dims){
     }
 }
 
+void Renderer::activateGroup(const int id) {
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    m_active_groups.insert(id);
+}
+
+void Renderer::deactivateGroup(const int id) {
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    m_active_groups.erase(id);
+}
+
 bool Renderer::isEntryInGroup(const IndexRange& entry, const int id){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     // this will have to be a linear search (list)
     for(const auto& p:m_groupIndices[id])
         if (p.first <= entry.first && p.second >= entry.second) return true;
@@ -53,6 +70,7 @@ bool Renderer::isEntryInGroup(const IndexRange& entry, const int id){
 }
 
 void Renderer::addEntryToGroup(const IndexRange& entry, const int id){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     auto& ranges = m_groupIndices[id];
     size_t mergedStart = entry.first;
     size_t mergedEnd = entry.second;
@@ -80,6 +98,7 @@ void Renderer::addEntryToGroup(const IndexRange& entry, const int id){
 }
 
 void Renderer::removeEntryFromGroup(const IndexRange& entry, const int id){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     auto& ranges = m_groupIndices[id];
 
     for(auto it = ranges.begin(); it != ranges.end(); ){
@@ -110,17 +129,22 @@ void Renderer::removeEntryFromGroup(const IndexRange& entry, const int id){
 }
 
 void Renderer::addGroupXToY(const int X, const int Y){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     for(const auto& entry:m_groupIndices[X])
         addEntryToGroup(entry, Y);
 }
 
 void Renderer::removeGroupXFromY(const int X, const int Y){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     for(const auto& entry:m_groupIndices[X])
         removeEntryFromGroup(entry, Y);
 }
 
 void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
     if (boxes.empty()) return;
+
+    std::lock_guard lk(m_ownership);
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
 
     size_t oldS = m_controlPoints.size();
     for(const auto& b:boxes) boxInsert(b);
@@ -134,6 +158,9 @@ void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
 
 void Renderer::clearAll()
 {
+    std::lock_guard lk(m_ownership);
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+
     m_controlPoints.clear();
     m_appearances.clear();
     m_indexSize = 0;
@@ -195,6 +222,9 @@ void Renderer::updateBuffers()
 
 void Renderer::draw()
 {
+    std::unique_lock lk(m_ownership, std::try_to_lock); // try to lock the ownership mutex
+    if (!lk.owns_lock()) return; // if you fail, its ok to skip the frame(s)
+
     if (!m_needUpdating.empty() || m_resizeHappened)
         updateBuffers();
 
@@ -234,6 +264,7 @@ void Renderer::draw()
 }
 
 bool Renderer::addMouseSelectionToGroup(const int id){
+    std::lock_guard lk(m_ownership);
     if (m_selectionID != -1){
         auto entry = std::make_pair(m_selectionID, m_selectionID);
         if (isEntryInGroup(entry, id))

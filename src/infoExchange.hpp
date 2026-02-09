@@ -71,13 +71,13 @@ public:
     // created by: window (on head)
     // modified by: controller (adds elements through member functions)
     // used by: window (for rendering)
-    std::shared_ptr<Renderer> renderer;
+    std::unique_ptr<Renderer> renderer;
 
     // and the camera (only internal scale variable is thread safe)
     // created by: window (on head)
     // modified by: controller (sets initial zoom) and window
     // used by: window (for rendering)
-    std::shared_ptr<Camera> cam;
+    std::unique_ptr<Camera> cam;
 
     // a vector of recent paths
     // used by: window (menu > open recent)
@@ -215,4 +215,3 @@ public:
     std::atomic<bool> loading_file_in_progress{false};
     std::atomic<bool> layout_in_progress{false};
 };
-

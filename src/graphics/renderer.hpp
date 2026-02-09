@@ -13,8 +13,11 @@ struct BezierBox{
     glm::u8vec4 color;
 };
 
-// this class is thread safe since elements will be added through one thread and displayed through the other
+// try to keep this a thread safe class
 class Renderer {
+public:
+    // adding this just for better readability
+    using IndexRange = std::pair<size_t, size_t>;
 private:
     struct appearance {
         glm::u8vec4 color;
@@ -23,8 +26,6 @@ private:
     };
 
     // --- data
-    // adding this just for better readability
-    using IndexRange = std::pair<size_t, size_t>;
 
     std::vector<std::array<glm::vec4, 4>> m_controlPoints;
     std::vector<appearance> m_appearances;
@@ -83,7 +84,13 @@ private:
 
     void boxInsert(const BezierBox& b);
 
+    // this function is going to fill the vertex buffer object with data and properly assign its vertex array
+    void updateBuffers();
+
     GLProgram m_program; // the shaders
+    
+    mutable std::mutex m_ownership; // ownership mutex to keep the renderer thread safe
+    mutable std::recursive_mutex m_group_lock; // group modification mutex
 public:
     Renderer() = default;
     ~Renderer() = default;
@@ -97,8 +104,8 @@ public:
     void randomizeGroupColors();
     void changeGroupDims(const glm::vec2& dims);
 
-    void activateGroup(const int id) { m_active_groups.insert(id); }
-    void deactivateGroup(const int id) { m_active_groups.erase(id); }
+    void activateGroup(const int id);
+    void deactivateGroup(const int id);
 
     bool isEntryInGroup(const IndexRange& entry, const int id);
     void addEntryToGroup(const IndexRange& entry, const int id);
@@ -109,9 +116,6 @@ public:
     void addBoxes(const std::vector<BezierBox>& boxes);
 
     void clearAll();
-
-    // this function is going to fill the vertex buffer object with data and properly assign its vertex array
-    void updateBuffers();
 
     void draw();
 

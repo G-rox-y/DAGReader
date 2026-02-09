@@ -14,7 +14,7 @@ void Window::manageInputs()
     if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) moveOut = true;
     if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) moveFast = true;
     if (moveUp || moveLeft || moveDown || moveRight || moveIn || moveOut)
-        m_cam->move(moveUp, moveLeft, moveDown, moveRight, moveIn, moveOut, moveFast);
+        channel->cam->move(moveUp, moveLeft, moveDown, moveRight, moveIn, moveOut, moveFast);
 
     bool rotUp = false, rotLeft = false, rotDown = false, rotRight = false, yawCw = false, yawCcw = false;
     if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) rotUp = true;
@@ -24,13 +24,13 @@ void Window::manageInputs()
     if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS) yawCw = true;
     if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS) yawCcw = true;
     if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
-        m_cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw, moveFast);
+        channel->cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw, moveFast);
 
     bool scaleIn = false, scaleOut = false;
     if (glfwGetKey(m_window, GLFW_KEY_I) == GLFW_PRESS) scaleIn = true;
     if (glfwGetKey(m_window, GLFW_KEY_O) == GLFW_PRESS) scaleOut = true;
     if (scaleIn || scaleOut)
-        m_cam->scale(scaleIn, scaleOut);
+        channel->cam->scale(scaleIn, scaleOut);
 
     // Other keys added as callbacks       
 
@@ -39,12 +39,12 @@ void Window::manageInputs()
     glfwGetCursorPos(m_window, &mouse_xpos, &mouse_ypos);
     mouse_xpos = 2.0 * mouse_xpos / static_cast<double>(m_fb_width) - 1.0;
     mouse_ypos = -2.0 * mouse_ypos / static_cast<double>(m_fb_height) + 1.0;
-    glm::mat4 invMVP = glm::inverse(m_cam->getMat());
+    glm::mat4 invMVP = glm::inverse(channel->cam->getMat());
     glm::vec4 mouseNear = invMVP * glm::vec4(mouse_xpos, mouse_ypos, -1.0, 1.0);
     glm::vec4 mouseFar = invMVP * glm::vec4(mouse_xpos, mouse_ypos, 1.0, 1.0);
     mouseNear /= mouseNear.w; mouseFar /= mouseFar.w;
-    m_renderer->program().setUniformVec3f("MouseNear", glm::vec3(mouseNear));
-    m_renderer->program().setUniformVec3f("MouseFar", glm::vec3(mouseFar));
+    channel->renderer->program().setUniformVec3f("MouseNear", glm::vec3(mouseNear));
+    channel->renderer->program().setUniformVec3f("MouseFar", glm::vec3(mouseFar));
 }
 
 void Window::drawStuff()
@@ -108,7 +108,7 @@ void Window::drawStuff()
         channel->update_window_vars.store(false);
     }
 
-    m_renderer->draw();
+    channel->renderer->draw();
 
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
     ImGui::PopStyleColor(16);
@@ -242,8 +242,8 @@ Window::~Window()
 void Window::run()
 {
     // create the camera object
-    channel->cam = m_cam = std::make_shared<Camera>();
-    channel->renderer = m_renderer = std::make_shared<Renderer>();
+    channel->cam = std::make_unique<Camera>();
+    channel->renderer = std::make_unique<Renderer>();
 
     // ===== CALLBACKS =====
 
@@ -260,7 +260,6 @@ void Window::run()
     callbackData.p_w_height = &m_w_height;
     callbackData.p_fb_width = &m_fb_width;
     callbackData.p_fb_height = &m_fb_height;
-    callbackData.cam_recalc = &m_cam->getRecalc();
     callbackData.channel = channel;
     glfwSetWindowUserPointer(m_window, &callbackData);
 
@@ -275,7 +274,7 @@ void Window::run()
         *data->p_fb_width = width;
         *data->p_fb_height = height;
         glViewport(0, 0, width, height);
-        *data->cam_recalc = true;
+        data->channel->cam->shouldRecalc();
     });
 
     // key callback
@@ -324,17 +323,17 @@ void Window::run()
         this->manageInputs();
 
         // we should update the camera before drawing;
-        m_cam->update(m_fb_width, m_fb_height);
+        channel->cam->update(m_fb_width, m_fb_height);
 
         // pass the camera view matrix through uniform
-        m_renderer->program().setUniformMat4f("MVP", m_cam->getMat());
-        m_renderer->program().setUniform1f("Scale", m_cam->getScale());
-        m_renderer->program().setUniform1i("Selection", channel->selection_mode.load());
-        m_renderer->program().setUniformVec3f("CamPos", m_cam->getPos());
-        m_renderer->program().setUniform1f("PxPerRad", (float)m_fb_height / m_cam->getFOV());
+        channel->renderer->program().setUniformMat4f("MVP", channel->cam->getMat());
+        channel->renderer->program().setUniform1f("Scale", channel->cam->getScale());
+        channel->renderer->program().setUniform1i("Selection", channel->selection_mode.load());
+        channel->renderer->program().setUniformVec3f("CamPos", channel->cam->getPos());
+        channel->renderer->program().setUniform1f("PxPerRad", (float)m_fb_height / channel->cam->getFOV());
 
         // which faces to cull (whats the front and whats the back)
-        bool mirrored = glm::determinant(m_cam->getMat()) < 0.0f;
+        bool mirrored = glm::determinant(channel->cam->getMat()) < 0.0f;
         glFrontFace(mirrored ? GL_CW : GL_CCW);
 
         this->drawStuff();

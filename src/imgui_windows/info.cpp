@@ -22,23 +22,23 @@ void info::draw()
             width = ImGui::CalcTextSize(text.c_str()).x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
             ImGui::SetNextItemWidth(width);
-            ImGui::Text(text.c_str());
+            ImGui::Text("%s", text.c_str());
         }
 
         std::string version = "DAGReader v" DAGR_VERSION_STRING;
         width = ImGui::CalcTextSize(version.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
         ImGui::SetNextItemWidth(width);
-        ImGui::Text(version.c_str());
+        ImGui::Text("%s", version.c_str());
 
 
         std::string scale = "Model scale = " + std::to_string(channel->cam->getScale());
         width = ImGui::CalcTextSize(scale.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
         ImGui::SetNextItemWidth(width);
-        ImGui::Text(scale.c_str());
+        ImGui::Text("%s", scale.c_str());
 
-        auto& nums = channel->cam->getPos();
+        auto nums = channel->cam->getPos();
         ImGui::Text("X = %f; Y = %f; Z = %f", nums.x, nums.y, nums.z);
         ImGui::End();
     }

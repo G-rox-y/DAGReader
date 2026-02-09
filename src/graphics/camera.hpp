@@ -62,10 +62,12 @@ public:
     void setDefScale(const float newscale) { m_default_scale = newscale; }
     void setDefPos(const glm::vec3& newpos) { m_default_position = -newpos; }
 
-    bool& getRecalc() { return m_shouldRecalculate; }
+    // notify camera it should recalculate
+    void shouldRecalc() { m_shouldRecalculate = true; }
+    
     const glm::mat4& getMat() const { return m_mat; }
-    const glm::vec3 getPos() const { return -m_position / m_scale; } // returning the negative because it makes more sense
-    const float getFOV() const { return m_FOV; }
-    const float getScale() const { return m_scale; }
-    const float getFarCP() const { return m_farCP; }
+    glm::vec3 getPos() const { return -m_position / m_scale; } // returning the negative because it makes more sense
+    float getFOV() const { return m_FOV; }
+    float getScale() const { return m_scale; }
+    float getFarCP() const { return m_farCP; }
 };
