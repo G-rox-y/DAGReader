@@ -4,7 +4,7 @@
 
 #include "gfa/GFA_virtuals.hpp"
 
-class GFA_segment : public segmentLength, public readCount, public fragmentCount, public kmerCount, public hash{
+class GFA_segment : public segmentLength, public readCount, public fragmentCount, public kmerCount, public hash256{
 private:
     std::string name;
 
@@ -20,6 +20,8 @@ public:
 
     // this function will throw an std::runtime_error if the path provided doesnt work
     void setSequence(const std::string& uri_path_str, const std::string& gfa_path_str);
+
+    bool isSequenceAvailable() const { return seq_exists; }
 
     const std::string& getName() const { return name; };
 };

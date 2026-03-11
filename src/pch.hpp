@@ -27,6 +27,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <variant>
 #include <utility>
 #include <iterator>
 #include <unordered_map>

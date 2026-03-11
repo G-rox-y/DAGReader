@@ -17,6 +17,7 @@ private:
 public:
     virtual ~readCount() = default;
     void setReadCount(const long long int& c) { read_count = c; }
+    long long int getReadCount() const { return read_count; }
 };
 
 // abstract class for adding the fragment_count property to classes
@@ -26,6 +27,7 @@ private:
 public:
     virtual ~fragmentCount() = default;
     void setFragmentCount(const long long int& c) { fragment_count = c; }
+    long long int getFragmentCount() const { return fragment_count; }
 };
 
 // abstract class for adding the kmer_count property to classes
@@ -35,14 +37,15 @@ private:
 public:
     virtual ~kmerCount() = default;
     void setKmerCount(const long long int& c) { kmer_count = c; }
+    long long int getKmerCount() const { return kmer_count; }
 };
 
 // abstract class for adding the hash property to classes
-class hash{
+class hash256{
 private:
     std::string hash_sha256; // sha256 checksum of the sequence (if provided)
 public:
-    virtual ~hash() = default;
+    virtual ~hash256() = default;
     void setHash(const std::string& h) { hash_sha256 = h; }
 };
 
@@ -53,6 +56,7 @@ private:
 public:
     virtual ~mappingQuality() = default;
     void setMappingQuality(const long long int& q) { mapping_quality = q; }
+    long long int getMappingQuality() const { return mapping_quality; }
 };
 
 // abstract class for adding the mismatch_gaps_number property to classes
@@ -62,6 +66,7 @@ private:
 public:
     virtual ~numOfMismatchsGaps() = default;
     void setNumOfMismatchsGaps(const long long int& n) { mismatch_gaps_number = n; }
+    long long int getNumOfMismatchGaps() const { return mismatch_gaps_number; }
 };
 
 // abstract class for adding the edge_identifier property to classes
@@ -71,6 +76,7 @@ private:
 public:
     virtual ~edgeIdentifier() = default;
     void setEdgeIdentifier(const std::string& s) { edge_identifier = s; }
+    std::string getEdgeIdentifier() const { return edge_identifier; }
 };
 
 // abstract class for adding the overlap property to classes

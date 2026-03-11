@@ -3,6 +3,7 @@
 #include "pch.hpp"
 #include "camera.hpp"
 #include "renderer.hpp"
+#include "datatype.hpp"
 
 namespace tasks{
     // tasks that the fileController could have
@@ -91,6 +92,7 @@ public:
     std::atomic<bool> controls_window_toggled{false}; // if help is printed within the window
     std::atomic<bool> sidebar_window_shown{true};
     std::atomic<bool> info_window_shown{true};
+    std::atomic<bool> selection_window_allowed{true};
 
     // graph data
 private:
@@ -105,8 +107,9 @@ public:
         std::lock_guard lk(graph_name_string_mut);
         return std::string_view(graph_name_string);
     };
-    std::atomic<int> graph_data_seg_num{0};
-    std::atomic<int> graph_data_link_num{0};
+
+    // data of the opened file 
+    std::shared_ptr<datatype> file_data;
 
     // window variables
     std::atomic<bool> update_window_vars{true};
@@ -119,6 +122,7 @@ public:
     std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(255, 50, 180, 175)};
     std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(230, 190, 80, 255)};
     std::atomic<glm::u8vec4> selected_color_packed{glm::u8vec4(140, 180, 220, 230)};
+    std::atomic<glm::u8vec4> err_color{glm::u8vec4(255, 0, 0, 255)};
     std::atomic<bool> randomize_segment_colors{false};
     std::atomic<bool> randomize_link_colors{false};
     std::atomic<float> link_widths{0.015f};

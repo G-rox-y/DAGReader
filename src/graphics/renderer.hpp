@@ -11,6 +11,7 @@ struct BezierBox{
     glm::dvec3 startOri, endOri;
     glm::dvec2 dims;
     glm::u8vec4 color;
+    size_t originalID;
 };
 
 // try to keep this a thread safe class
@@ -38,6 +39,8 @@ private:
     // special care should be taken to keep this list sorted!
     std::unordered_map<int, std::list<IndexRange>> m_groupIndices;
     std::unordered_set<int> m_active_groups;
+
+    std::unordered_map<int, int> m_rendererID2OldID;
 
     // --- opengl data
 
@@ -113,7 +116,7 @@ public:
     void addGroupXToY(const int X, const int Y);
     void removeGroupXFromY(const int X, const int Y);
 
-    void addBoxes(const std::vector<BezierBox>& boxes);
+    void addBoxes(const std::vector<BezierBox>& boxes, const std::vector<bool>& selection = std::vector<bool>());
 
     void clearAll();
 
@@ -124,4 +127,6 @@ public:
 
     // reach shaders
     GLProgram& program() { return m_program; }
+
+    std::vector<size_t> getGroupIDs(int ID) const;
 };

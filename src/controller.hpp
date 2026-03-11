@@ -6,6 +6,7 @@
 #include "Graphs.hpp"
 #include "GRIP.hpp"
 #include "infoExchange.hpp"
+#include "datatype.hpp"
 
 // this class contols file input output and data manipulation
 class Controller {
@@ -17,6 +18,7 @@ private:
     inipp::Ini<char> ini; // inipp handler
 	std::filesystem::path iniPath; // ini file stream
 
+    std::shared_ptr<datatype> data;
     graphCollection gc;
 
     void handleFile(tasks::controllerTask t);

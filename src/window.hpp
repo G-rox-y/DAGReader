@@ -16,6 +16,7 @@
 #include "camera.hpp"
 #include "renderer.hpp"
 #include "infoExchange.hpp"
+#include "selection.hpp"
 
 // the class that controls the graphical window of the program
 class Window{

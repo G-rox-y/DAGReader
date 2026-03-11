@@ -4,15 +4,17 @@
 #include "dataTypes.hpp"
 
 struct Vertex{
-    int id;
+    size_t id;
     glm::dvec3 pos;
 
-    Vertex(int _id) : id(_id), pos(glm::dvec3(0.0)) {}
+    Vertex(size_t _id) : id(_id), pos(glm::dvec3(0.0)) {}
 };
 
 struct Edge{
-    int start;
-    int end;
+    size_t gid, lid;
+
+    size_t start;
+    size_t end;
     
     bool startOri, endOri;
 
@@ -20,7 +22,7 @@ struct Edge{
     long long int originalLength;
     bool segPart = false;
 
-    Edge(int v1, int v2, long long int v3 = 1) : start(v1), end(v2), originalLength(v3) {}
+    Edge(size_t ID, size_t v1, size_t v2, long long int v3 = 1) : gid(ID), start(v1), end(v2), originalLength(v3) {}
     void setOrientations(bool s, bool e) { startOri = s; endOri = e; }
 };
 

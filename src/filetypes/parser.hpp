@@ -1,7 +1,6 @@
 #pragma once
 
 #include "pch.hpp"
-#include "Graphs.hpp"
 
 class parser {
 protected:
@@ -15,6 +14,4 @@ protected:
 public:
     // the constructor of this class parses a GFA file from the path provided
     parser(const std::string& path) : m_filepath(path) {}
-
-    virtual void fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const = 0;
 };

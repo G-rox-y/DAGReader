@@ -60,12 +60,12 @@ void Controller::handleFile(tasks::controllerTask t){
 
     spdlog::info("Running the parser on the file");
     channel->loading_file_in_progress.store(true);
-    GFA gfa(path.string());
+    data = std::make_shared<GFA>(path.string());
 
     gc.clear();
     std::vector<Vertex> v;
     std::vector<Edge> e;
-    gfa.fillData(v, e);
+    data->fillData(v, e);
     gc.setGraphs(v, e);
 
     channel->clearSubGraphData();
@@ -75,8 +75,8 @@ void Controller::handleFile(tasks::controllerTask t){
             G.vertices.size(), G.edges.size()
         });
     }
-    channel->graph_data_seg_num.store(gfa.segmentNum());
-    channel->graph_data_link_num.store(gfa.linkNum());
+    
+    channel->file_data = data;
     channel->graph_name_set(path.filename().string());
     channel->graph_loaded.store(true);
     channel->graph_param_change.store(true); // new things to draw now available
@@ -147,7 +147,7 @@ void Controller::layoutGraph(){
 }
 
 void Controller::resetGraph(){
-     spdlog::info("Task: RESET_GRAPH");
+    spdlog::info("Task: RESET_GRAPH");
     if (gc.empty()){
         spdlog::warn("No graph found!");
         return;
@@ -197,114 +197,148 @@ void Controller::resetGraph(){
 
     channel->renderer->clearAll();
 
-    struct BezierBoxMetadata{
-        // barycenter of connection endpoints to calculate orientation
-        glm::dvec3 startBc, endBc;
-        int startBcCounter, endBcCounter;
-
-        BezierBoxMetadata() 
-        : startBc(0.0, 0.0, 0.0), endBc(0.0, 0.0, 0.0), startBcCounter(0), endBcCounter(0) {}
-    };
-
+    // save these variables for use in the loop
+    auto segColor = channel->segment_color_packed.load();
+    auto linkColor = channel->link_color_packed.load();
+    auto errColor = channel->err_color.load();
+    auto segWidth = glm::vec2(channel->segment_widths.load());
+    auto linkWidth = glm::vec2(channel->link_widths.load());
     for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
         if (channel->isGroupHidden(graphGroupID)) continue;
 
         auto& G = gc.graphs.at(graphGroupID);
-        std::vector<BezierBox> segBoxes;
-        std::vector<BezierBoxMetadata> metadata;
-        std::unordered_map<int, size_t> boxIndices;
 
-        for(auto& e:G.edges){
-            if (!e.segPart) continue;
-            
-            segBoxes.emplace_back();
-            metadata.emplace_back();
-            BezierBox& b = segBoxes.back();
-            boxIndices[e.start] = segBoxes.size() - 1;
-            boxIndices[e.end] = segBoxes.size() - 1;
-            b.start = G.vertices.at(e.start).pos;
-            b.end = G.vertices.at(e.end).pos;
-            b.startOri = glm::normalize(b.start - b.end);
-            b.endOri = -b.startOri;
-        }
-        for(auto& e:G.edges){
-            if (e.segPart) continue;
+        std::vector<BezierBox> boxes;
+        std::vector<bool> boxSelector; // if true at [id] then boxes[id] is selected ; first we will set true for all segments
+        std::unordered_map<size_t, size_t> boxEdgeIndices; // first: edge id, second: boxes id
+        std::unordered_map<size_t, std::set<size_t>> vertexTouchpoints; // first: vertex id, second: set of edges that have it
 
-            BezierBoxMetadata& bFirst = metadata.at(boxIndices[e.start]);
-            BezierBoxMetadata& bSecond = metadata.at(boxIndices[e.end]);
-
-            // set barycenter of edge start box and end box
-            if (e.startOri){
-                bFirst.startBcCounter++;
-                bFirst.startBc += G.vertices.at(e.end).pos;
-            }
-            else{
-                bFirst.endBcCounter++;
-                bFirst.endBc += G.vertices.at(e.end).pos;
-            }
-            if (e.endOri){
-                bSecond.startBcCounter++;
-                bSecond.startBc += G.vertices.at(e.start).pos;
-            }
-            else{
-                bSecond.endBcCounter++;
-                bSecond.endBc += G.vertices.at(e.start).pos;
-            }
-        }
-        
-        // calculate the orientation out of baryceters
-        for(size_t i = 0; i < segBoxes.size(); i++){
-            auto& md = metadata.at(i);
-            auto& b = segBoxes.at(i);
-            if (md.startBcCounter == 0 && md.endBcCounter == 0) continue;
-
-            if (md.startBcCounter != 0){
-                md.startBc /= static_cast<double>(md.startBcCounter);
-                glm::dvec3 l_startOri = b.start - md.startBc;
-                if (glm::length(l_startOri) > 1e-3) b.startOri = glm::normalize(l_startOri);
-            }
-            if (md.endBcCounter != 0){
-                md.endBc /= static_cast<double>(md.endBcCounter);
-                glm::dvec3 l_endOri = b.end - md.endBc;
-                if (glm::length(l_endOri) > 1e-3) b.endOri = glm::normalize(l_endOri);
-            }
-        }
-
-        // create boxes for links
-        std::vector<BezierBox> linkBoxes;
-        for(auto& e:G.edges)
-            if (!e.segPart)
-                linkBoxes.emplace_back(BezierBox{
-                    G.vertices.at(e.start).pos,
-                    G.vertices.at(e.end).pos,
-                    (e.startOri) ? -segBoxes.at(boxIndices[e.start]).startOri : -segBoxes.at(boxIndices[e.start]).endOri,
-                    (e.endOri) ? segBoxes.at(boxIndices[e.end]).endOri : segBoxes.at(boxIndices[e.end]).startOri
+        // first step: segbox layout (only positions)
+        for(const auto& e:G.edges){
+            vertexTouchpoints[e.start].insert(e.lid);
+            vertexTouchpoints[e.end].insert(e.lid);
+            boxEdgeIndices[e.lid] = boxes.size();
+            if (e.segPart){
+                boxSelector.push_back(true);
+                auto S = G.vertices.at(e.start).pos, E = G.vertices.at(e.end).pos;
+                boxes.emplace_back(BezierBox{
+                    S, E, 
+                    glm::normalize(S-E), glm::normalize(E-S), // we will fill orientations later
+                    segWidth, errColor, e.gid
                 });
+            }
+            else {
+                boxSelector.push_back(false);
+                auto S = G.vertices.at(e.start).pos, E = G.vertices.at(e.end).pos;
+                boxes.emplace_back(BezierBox{
+                    S, E,
+                    glm::normalize(S-E), glm::normalize(E-S), // we will fill orientations later
+                    linkWidth, errColor, e.gid
+                });
+            }
+        }
+
+        // next step: adjust orientations
+        for(auto [v, touchPointVector]:vertexTouchpoints){
+            // first extract these variables
+            glm::dvec3 linkCenter(0.0, 0.0, 0.0);
+            std::vector<size_t> segInds;
+            size_t linkNum = 0;
+            for(auto el:touchPointVector){
+                const auto& E = G.edges.at(el);
+                if (E.segPart) segInds.push_back(el);
+                else{
+                    linkNum++;
+                    if (v != E.start) linkCenter += G.vertices.at(E.start).pos;
+                    else linkCenter += G.vertices.at(E.end).pos;
+                }
+            }
+            size_t segNum = segInds.size();
+
+            // then do checking if touchpoint is valid and modify the orientations
+            if (segNum == 2 && linkNum > 0)
+                spdlog::warn("Link(s) connected to two segments at the segbox connection! Skipping orientation adjusting");
+            else if (segNum == 0)
+                spdlog::warn("No segments at the segbox connection! Skipping orientation adjusting");
+            else if (segNum > 2)
+                spdlog::warn("More than two segments at the segbox connection! Skipping orientation adjusting");
+            else {
+                // if this is a segment - link(s) connection
+                if (linkNum > 0){
+                    // calculate the orientation
+                    linkCenter /= linkNum;
+                    glm::dvec3 ori = glm::normalize(G.vertices.at(v).pos - linkCenter);
+
+                    // apply it to the segment box
+                    auto& TheSegBox = boxes.at(boxEdgeIndices.at(segInds[0]));
+                    TheSegBox.color = segColor;
+                    if (v == G.edges.at(segInds[0]).start) TheSegBox.startOri = ori;
+                    else TheSegBox.endOri = ori;
+
+                    // apply it to link boxes
+                    for(auto el:touchPointVector){
+                        const auto& E = G.edges.at(el);
+                        if (E.segPart) continue;
+                        auto& TheLinkBox = boxes.at(boxEdgeIndices.at(el));
+                        TheLinkBox.color = linkColor;
+                        if (v == E.start) TheLinkBox.startOri = -ori;
+                        else TheLinkBox.endOri = -ori;
+                    }
+                }
+                // if this is a segment - segment connection
+                else if (segNum == 2){
+                    // calculate the orientation
+                    size_t Seg1FarInd, Seg2FarInd;
+                    if (G.edges.at(segInds[0]).start == v) Seg1FarInd = G.edges.at(segInds[0]).end;
+                    else Seg1FarInd = G.edges.at(segInds[0]).start;
+                    if (G.edges.at(segInds[1]).start == v) Seg2FarInd = G.edges.at(segInds[1]).end;
+                    else Seg2FarInd = G.edges.at(segInds[1]).start;
+                    glm::dvec3 ori = glm::normalize(G.vertices.at(Seg1FarInd).pos - G.vertices.at(Seg2FarInd).pos);
+
+                    // apply to segbox 1
+                    auto& TheSegBox1 = boxes.at(boxEdgeIndices.at(segInds[0]));
+                    TheSegBox1.color = segColor;
+                    if (v == G.edges.at(segInds[0]).start) TheSegBox1.startOri = ori;
+                    else TheSegBox1.endOri = ori;
+
+                    // apply to segbox 2
+                    auto& TheSegBox2 = boxes.at(boxEdgeIndices.at(segInds[1]));
+                    TheSegBox2.color = segColor;
+                    if (v == G.edges.at(segInds[1]).start) TheSegBox2.startOri = ori;
+                    else TheSegBox2.endOri = ori;
+                }
+                // if this is a Segment end with no connections
+                else{
+                    // calculate the orientation
+                    size_t SegFarInd;
+                    if (G.edges.at(segInds[0]).start == v) SegFarInd = G.edges.at(segInds[0]).end;
+                    else SegFarInd = G.edges.at(segInds[0]).start;
+                    glm::dvec3 ori = glm::normalize(G.vertices.at(SegFarInd).pos - G.vertices.at(v).pos);
+
+                    // apply to segbox
+                    auto& TheSegBox = boxes.at(boxEdgeIndices.at(segInds[0]));
+                    TheSegBox.color = segColor;
+                    if (v == G.edges.at(segInds[0]).start) TheSegBox.startOri = ori;
+                    else TheSegBox.endOri = ori;
+                }
+            }
+        }
 
         // and write the boxes to buffer
         channel->renderer->activateGroup(graphGroupID);
         
         channel->renderer->activateGroup(groups::SEGMENT);
-        channel->renderer->addBoxes(segBoxes);
+        channel->renderer->addBoxes(boxes, boxSelector);
         channel->renderer->deactivateGroup(groups::SEGMENT);
 
+        for(size_t i = 0; i < boxSelector.size(); i++) boxSelector[i] = !boxSelector[i]; // invert selection to select links
+
         channel->renderer->activateGroup(groups::LINK);
-        channel->renderer->addBoxes(linkBoxes);
+        channel->renderer->addBoxes(boxes, boxSelector);
         channel->renderer->deactivateGroup(groups::LINK);
         
         channel->renderer->deactivateGroup(graphGroupID);
     }
-
-    // set the colors and sizes for the links and segments
-    channel->renderer->activateGroup(groups::SEGMENT);
-    channel->renderer->changeGroupColors(channel->segment_color_packed.load());
-    channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
-    channel->renderer->deactivateGroup(groups::SEGMENT);
-
-    channel->renderer->activateGroup(groups::LINK);
-    channel->renderer->changeGroupColors(channel->link_color_packed.load());
-    channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
-    channel->renderer->deactivateGroup(groups::LINK);
 
     // now just set the camera to look at the right place
     double maxX = 0.0, maxY = 0.0;

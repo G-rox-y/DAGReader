@@ -49,6 +49,7 @@ int Graph::findDist(const int id1, const int id2){
 }
 
 void graphCollection::setGraphs(std::vector<Vertex>& v, std::vector<Edge>& e){
+    graphs.clear();
     // create and adjacency list, indexed by Vertex ID
     std::vector<std::vector<std::pair<int, int>>> adjList(v.size(), std::vector<std::pair<int, int>>());
     for(size_t i = 0; i < e.size(); i++){
@@ -92,8 +93,9 @@ void graphCollection::setGraphs(std::vector<Vertex>& v, std::vector<Edge>& e){
 
         // Reassign graph vertex IDs inside edges
         for(auto& edge:graphs.back().edges){
-            edge.start = vertMap[edge.start];
-            edge.end = vertMap[edge.end];
+            edge.start = vertMap.at(edge.start);
+            edge.end = vertMap.at(edge.end);
+            edge.lid = edgeMap.at(edge.gid);
         }
 
         // copy the adjacency list and modify the IDs inside
@@ -104,7 +106,6 @@ void graphCollection::setGraphs(std::vector<Vertex>& v, std::vector<Edge>& e){
                 el = std::make_pair(vertMap[el.first], edgeMap[el.second]);
         }
         
-        while(lastElement >= 0 && visited[lastElement--]);
+        while(lastElement >= 0 && visited[lastElement]) lastElement--;
     }
 }
-

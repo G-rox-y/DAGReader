@@ -109,7 +109,7 @@ GFA::GFA(const std::string& path) : parser(path), version_string("")
     };
 
     // check sha256 checksum of the sequence
-    auto check_sh = [this, &c_H](const GFA_field& f, hash& element, const std::string& field_str, const int line_n){
+    auto check_sh = [this, &c_H](const GFA_field& f, hash256& element, const std::string& field_str, const int line_n){
         if (f.tag == "SH"){
             if (f.type == "H"){
                 c_H(f.value, field_str, line_n);
@@ -314,22 +314,84 @@ GFA::GFA(const std::string& path) : parser(path), version_string("")
 }
 
 void GFA::fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const {
-    std::unordered_map<std::string, int> verts;
+    std::unordered_map<std::string, size_t> verts;
 
-    for(auto& s:segments){
-        int id = v.size();
+    for(size_t i = 0; i < segments.size(); i++){
+        auto& s = segments.at(i);
+        size_t id = v.size();
         v.emplace_back(id);
         verts[s.getName() + "START"] = id;
         v.emplace_back(id + 1);
         verts[s.getName() + "END"] = id + 1;
-        e.emplace_back(id, id + 1, s.getSegmentLength());
+        size_t eid = e.size();
+        e.emplace_back(eid, id, id + 1, s.getSegmentLength());
         e.back().segPart = true;
+        edgeMap[eid] = std::make_pair(i, mapType::SEGMENT);
     }
 
-    for(auto& l:links){
-        int id1 = verts[l.getFromName() + ((l.getFromOrientation() == "+") ? "END" : "START")];
-        int id2 = verts[l.getToName() + ((l.getToOrientation() == "+") ? "START" : "END")];
-        e.emplace_back(id1, id2);
+    for(size_t i = 0; i < links.size(); i++){
+        auto& l = links.at(i);
+        size_t id1 = verts[l.getFromName() + ((l.getFromOrientation() == "+") ? "END" : "START")];
+        size_t id2 = verts[l.getToName() + ((l.getToOrientation() == "+") ? "START" : "END")];
+        size_t eid = e.size();
+        e.emplace_back(eid, id1, id2);
         e.back().setOrientations(l.getFromOrientation() != "+", l.getToOrientation() == "+");
+        edgeMap[eid] = std::make_pair(i, mapType::LINK);
     }
+}
+
+std::map<std::string, dataProperties> GFA::retrieveEdgeData(size_t id, bool verbose) const {
+    std::map<std::string, dataProperties> ret = {};
+    
+    if (edgeMap.find(id) == edgeMap.end()) return ret;
+    auto ID = edgeMap.at(id).first;
+    auto type = edgeMap.at(id).second;
+    if (type != mapType::SEGMENT && type != mapType::LINK) return ret;
+
+    ret["Type_I"] = type;
+    if (type == mapType::SEGMENT){
+        auto& s = segments.at(ID);
+        long long int KC = s.getKmerCount(), RC = s.getReadCount(), FC = s.getFragmentCount(), L = s.getSegmentLength();
+        ret["Name_SW"] = std::string_view(s.getName());
+        ret["Length_LLI"] = L;
+        if (L > 0){
+            if (KC >= 0) ret["Depth_D"] = static_cast<double>(KC) / static_cast<double>(L);
+            else if (RC >= 0) ret["Depth_D"] = static_cast<double>(RC) / static_cast<double>(L);
+            else if (FC >= 0) ret["Depth_D"] = static_cast<double>(FC) / static_cast<double>(L);
+        }
+        if (verbose){
+            if (KC != -1) ret["KmerCount_LLI"] = KC;
+            if (RC != -1) ret["ReadCount_LLI"] = RC;
+            if (FC != -1) ret["FragmentCount_LLI"] = FC;
+            ret["SequenceAvailable_B"] = s.isSequenceAvailable();
+        }
+    }
+    else if (edgeMap.at(id).second == mapType::LINK){
+        auto& l = links.at(ID);
+        ret["FromName_SW"] = std::string_view(l.getFromName());
+        ret["FromOrientation_SW"] = std::string_view(l.getFromOrientation());
+        ret["ToName_SW"] = std::string_view(l.getToName());
+        ret["ToOrientation_SW"] = std::string_view(l.getToOrientation());
+        ret["Cigar_SW"] = std::string_view(l.getOverlap());
+        ret["EdgeIdentifier_SW"] = std::string_view(l.getEdgeIdentifier());
+        if (verbose){
+            long long int KC = l.getKmerCount(), RC = l.getReadCount(), FC = l.getFragmentCount(),
+                MMC = l.getNumOfMismatchGaps(), MQ = l.getMappingQuality();
+            if (KC != -1) ret["KmerCount_LLI"] = KC;
+            if (RC != -1) ret["ReadCount_LLI"] = RC;
+            if (FC != -1) ret["FragmentCount_LLI"] = FC;
+            if (MMC != -1) ret["MismatchGaps_LLI"] = MMC;
+            if (MQ != -1) ret["MappingQuality_LLI"] = MQ;
+        }
+    }
+    return ret;
+}
+
+std::map<std::string, dataProperties> GFA::retrieveGeneralData() const {
+    std::map<std::string, dataProperties> ret = {};
+    ret["SegmentNumber_ULLI"] = segments.size();
+    ret["ContainmentNumber_ULLI"] = containments.size();
+    ret["LinkNumber_ULLI"] = links.size();
+    ret["PathNumber_ULLI"] = paths.size();
+    return ret;
 }

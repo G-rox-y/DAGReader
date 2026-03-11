@@ -26,8 +26,17 @@ void sidePanel::draw()
         {
             std::string name{channel->graph_name_get()};
             ImGui::SeparatorText(name.c_str());
-            ImGui::Text("Segments: %i", channel->graph_data_seg_num.load());
-            ImGui::Text("Links: %i", channel->graph_data_link_num.load());
+
+            auto data = channel->file_data->retrieveGeneralData();
+
+            if (auto* segnum = std::get_if<size_t>(&data["SegmentNumber_ULLI"]))
+                ImGui::Text("Segments: %lu", *segnum);
+            if (auto* linknum = std::get_if<size_t>(&data["LinkNumber_ULLI"]))
+                ImGui::Text("Links: %lu", *linknum);
+            if (auto* pathnum = std::get_if<size_t>(&data["PathNumber_ULLI"]))
+                ImGui::Text("Paths: %lu", *pathnum);
+            if (auto* contnum = std::get_if<size_t>(&data["ContainmentNumber_ULLI"]))
+                ImGui::Text("Containments: %lu", *contnum);
 
             size_t subgraphNum = channel->subgraphAmount();
             ImGui::Text("Subgraphs: %zu", subgraphNum);

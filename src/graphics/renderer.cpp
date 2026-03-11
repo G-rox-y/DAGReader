@@ -5,6 +5,7 @@ void Renderer::boxInsert(const BezierBox& b){
     glm::vec3 pt1 = b.start + b.startOri * segment;
     glm::vec3 pt2 = b.end + b.endOri * segment;
 
+    m_rendererID2OldID[m_controlPoints.size()] = b.originalID;
     m_controlPoints.emplace_back(std::array<glm::vec4, 4>{
         glm::vec4(b.start, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(b.end, 1.f)
     });
@@ -140,14 +141,18 @@ void Renderer::removeGroupXFromY(const int X, const int Y){
         removeEntryFromGroup(entry, Y);
 }
 
-void Renderer::addBoxes(const std::vector<BezierBox>& boxes){
+void Renderer::addBoxes(const std::vector<BezierBox>& boxes, const std::vector<bool>& selection){
     if (boxes.empty()) return;
-
+    bool select = (selection.size() != boxes.size()) ? false : true;
+ 
     std::lock_guard lk(m_ownership);
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
 
     size_t oldS = m_controlPoints.size();
-    for(const auto& b:boxes) boxInsert(b);
+    for(size_t i = 0; i < boxes.size(); i++){
+        if (select && !selection[i]) continue;
+        boxInsert(boxes[i]);
+    }
     size_t newS = m_controlPoints.size() -1;
     
     for(const auto group:m_active_groups)
@@ -164,6 +169,7 @@ void Renderer::clearAll()
     m_controlPoints.clear();
     m_appearances.clear();
     m_indexSize = 0;
+    m_rendererID2OldID.clear();
 
     m_selectionID = -1;
 
@@ -273,4 +279,20 @@ bool Renderer::addMouseSelectionToGroup(const int id){
         return true;
     }
     else return false;
+}
+
+std::vector<size_t> Renderer::getGroupIDs(int ID) const {
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+
+    std::vector<size_t> ret{};
+    
+    auto it = m_groupIndices.find(ID);
+    if (it == m_groupIndices.end()) return ret;
+    
+    std::vector<Renderer::IndexRange> indicePairs = {it->second.begin(), it->second.end()};
+    for (auto& el:indicePairs)
+        for(size_t i = el.first; i <= el.second; i++)
+            ret.emplace_back(m_rendererID2OldID.at(i));
+
+    return ret;
 }

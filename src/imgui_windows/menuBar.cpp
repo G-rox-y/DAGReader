@@ -53,6 +53,10 @@ void menuBar::draw()
             if (ImGui::MenuItem("Position info", NULL, iws))
                 channel->info_window_shown.store(!iws);
 
+            bool swa = channel->selection_window_allowed.load();
+            if (ImGui::MenuItem("Selection window", NULL, swa))
+                channel->selection_window_allowed.store(!swa);
+
             ImGui::Separator();
 
             bool lm = channel->light_mode.load();

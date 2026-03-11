@@ -228,6 +228,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     m_imguis.emplace_back(std::make_unique<about>(channel));
     m_imguis.emplace_back(std::make_unique<controls>(channel));
     m_imguis.emplace_back(std::make_unique<info>(channel));
+    m_imguis.emplace_back(std::make_unique<selectionWindow>(channel));
 }
 
 Window::~Window()
