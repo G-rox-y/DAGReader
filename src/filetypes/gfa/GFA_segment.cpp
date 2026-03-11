@@ -12,7 +12,7 @@ void GFA_segment::setSequence(std::ifstream& input, const std::string& path){
     }
 
     // advance the stream over the sequence fragment
-    for (char c = '0'; input.good() && c != '\t' ; input.get(c)) continue;
+    for (char c = '0'; input.good() && c != '\t' && c != '\n' ; input.get(c)) continue;
 }
 
 void GFA_segment::setSequence(const std::string& uri_path_str, const std::string& gfa_path_str)
@@ -30,4 +30,9 @@ void GFA_segment::setSequence(const std::string& uri_path_str, const std::string
     }
     
     seq_exists = true;
+}
+
+std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA_segment::provideSequence() const {
+    if (!seq_exists) return std::nullopt;
+    return std::make_tuple(seq_file, seq_loc_gfa);
 }

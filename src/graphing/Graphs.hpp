@@ -16,6 +16,8 @@ struct Edge{
     size_t start;
     size_t end;
     
+    // these values are to be used only if segpart is false
+    // an orientation bool is true if the segment is connected with +, and false if with -
     bool startOri, endOri;
 
     long long int length;

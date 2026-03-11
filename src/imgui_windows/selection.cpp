@@ -20,7 +20,7 @@ void selectionWindow::draw() {
     ImGui::SetNextWindowPos(ll, ImGuiCond_Always);
 
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
-        | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize;
+        | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground;;
 
     if (ImGui::Begin("Selection HUD", NULL, flags)){
         if (indices.size() == 1){
@@ -32,7 +32,7 @@ void selectionWindow::draw() {
                     if (auto* name = std::get_if<std::string_view>(&props["Name_SW"]))
                         LabeledSV("Segment:", *name);
                     if (auto* length = std::get_if<long long>(&props["Length_LLI"]))
-                        ImGui::Text("Length: %lld", *length);
+                        ImGui::Text("Length: %lld bp", *length);
                     if (auto* depth = std::get_if<double>(&props["Depth_D"]))
                         ImGui::Text("Depth: %.2f", *depth);
                     if (m_verboseMode){
@@ -43,29 +43,43 @@ void selectionWindow::draw() {
                         if (auto* fc = std::get_if<long long>(&props["FragmentCount_LLI"]))
                             ImGui::Text("Fragment count: %lld", *fc);
                         if (auto* seq = std::get_if<bool>(&props["SequenceAvailable_B"])){
-                            ImGui::Text("Sequence: %s", *seq ? "available" : "unavailable");
-                            // TODO: add an buttoned option to show sequence in another window
+                            if (*seq){
+                                ImGui::AlignTextToFramePadding();
+                                ImGui::Text("Sequence exists >");
+                                ImGui::SameLine();
+                                if (ImGui::Button("View")) {
+                                    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get())) {
+                                        if (auto result = gfa->retrieveSequence(idx)) {
+                                            auto& [path, pos] = *result;
+                                            seqWin.setSequence(path, pos);
+                                        }
+                                    } else {
+                                        spdlog::warn("Filetype not implemented yet");
+                                    }
+                                }
+                            }
+                            else ImGui::Text("No sequence");
                         }
                     }
                 }
                 else if (*type == datatype::mapType::LINK) {
                     auto* fromName = std::get_if<std::string_view>(&props["FromName_SW"]);
-                    auto* fromOri = std::get_if<std::string_view>(&props["FromOrientation_SW"]);
+                    auto* fromOri = std::get_if<char>(&props["FromOrientation_C"]);
                     auto* toName = std::get_if<std::string_view>(&props["ToName_SW"]);
-                    auto* toOri = std::get_if<std::string_view>(&props["ToOrientation_SW"]);
+                    auto* toOri = std::get_if<char>(&props["ToOrientation_C"]);
 
                     if (fromName && fromOri && toName && toOri) {
                         ImGui::Text("Link:");
                         ImGui::SameLine();
                         ImGui::TextUnformatted(fromName->data(), fromName->data() + fromName->size());
                         ImGui::SameLine(0, 0);
-                        ImGui::TextUnformatted(fromOri->data(), fromOri->data() + fromOri->size());
+                        ImGui::Text("%c", *fromOri);
                         ImGui::SameLine();
                         ImGui::Text("->");
                         ImGui::SameLine();
                         ImGui::TextUnformatted(toName->data(), toName->data() + toName->size());
                         ImGui::SameLine(0, 0);
-                        ImGui::TextUnformatted(toOri->data(), toOri->data() + toOri->size());
+                        ImGui::Text("%c", *fromOri);
                     }
 
                     if (m_verboseMode){
@@ -156,4 +170,6 @@ void selectionWindow::draw() {
         ImGui::End();
     }
     
+    // draw the sequence window
+    seqWin.draw();
 }

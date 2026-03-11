@@ -3,7 +3,7 @@
 #include "pch.hpp"
 #include "Graphs.hpp"
 
-using dataProperties = std::variant<bool, int, float, double, long long int, size_t, std::string_view>;
+using dataProperties = std::variant<bool, char, int, float, double, long long int, size_t, std::string_view>;
 
 class datatype {
 public:

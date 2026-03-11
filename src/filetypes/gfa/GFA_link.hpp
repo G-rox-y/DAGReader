@@ -15,6 +15,6 @@ public:
 
     const std::string& getFromName() const { return from_name; }
     const std::string& getToName() const { return to_name; }
-    const std::string getFromOrientation() const { return (from_orientation) ? "+" : "-"; }
-    const std::string getToOrientation() const { return (to_orientation) ? "+" : "-"; }
+    char getFromOrientation() const { return (from_orientation) ? '+' : '-'; }
+    char getToOrientation() const { return (to_orientation) ? '+' : '-'; }
 };

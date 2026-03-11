@@ -42,4 +42,5 @@ public:
     void fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const override;
     std::map<std::string, dataProperties> retrieveEdgeData(size_t id, bool verbose = false) const override;
     std::map<std::string, dataProperties> retrieveGeneralData() const override;
+    std::optional<std::tuple<std::filesystem::path, std::streampos>> retrieveSequence(size_t id);
 };

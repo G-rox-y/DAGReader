@@ -11,7 +11,7 @@ private:
     bool seq_exists; // is sequence defined in the file (its definition can be skipped using '*')
     std::filesystem::path seq_file; // sequence file
     bool seq_file_is_gfa; // sequence is stored in the orignal gfa
-    std::streampos seq_loc_gfa; // stream position inside the gfa where the sequence can be found
+    std::streampos seq_loc_gfa=0; // stream position inside the gfa where the sequence can be found
 
 public:
     GFA_segment(const std::string& n);
@@ -24,4 +24,6 @@ public:
     bool isSequenceAvailable() const { return seq_exists; }
 
     const std::string& getName() const { return name; };
+
+    std::optional<std::tuple<std::filesystem::path, std::streampos>> provideSequence() const;
 };

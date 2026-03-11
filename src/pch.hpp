@@ -29,6 +29,7 @@
 #include <sstream>
 #include <variant>
 #include <utility>
+#include <optional>
 #include <iterator>
 #include <unordered_map>
 #include <unordered_set>

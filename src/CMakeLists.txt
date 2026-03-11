@@ -8,6 +8,7 @@ target_sources(${PROJECT_NAME} PUBLIC
     "imgui_windows/controls.cpp"
     "imgui_windows/info.cpp"
     "imgui_windows/selection.cpp"
+    "imgui_windows/sequenceWindow.cpp"
     "filetypes/gfa/GFA.cpp"
     "filetypes/gfa/GFA_segment.cpp"
     "filetypes/gfa/GFA_path.cpp"

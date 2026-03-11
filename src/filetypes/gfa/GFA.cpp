@@ -331,11 +331,11 @@ void GFA::fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const {
 
     for(size_t i = 0; i < links.size(); i++){
         auto& l = links.at(i);
-        size_t id1 = verts[l.getFromName() + ((l.getFromOrientation() == "+") ? "END" : "START")];
-        size_t id2 = verts[l.getToName() + ((l.getToOrientation() == "+") ? "START" : "END")];
+        size_t id1 = verts[l.getFromName() + ((l.getFromOrientation() == '+') ? "END" : "START")];
+        size_t id2 = verts[l.getToName() + ((l.getToOrientation() == '+') ? "START" : "END")];
         size_t eid = e.size();
         e.emplace_back(eid, id1, id2);
-        e.back().setOrientations(l.getFromOrientation() != "+", l.getToOrientation() == "+");
+        e.back().setOrientations(l.getFromOrientation() == '+', l.getToOrientation() == '+');
         edgeMap[eid] = std::make_pair(i, mapType::LINK);
     }
 }
@@ -369,9 +369,9 @@ std::map<std::string, dataProperties> GFA::retrieveEdgeData(size_t id, bool verb
     else if (edgeMap.at(id).second == mapType::LINK){
         auto& l = links.at(ID);
         ret["FromName_SW"] = std::string_view(l.getFromName());
-        ret["FromOrientation_SW"] = std::string_view(l.getFromOrientation());
+        ret["FromOrientation_C"] = l.getFromOrientation();
         ret["ToName_SW"] = std::string_view(l.getToName());
-        ret["ToOrientation_SW"] = std::string_view(l.getToOrientation());
+        ret["ToOrientation_C"] = l.getToOrientation();
         ret["Cigar_SW"] = std::string_view(l.getOverlap());
         ret["EdgeIdentifier_SW"] = std::string_view(l.getEdgeIdentifier());
         if (verbose){
@@ -394,4 +394,11 @@ std::map<std::string, dataProperties> GFA::retrieveGeneralData() const {
     ret["LinkNumber_ULLI"] = links.size();
     ret["PathNumber_ULLI"] = paths.size();
     return ret;
+}
+
+std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA::retrieveSequence(size_t id) {
+    auto it = edgeMap.find(id);
+    if (it == edgeMap.end()) return std::nullopt;
+    if (it->second.second != mapType::SEGMENT) return std::nullopt;
+    return segments.at(it->second.first).provideSequence();
 }
