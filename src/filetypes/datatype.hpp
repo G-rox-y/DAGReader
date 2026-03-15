@@ -2,6 +2,7 @@
 
 #include "pch.hpp"
 #include "Graphs.hpp"
+#include <string_view>
 
 using dataProperties = std::variant<bool, char, int, float, double, long long int, size_t, std::string_view>;
 

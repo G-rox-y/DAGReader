@@ -402,3 +402,7 @@ std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA::retrieveSe
     if (it->second.second != mapType::SEGMENT) return std::nullopt;
     return segments.at(it->second.first).provideSequence();
 }
+
+std::vector<std::string> GFA::searchForName(bool seg, bool link, bool cont, bool path) {
+    return {};
+}

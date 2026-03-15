@@ -241,10 +241,9 @@ void sidePanel::draw()
             }
 
             if (ImGui::CollapsingHeader("Search")) {
-                static char m_searchBuffer[256] = "";
-                static bool m_filterSegments = true, m_filterLinks = true, m_filterPaths = true, m_filterContainments = true;
-                static int m_resultCount = -1;  // -1 = no search yet
-            
+                static char searchBuffer[256] = "";
+                static bool filterSegments = true, filterLinks = true, filterPaths = false, filterContainments = false;
+                static std::vector<std::string> results;
                 
                 ImGui::SetNextItemWidth(w);
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 8));
@@ -253,41 +252,38 @@ void sidePanel::draw()
                 bool enterPressed = ImGui::InputTextWithHint(
                     "##searchBar", 
                     "Search...", 
-                    m_searchBuffer, 
-                    sizeof(m_searchBuffer),
+                    searchBuffer, 
+                    sizeof(searchBuffer),
                     ImGuiInputTextFlags_EnterReturnsTrue
                 );
                 
                 ImGui::PopStyleVar(2);
 
                 // clear button
-                if (m_searchBuffer[0] != '\0') {
+                if (searchBuffer[0] != '\0') {
                     ImGui::SameLine();
                     if (ImGui::Button("clear##clear")) {
-                        m_searchBuffer[0] = '\0';
+                        searchBuffer[0] = '\0';
                     }
                 }
 
                 ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
-                ImGui::Checkbox("Segments", &m_filterSegments);
+                ImGui::Checkbox("Segments", &filterSegments);
                 ImGui::SameLine();
-                ImGui::Checkbox("Links", &m_filterLinks);
-                ImGui::SameLine();
-                ImGui::Checkbox("Paths", &m_filterPaths);
-                ImGui::SameLine();
-                ImGui::Checkbox("Containments", &m_filterContainments);
+                ImGui::Checkbox("Links", &filterLinks);
 
                 ImGui::Spacing();
-                if (ImGui::Button("Search##Button") || enterPressed) {
-                    
-                }
+                if (ImGui::Button("Search##Button") || enterPressed) 
+                    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
+                        results = gfa->searchForName(filterSegments, filterLinks, filterContainments, filterPaths);
                 
                 ImGui::SameLine();
-                if (m_resultCount >= 0) {
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextDisabled("(%d results)", m_resultCount);
-                }
+                auto resultCount = results.size();
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextDisabled("(%zu results)", resultCount);
+
+
             }
         }
         else{
