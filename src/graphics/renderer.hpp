@@ -129,4 +129,7 @@ public:
     GLProgram& program() { return m_program; }
 
     std::vector<size_t> getGroupIDs(int ID) const;
+    // get a tuple containing the data needed for a camera to orbit around this group
+    // first element is the point around which the camera will orbit, and second is the distance
+    std::tuple<glm::vec3, float> getGroupOrbitData(int ID) const;
 };

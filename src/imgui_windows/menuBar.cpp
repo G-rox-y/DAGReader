@@ -1,4 +1,5 @@
 #include "menuBar.hpp"
+#include "infoExchange.hpp"
 
 menuBar::menuBar(infoExchange* c) : channel(c) {}
 
@@ -74,27 +75,8 @@ void menuBar::draw()
             ImGui::Separator();
 
             if (ImGui::MenuItem("Orbit selection")){
-                size_t subgraphNum = channel->subgraphAmount();
-
-                glm::vec3 centerPos(0.f);
-                size_t bc = 0;
-                for (size_t graphID = 0; graphID < subgraphNum; graphID++){
-                    auto& G = channel->getSubgraphData(graphID);
-                    if (G.selected){
-                        centerPos += G.pos;
-                        bc++;
-                    }
-                }
-                centerPos /= bc;
-
-                float maxDist = 0.f;
-                for (size_t graphID = 0; graphID < subgraphNum; graphID++){
-                    auto& G = channel->getSubgraphData(graphID);
-                    if (G.selected) maxDist = std::max<float>(maxDist, glm::length(centerPos - G.pos) + G.radius);
-                }
-                
-                if (bc) channel->cam->engageOrbit(centerPos, maxDist * 1.5f);
-                else channel->cam->disengageOrbit();
+                auto [centerPos, maxDist] = channel->renderer->getGroupOrbitData(groups::SELECTION);
+                channel->cam->engageOrbit(centerPos, maxDist * 2.5f);
             }
 
             ImGui::EndMenu();

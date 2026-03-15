@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include <glm/geometric.hpp>
 
 void Renderer::boxInsert(const BezierBox& b){
     double segment = glm::length(b.end - b.start) / 3.f;
@@ -295,4 +296,31 @@ std::vector<size_t> Renderer::getGroupIDs(int ID) const {
             ret.emplace_back(m_rendererID2OldID.at(i));
 
     return ret;
+}
+
+std::tuple<glm::vec3, float> Renderer::getGroupOrbitData(int ID) const {
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    
+    auto it = m_groupIndices.find(ID);
+    if (it == m_groupIndices.end()) return {};
+
+    glm::vec4 pos(0.f);
+    size_t ctr = 0;
+    float dist = FLT_MAX;
+
+    std::vector<Renderer::IndexRange> indicePairs = {it->second.begin(), it->second.end()};
+    for (auto& el:indicePairs){
+        ctr += el.second - el.first + 1;
+        for(size_t i = el.first; i <= el.second; i++)
+            pos += m_controlPoints[i][0] + m_controlPoints[i][3];
+    }
+    pos /= ctr*2;
+
+    for (auto& el:indicePairs)
+        for(size_t i = el.first; i <= el.second; i++)
+            dist = std::min<float>(dist, 
+                std::min<float>(glm::distance(m_controlPoints[i][0], pos), glm::distance(m_controlPoints[i][3], pos))
+            );
+
+    return {pos, dist};
 }

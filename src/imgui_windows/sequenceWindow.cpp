@@ -64,6 +64,7 @@ void sequenceWindow::draw() {
         }
         else {
             // Info bar
+            ImGui::AlignTextToFramePadding();
             ImGui::Text("Length: %zu bp", m_sequence.size());
             ImGui::SameLine();
             if (ImGui::Button("Copy to Clipboard")) {
