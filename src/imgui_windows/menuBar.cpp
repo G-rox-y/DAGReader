@@ -1,5 +1,6 @@
 #include "menuBar.hpp"
 #include "infoExchange.hpp"
+#include <imgui.h>
 
 menuBar::menuBar(infoExchange* c) : channel(c) {}
 

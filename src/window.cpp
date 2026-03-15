@@ -280,6 +280,11 @@ void Window::run()
 
     // key callback
     glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int scancode, int action, int mods){
+        // check if ImGui wants keyboard input and if yes dont use it
+        ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureKeyboard) return;
+        
         if (key == GLFW_KEY_H && action == GLFW_RELEASE) {
             CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
             data->channel->controls_window_toggled.store(!data->channel->controls_window_toggled.load());

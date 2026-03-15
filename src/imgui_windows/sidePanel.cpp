@@ -1,4 +1,5 @@
 #include "sidePanel.hpp"
+#include <imgui.h>
 
 void sidePanel::draw()
 {
@@ -66,8 +67,7 @@ void sidePanel::draw()
                 HelpMarker("This will calculate (or recalculate) the graph layout using the parameters and data from the input file");
             }
 
-            bool openLayoutSettings = ImGui::CollapsingHeader("Layout settings");
-            if(openLayoutSettings)
+            if(ImGui::CollapsingHeader("Layout settings"))
             {
                 int copy_grm = channel->grip_roundsNum.load();
                 if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
@@ -93,8 +93,8 @@ void sidePanel::draw()
                     if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
                 }
             }
-            bool openAppearance = ImGui::CollapsingHeader("Appearance");
-            if (openAppearance)
+            
+            if (ImGui::CollapsingHeader("Appearance"))
             {
                 float sw = channel->segment_widths.load();
 
@@ -173,8 +173,7 @@ void sidePanel::draw()
                 );
             }
 
-            bool openSubgraphSelection = ImGui::CollapsingHeader("Subgraph selection");
-            if (openSubgraphSelection)
+            if (ImGui::CollapsingHeader("Subgraph selection"))
             {
                 if(ImGui::Button("Hide All")){
                     for(size_t i = 0; i < subgraphNum; i++)
@@ -239,6 +238,56 @@ void sidePanel::draw()
                 }
                 if (tableCausedReset) channel->addControllerTask(tasks::RESET_GRAPH);
                 if (tableCausedRefresh) channel->addControllerTask(tasks::REFRESH_GRAPH);
+            }
+
+            if (ImGui::CollapsingHeader("Search")) {
+                static char m_searchBuffer[256] = "";
+                static bool m_filterSegments = true, m_filterLinks = true, m_filterPaths = true, m_filterContainments = true;
+                static int m_resultCount = -1;  // -1 = no search yet
+            
+                
+                ImGui::SetNextItemWidth(w);
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 8));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+                
+                bool enterPressed = ImGui::InputTextWithHint(
+                    "##searchBar", 
+                    "Search...", 
+                    m_searchBuffer, 
+                    sizeof(m_searchBuffer),
+                    ImGuiInputTextFlags_EnterReturnsTrue
+                );
+                
+                ImGui::PopStyleVar(2);
+
+                // clear button
+                if (m_searchBuffer[0] != '\0') {
+                    ImGui::SameLine();
+                    if (ImGui::Button("clear##clear")) {
+                        m_searchBuffer[0] = '\0';
+                    }
+                }
+
+                ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+                ImGui::Checkbox("Segments", &m_filterSegments);
+                ImGui::SameLine();
+                ImGui::Checkbox("Links", &m_filterLinks);
+                ImGui::SameLine();
+                ImGui::Checkbox("Paths", &m_filterPaths);
+                ImGui::SameLine();
+                ImGui::Checkbox("Containments", &m_filterContainments);
+
+                ImGui::Spacing();
+                if (ImGui::Button("Search##Button") || enterPressed) {
+                    
+                }
+                
+                ImGui::SameLine();
+                if (m_resultCount >= 0) {
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextDisabled("(%d results)", m_resultCount);
+                }
             }
         }
         else{
