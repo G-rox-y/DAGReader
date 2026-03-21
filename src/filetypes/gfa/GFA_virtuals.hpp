@@ -80,11 +80,18 @@ public:
 };
 
 // abstract class for adding the overlap property to classes
-class overlap{
+class overlap {
 private:
-    std::string overlap_cigar; // Optional CIGAR string describing overlap
+    bool overlap_exists = false; // is the string in the file (its definition can be skipped using '*')
+    std::filesystem::path overlap_file; // file where the overlap can be found
+    std::streampos overlap_loc_gfa=0; // stream position inside the gfa where cigar can be found
 public:
     virtual ~overlap() = default;
-    void setOverlap(const std::string& ov) { overlap_cigar = (ov == "*") ? "" : ov; } // if ov is '*' that means no CIGAR string is provided
-    const std::string& getOverlap() const { return overlap_cigar; }
+    void noOverlap() { overlap_exists = false; }
+    void setOverlap(std::filesystem::path path, std::streampos pos) { overlap_file = path; overlap_loc_gfa = pos; overlap_exists = true; }
+    bool isOverlapAvailable() const { return overlap_exists; }
+    std::optional<std::tuple<std::filesystem::path, std::streampos>> provideOverlap() const {
+        if (!overlap_exists) return std::nullopt;
+        return std::make_tuple(overlap_file, overlap_loc_gfa);
+    }
 };

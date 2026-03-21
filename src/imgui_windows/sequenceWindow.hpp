@@ -13,6 +13,7 @@ private:
     // Cached sequence data
     std::string m_sequence;
     bool m_sequenceLoaded = false;
+    bool m_showingCIGAR = false;
     bool m_showWindow = false;
     std::string m_error;
 
@@ -21,7 +22,7 @@ private:
 public:
     sequenceWindow(infoExchange* c) : channel(c) {}
 
-    void setSequence(std::filesystem::path file, std::streampos loc);
+    void setSequence(std::filesystem::path file, std::streampos loc, bool cigar = false);
 
     void draw() override;
 };

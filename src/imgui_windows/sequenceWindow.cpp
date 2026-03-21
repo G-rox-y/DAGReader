@@ -34,7 +34,7 @@ void sequenceWindow::loadSequence() {
     m_sequenceLoaded = true;
 }
 
-void sequenceWindow::setSequence(std::filesystem::path file, std::streampos loc) {
+void sequenceWindow::setSequence(std::filesystem::path file, std::streampos loc, bool cigar) {
     if (file == seq_file && loc == seq_loc_gfa)
         m_sequenceLoaded = true;
     else {
@@ -42,6 +42,7 @@ void sequenceWindow::setSequence(std::filesystem::path file, std::streampos loc)
         seq_loc_gfa = loc;
         m_sequenceLoaded = false;
     }
+    m_showingCIGAR = cigar;
     m_showWindow = true;
 }
 
@@ -54,18 +55,19 @@ void sequenceWindow::draw() {
     }
 
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
-    
-    if (ImGui::Begin("Sequence Viewer", &m_showWindow, ImGuiWindowFlags_NoSavedSettings)) {
+    std::string Name = (m_showingCIGAR) ? "CIGAR Viewer##viewer" : "Sequence Viewer##viewer";
+    if (ImGui::Begin(Name.c_str(), &m_showWindow, ImGuiWindowFlags_NoSavedSettings)) {
         if (!m_error.empty()) {
             ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Error: %s", m_error.c_str());
         }
         else if (m_sequence.empty()) {
-            ImGui::Text("No sequence data");
+            ImGui::Text("No data");
         }
         else {
             // Info bar
             ImGui::AlignTextToFramePadding();
-            ImGui::Text("Length: %zu bp", m_sequence.size());
+            if (!m_showingCIGAR)
+                ImGui::Text("Length: %zu bp", m_sequence.size());
             ImGui::SameLine();
             if (ImGui::Button("Copy to Clipboard")) {
                 ImGui::SetClipboardText(m_sequence.c_str());
@@ -81,7 +83,7 @@ void sequenceWindow::draw() {
             ImGui::Separator();
 
             // Scrollable region for sequence
-            ImGui::BeginChild("SequenceScroll", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
+            ImGui::BeginChild("ViewScroll", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
             
             // Display sequence with line numbers
             for (size_t i = 0; i < m_sequence.size(); i += charsPerLine) {

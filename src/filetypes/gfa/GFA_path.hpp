@@ -2,19 +2,16 @@
 
 #include "pch.hpp"
 
-#include "gfa/GFA_link.hpp"
+#include "gfa/GFA_virtuals.hpp"
 
-class GFA_path {
+class GFA_path : public overlap{
 private:
     std::string name;
-    std::vector<std::string> segments; // list of segment names
+    std::vector<size_t> segments; // list of segment names
     std::vector<bool> orientations; //  their orientations
-    std::vector<std::string> overlaps; // Optional comma-separated list of CIGAR strings
+
 public:
-    GFA_path(const std::string& n);
-
-    void setSegments(std::ifstream& input);
-
-    // setOverlaps must not be run before setSegments had been ran
-    void setOverlaps(std::ifstream& input, const std::vector<GFA_link>& links, const std::map<std::pair<std::string_view, std::string_view>, int> link_lookup);
+    GFA_path() = default;
+    GFA_path(const std::string& n, std::vector<size_t> segIDs, std::vector<bool> oris)
+        : name(n), segments(std::move(segIDs)), orientations(std::move(oris)) {}
 };

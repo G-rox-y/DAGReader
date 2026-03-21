@@ -85,8 +85,23 @@ void selectionWindow::draw() {
                     if (m_verboseMode){
                         if (auto* edgeId = std::get_if<std::string_view>(&props["EdgeIdentifier_SW"]))
                             if (!edgeId->empty()) LabeledSV("Edge ID:", *edgeId);
-                        if (auto* cigar = std::get_if<std::string_view>(&props["Cigar_SW"]))
-                            if (!cigar->empty()) LabeledSV("CIGAR:", *cigar);
+                        if (auto* cigar = std::get_if<bool>(&props["CigarAvailable_B"])){
+                            if (*cigar){
+                                ImGui::AlignTextToFramePadding();
+                                ImGui::Text("CIGAR exists >");
+                                ImGui::SameLine();
+                                if (ImGui::Button("View##cigar")) {
+                                    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get())) {
+                                        if (auto result = gfa->retrieveCIGAR(idx)) {
+                                            auto& [path, pos] = *result;
+                                            seqWin.setSequence(path, pos, true);
+                                        }
+                                    } else {
+                                        spdlog::warn("Filetype not implemented yet");
+                                    }
+                                }
+                            }
+                        }
                         if (auto* kc = std::get_if<long long>(&props["KmerCount_LLI"]))
                             ImGui::Text("K-mer count: %lld", *kc);
                         if (auto* rc = std::get_if<long long>(&props["ReadCount_LLI"]))

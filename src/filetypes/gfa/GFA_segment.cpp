@@ -1,21 +1,6 @@
 #include "GFA_segment.hpp"
 
-GFA_segment::GFA_segment(const std::string& n) : name(n), seq_exists(false), seq_file_is_gfa(false) {}
-
-void GFA_segment::setSequence(std::ifstream& input, const std::string& path){
-    // the program doesnt need to store an entire sequence in ram
-    // it can just store a reference to where it can find it if needed and get the data at the moment it gets requested
-    if (input.good() && input.peek() != '*'){
-        seq_file = path;
-        seq_loc_gfa = input.tellg();
-        seq_exists = seq_file_is_gfa = true;
-    }
-
-    // advance the stream over the sequence fragment
-    for (char c = '0'; input.good() && c != '\t' && c != '\n' ; input.get(c)) continue;
-}
-
-void GFA_segment::setSequence(const std::string& uri_path_str, const std::string& gfa_path_str)
+void GFA_segment::setUriSequence(const std::string& uri_path_str, const std::string& gfa_path_str)
 {
     // TODO: implement recognizing if this is an uri or a path, currently we dont consider an uri option
 
@@ -30,9 +15,4 @@ void GFA_segment::setSequence(const std::string& uri_path_str, const std::string
     }
     
     seq_exists = true;
-}
-
-std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA_segment::provideSequence() const {
-    if (!seq_exists) return std::nullopt;
-    return std::make_tuple(seq_file, seq_loc_gfa);
 }
