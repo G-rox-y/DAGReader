@@ -5,14 +5,19 @@ void controls::draw()
     if (!channel->controls_window_shown.load()) return;
 
     static std::string lines[] = {
+        "#Movement",
         "Up, Down Left, Right - look around",
         "W, A, S, D, - move",
         "E, Q - rotate",
         "Space, C - up / down",
-        "R - Reset camera position",
-        "I, O - Increase / decrease camera speed",
+        "I, O - Increase / decrease speed",
         "LShift(hold) - Speed up movement",
+        "R - Reset position",
+        "#Selection",
         "X - Toggle selection mode",
+        "F - Focus on selection",
+        "U - Unselect all selections",
+        "#",
         "H - Toggle controls"
     };
 
@@ -33,10 +38,15 @@ void controls::draw()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     
     if (ImGui::Begin("Controls", NULL, flags)){
-        ImGui::SeparatorText("Controls:");
         if (channel->controls_window_toggled.load())
-            for(auto& l:lines) ImGui::Text("%s", l.c_str());
-        else ImGui::Text("press H to show");
+            for(auto& l:lines){
+                if (!l.empty() && l[0] == '#') ImGui::SeparatorText(l.substr(1).c_str());
+                else ImGui::Text("%s", l.c_str());
+            }
+        else{
+            ImGui::SeparatorText("Controls:");
+            ImGui::Text("press H to show");
+        }
         ImGui::End();
     }
     ImGui::PopStyleVar(2);

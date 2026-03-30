@@ -1,4 +1,8 @@
 #include "GFA.hpp"
+#include <cstddef>
+#include <optional>
+#include <string_view>
+#include <tuple>
 
 void GFA::parser_warning(const std::string& description, const int line_n) const {
     if (line_n != -1) spdlog::warn("GFA Parser warning [at line {}]: {}", line_n, description);
@@ -76,7 +80,6 @@ GFA::GFA(const std::string& path) : parser(path)
             if (!file.good()) {breakSignal = FILEEND; break;}
             ret += static_cast<char>(c);
         }
-        ret.shrink_to_fit();
         return {ret, breakSignal};
     };
     // ignore the next string before file end/tab delimitor/next line
@@ -134,6 +137,8 @@ GFA::GFA(const std::string& path) : parser(path)
     paths.resize(lines['P'].size());
     containments.resize(lines['C'].size());
 
+    segment_associations.resize(segments.size());
+
     // process segments first
     #ifdef HAS_OPENMP
         unsigned int available_threads = std::max<unsigned int>(std::thread::hardware_concurrency()-2 , 2);
@@ -190,10 +195,8 @@ GFA::GFA(const std::string& path) : parser(path)
             #pragma omp barrier
             #pragma omp single
         #endif
-        {
-            // make the lookup
-            for (size_t i = 0; i < segments.size(); i++)
-                segment_lookup[segments[i].getName()] = i;
+        { // make the lookup
+            for (size_t i = 0; i < segments.size(); i++) segment_lookup[segments[i].getName()] = i;
         }
 
         // then links
@@ -274,17 +277,19 @@ GFA::GFA(const std::string& path) : parser(path)
                 if (field_sig != TAB) break;
             }
         }
-
+        
         #ifdef HAS_OPENMP
             #pragma omp barrier
             #pragma omp single
         #endif
-        {
-            // make the link lookup
-            for(size_t i = 0; i < links.size(); i++)
-                link_lookup[std::make_pair(links[i].getFromID(), links[i].getToID())] = i;
+        { // make segment associations to links
+            for (size_t i = 0; i < links.size(); i++){
+                auto p = std::make_pair(i, mapType::LINK);
+                segment_associations.at(links[i].getFromID()).push_back(p);
+                segment_associations.at(links[i].getToID()).push_back(p);
+            }
         }
-        
+
         #ifdef HAS_OPENMP
             #pragma omp for schedule(dynamic, 1)
         #endif
@@ -337,6 +342,13 @@ GFA::GFA(const std::string& path) : parser(path)
                 local_file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
 
+        #ifdef HAS_OPENMP
+            #pragma omp barrier
+            #pragma omp single
+        #endif
+        {   // make the path lookup
+            for(size_t i = 0; i < paths.size(); i++) path_lookup[paths[i].getName()] = i;
+        }
         
         #ifdef HAS_OPENMP
             #pragma omp barrier
@@ -442,20 +454,21 @@ GFA::GFA(const std::string& path) : parser(path)
     paths.shrink_to_fit();
 }
 
-void GFA::fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const {
+void GFA::fillData(std::vector<Vertex>& v, std::vector<Edge>& e) {
     std::unordered_map<std::string, size_t> verts;
 
     for(size_t i = 0; i < segments.size(); i++){
         auto& s = segments.at(i);
-        size_t id = v.size();
-        v.emplace_back(id);
-        verts[s.getName() + "START"] = id;
-        v.emplace_back(id + 1);
-        verts[s.getName() + "END"] = id + 1;
-        size_t eid = e.size();
-        e.emplace_back(eid, id, id + 1, s.getSegmentLength());
+        size_t vid = v.size(); // this is not an edge id not an object id, its an id of a vector in the graph
+        v.emplace_back(vid);
+        verts[s.getName() + "START"] = vid;
+        v.emplace_back(vid + 1);
+        verts[s.getName() + "END"] = vid + 1;
+        size_t eid = e.size(); // this is an edge id
+        e.emplace_back(eid, vid, vid + 1, s.getSegmentLength());
         e.back().segPart = true;
-        edgeMap[eid] = std::make_pair(i, mapType::SEGMENT);
+        edgeMap[eid] = std::make_pair(i, mapType::SEGMENT); // make an entry that links that eid with this segment
+        s.setExternalID(eid);
     }
 
     for(size_t i = 0; i < links.size(); i++){
@@ -465,20 +478,17 @@ void GFA::fillData(std::vector<Vertex>& v, std::vector<Edge>& e) const {
         size_t eid = e.size();
         e.emplace_back(eid, id1, id2);
         e.back().setOrientations(l.getFromOrientation() == '+', l.getToOrientation() == '+');
-        edgeMap[eid] = std::make_pair(i, mapType::LINK);
+        edgeMap[eid] = std::make_pair(i, mapType::LINK); // make an entry that links that eid with this link
+        l.setExternalID(eid);
     }
 }
 
-std::map<std::string, dataProperties> GFA::retrieveEdgeData(size_t id, bool verbose) const {
-    auto it = edgeMap.find(id);
-    if (it == edgeMap.end()) return {};
-    
+std::map<std::string, dataProperties> GFA::retrieveObjectData(size_t oid, char type, bool verbose) const {
     std::map<std::string, dataProperties> ret = {};
-    auto& [ID, type] = it->second;
-
-    ret["Type_I"] = type;
+    
     if (type == mapType::SEGMENT){
-        auto& s = segments.at(ID);
+        if (segments.size() <= oid) return {};
+        auto& s = segments.at(oid);
         long long int KC = s.getKmerCount(), RC = s.getReadCount(), FC = s.getFragmentCount(), L = s.getSegmentLength();
         ret["Name_SW"] = std::string_view(s.getName());
         ret["Length_LLI"] = L;
@@ -494,15 +504,16 @@ std::map<std::string, dataProperties> GFA::retrieveEdgeData(size_t id, bool verb
             ret["SequenceAvailable_B"] = s.isSequenceAvailable();
         }
     }
-    else if (edgeMap.at(id).second == mapType::LINK){
-        auto& l = links.at(ID);
+    else if (type == mapType::LINK){
+        if (links.size() <= oid) return {};
+        auto& l = links.at(oid);
         ret["FromName_SW"] = std::string_view(segments.at(l.getFromID()).getName());
         ret["FromOrientation_C"] = l.getFromOrientation();
         ret["ToName_SW"] = std::string_view(segments.at(l.getToID()).getName());
         ret["ToOrientation_C"] = l.getToOrientation();
-        ret["CigarAvailable_B"] = l.isOverlapAvailable();
-        ret["EdgeIdentifier_SW"] = std::string_view(l.getEdgeIdentifier());
         if (verbose){
+            ret["CigarAvailable_B"] = l.isOverlapAvailable();
+            ret["EdgeIdentifier_SW"] = std::string_view(l.getEdgeIdentifier());
             long long int KC = l.getKmerCount(), RC = l.getReadCount(), FC = l.getFragmentCount(),
                 MMC = l.getNumOfMismatchGaps(), MQ = l.getMappingQuality();
             if (KC != -1) ret["KmerCount_LLI"] = KC;
@@ -512,7 +523,40 @@ std::map<std::string, dataProperties> GFA::retrieveEdgeData(size_t id, bool verb
             if (MQ != -1) ret["MappingQuality_LLI"] = MQ;
         }
     }
+    else if (type == mapType::CONTAINMENT){
+        if (containments.size() <= oid) return {};
+        auto& c = containments.at(oid);
+        ret["ContainerName_SW"] = std::string_view(segments.at(c.getContainerID()).getName());
+        ret["ContainerOrientation_C"] = c.getContainerOrientation();
+        ret["ContainedName_SW"] = std::string_view(segments.at(c.getContainedID()).getName());
+        ret["ContainedOrientation_C"] = c.getContainedOrientation();
+        ret["Position_LLI"] = c.getPositon();
+        if (verbose){
+            ret["CigarAvailable_B"] = c.isOverlapAvailable();
+            long long int MMC = c.getNumOfMismatchGaps(), RC = c.getReadCount();
+            if (MMC != -1) ret["MismatchGaps_LLI"] = MMC;
+            if (RC != -1) ret["ReadCount_LLI"] = RC;
+            if (c.hasEdgeIdentifier()) ret["EdgeIdentifier_SW"] = std::string_view(c.getEdgeIdentifier());
+        }
+    }
+    else if (type == mapType::PATH){
+        if (paths.size() <= oid) return {};
+        auto& p = paths.at(oid);
+        ret["Name_SW"] = std::string_view(p.getName());
+        if (verbose){
+            ret["CigarAvailable_B"] = p.isOverlapAvailable();
+        }
+    }
+    ret["Type_C"] = type;
     return ret;
+}
+
+std::map<std::string, dataProperties> GFA::retrieveEdgeData(size_t eid, bool verbose) const {
+    auto it = edgeMap.find(eid);
+    if (it == edgeMap.end()) return {};
+    auto& [oID, type] = it->second;
+    if (type != mapType::LINK && type != mapType::SEGMENT) return {}; // only these two have external edge ids (for now)
+    return retrieveObjectData(oID, type, verbose);
 }
 
 std::map<std::string, dataProperties> GFA::retrieveGeneralData() const {
@@ -525,20 +569,48 @@ std::map<std::string, dataProperties> GFA::retrieveGeneralData() const {
     return ret;
 }
 
-std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA::retrieveSequence(size_t id) const {
-    auto it = edgeMap.find(id);
+std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA::retrieveSequence(size_t eid) const {
+    auto it = edgeMap.find(eid);
     if (it == edgeMap.end()) return std::nullopt;
     if (it->second.second != mapType::SEGMENT) return std::nullopt;
     return segments.at(it->second.first).provideSequence();
 }
 
-std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA::retrieveCIGAR(size_t id) const {
-    auto it = edgeMap.find(id);
+std::optional<std::tuple<std::filesystem::path, std::streampos>> GFA::retrieveCIGAR(size_t eid) const {
+    auto it = edgeMap.find(eid);
     if (it == edgeMap.end()) return std::nullopt;
     if (it->second.second != mapType::LINK) return std::nullopt;
     return links.at(it->second.first).provideOverlap();
 }
 
-std::vector<std::string> GFA::searchForName(bool seg, bool link, bool cont, bool path) {
+std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> GFA::searchStrictForName(const std::string& nameStr, char filters) const {
+    std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> res;
+
+    if (filters & mapType::SEGMENT){
+        auto it = segment_lookup.find(nameStr);
+        if (it != segment_lookup.end()){
+            auto ID = it->second;
+            res.emplace_back(std::make_tuple(ID, mapType::SEGMENT, segments.at(ID).getExternalID()));
+            if (filters & mapType::LINK || filters & mapType::CONTAINMENT){
+                for(auto& el : segment_associations[ID]){
+                    if (el.second == mapType::LINK)
+                        res.emplace_back(std::make_tuple(el.first, mapType::LINK, links.at(el.first).getExternalID()));
+                    else if (el.second == mapType::CONTAINMENT)
+                        res.emplace_back(std::make_tuple(el.first, mapType::CONTAINMENT, std::nullopt));
+                }
+            }
+        }
+    }
+
+    if (filters & mapType::PATH){
+        auto it = path_lookup.find(nameStr);
+        if (it != path_lookup.end())
+            res.emplace_back(std::make_tuple(it->second, mapType::PATH, std::nullopt));
+    }
+
+    return res;
+}
+
+std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> GFA::searchFuzzyForName(const std::string& nameStr, char filters) const {
     return {};
 }

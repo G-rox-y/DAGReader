@@ -77,6 +77,7 @@ public:
     virtual ~edgeIdentifier() = default;
     void setEdgeIdentifier(const std::string& s) { edge_identifier = s; }
     std::string getEdgeIdentifier() const { return edge_identifier; }
+    bool hasEdgeIdentifier() const { return edge_identifier.empty(); }
 };
 
 // abstract class for adding the overlap property to classes
@@ -94,4 +95,24 @@ public:
         if (!overlap_exists) return std::nullopt;
         return std::make_tuple(overlap_file, overlap_loc_gfa);
     }
+};
+
+class name {
+private:
+    std::string nameStr;
+public:
+    name() = default;
+    name(const std::string& n) : nameStr(n) {}
+    virtual ~name() = default;
+    const std::string& getName() const { return nameStr; }
+};
+
+class externalID {
+private:
+    size_t m_externalID;
+public:
+    externalID() = default;
+    virtual ~externalID() = default;
+    size_t getExternalID() const { return m_externalID; }
+    void setExternalID(const size_t eid) { m_externalID = eid; }
 };

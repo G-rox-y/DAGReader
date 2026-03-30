@@ -4,7 +4,9 @@
 
 #include "gfa/GFA_virtuals.hpp"
 
-class GFA_link : public mappingQuality, public numOfMismatchsGaps, public readCount, public fragmentCount, public kmerCount, public edgeIdentifier, public overlap{
+class GFA_link : public mappingQuality, public numOfMismatchsGaps, public readCount, public fragmentCount, 
+    public kmerCount, public edgeIdentifier, public overlap, public externalID
+{
 private:
     size_t fromID, toID; // segment names
     bool from_orientation, to_orientation; // segment orientations

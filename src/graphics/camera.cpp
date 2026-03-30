@@ -91,7 +91,7 @@ void Camera::rotate(bool up, bool left, bool down, bool right, bool cw, bool ccw
 
 void Camera::engageOrbit(const glm::vec3& center, const float distance){
     m_orbitPoint = -center * m_scale;
-    m_orbitPointNormal = glm::normalize(glm::vec3(0.f, -1.f, 0.f) * m_scale);
+    m_orbitPointNormal = glm::normalize(glm::vec3(0.f, -1.f, 0.f));
     m_orbitDistance = distance * m_scale;
     
     glm::vec3 C2P = m_orbitPoint - m_position;
@@ -99,7 +99,7 @@ void Camera::engageOrbit(const glm::vec3& center, const float distance){
     C2P = glm::normalize(C2P - PNProj);
     m_position = m_orbitPoint - C2P * m_orbitDistance;
     
-    glm::vec3 right = glm::normalize(glm::cross(m_orbitPointNormal, C2P));
+    glm::vec3 right = -glm::normalize(glm::cross(m_orbitPointNormal, C2P));
     glm::vec3 newUp = glm::cross(C2P, right);
     glm::mat3 rotMat(right, newUp, C2P);
     m_rot = glm::quat_cast(rotMat);

@@ -40,7 +40,10 @@ private:
     std::unordered_map<int, std::list<IndexRange>> m_groupIndices;
     std::unordered_set<int> m_active_groups;
 
-    std::unordered_map<int, int> m_rendererID2OldID;
+    // indices within the structures like m_controlPoints are called "Renderer ID"
+    // since the renderer creates this indexing from the data that already had its own external indexing,
+    // we need to make a mapping between the "Renderer ID" and the "External ID"
+    std::unordered_map<size_t, size_t> m_rendererID2ExternalID, m_externalID2RendererID;
 
     // --- opengl data
 
@@ -94,6 +97,12 @@ private:
     
     mutable std::mutex m_ownership; // ownership mutex to keep the renderer thread safe
     mutable std::recursive_mutex m_group_lock; // group modification mutex
+
+    bool isEntryInGroup(const IndexRange& entry, const int id);
+    void addEntryToGroup(const IndexRange& entry, const int id);
+    void removeEntryFromGroup(const IndexRange& entry, const int id);
+
+    std::optional<std::tuple<glm::vec3, float>> getOrbitData(const std::vector<IndexRange>& ranges) const ;
 public:
     Renderer() = default;
     ~Renderer() = default;
@@ -110,9 +119,10 @@ public:
     void activateGroup(const int id);
     void deactivateGroup(const int id);
 
-    bool isEntryInGroup(const IndexRange& entry, const int id);
-    void addEntryToGroup(const IndexRange& entry, const int id);
-    void removeEntryFromGroup(const IndexRange& entry, const int id);
+    // takes in an external ID and adds its local equivalent to the specified group 
+    void addID2Group(const size_t id, const int groupID);
+
+    void clearGroup(const int groupID);
     void addGroupXToY(const int X, const int Y);
     void removeGroupXFromY(const int X, const int Y);
 
@@ -131,5 +141,6 @@ public:
     std::vector<size_t> getGroupIDs(int ID) const;
     // get a tuple containing the data needed for a camera to orbit around this group
     // first element is the point around which the camera will orbit, and second is the distance
-    std::tuple<glm::vec3, float> getGroupOrbitData(int ID) const;
+    std::optional<std::tuple<glm::vec3, float>> getGroupOrbitData(int ID) const;
+    std::optional<std::tuple<glm::vec3, float>> getIDOrbitData(int externalID) const;
 };

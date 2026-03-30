@@ -32,7 +32,7 @@ private:
     float m_FOV = glm::radians(60.f);
 
     // clipping planes
-    float m_nearCP = 0.05f;
+    float m_nearCP = 0.005f;
     float m_farCP = 500.f;
 
     // animation related variables

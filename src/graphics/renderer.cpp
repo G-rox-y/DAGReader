@@ -1,12 +1,16 @@
 #include "renderer.hpp"
 #include <glm/geometric.hpp>
+#include <mutex>
+#include <optional>
+#include <vector>
 
 void Renderer::boxInsert(const BezierBox& b){
     double segment = glm::length(b.end - b.start) / 3.f;
     glm::vec3 pt1 = b.start + b.startOri * segment;
     glm::vec3 pt2 = b.end + b.endOri * segment;
 
-    m_rendererID2OldID[m_controlPoints.size()] = b.originalID;
+    m_rendererID2ExternalID[m_controlPoints.size()] = b.originalID;
+    m_externalID2RendererID[b.originalID] = m_controlPoints.size();
     m_controlPoints.emplace_back(std::array<glm::vec4, 4>{
         glm::vec4(b.start, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(b.end, 1.f)
     });
@@ -130,6 +134,18 @@ void Renderer::removeEntryFromGroup(const IndexRange& entry, const int id){
     }
 }
 
+void Renderer::addID2Group(const size_t id, const int groupID){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    auto elit = m_externalID2RendererID.find(id);
+    if (elit == m_externalID2RendererID.end()) return;
+    addEntryToGroup({elit->second, elit->second}, groupID);
+}
+
+void Renderer::clearGroup(const int groupID){
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    m_groupIndices[groupID].clear();
+}
+
 void Renderer::addGroupXToY(const int X, const int Y){
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     for(const auto& entry:m_groupIndices[X])
@@ -170,7 +186,8 @@ void Renderer::clearAll()
     m_controlPoints.clear();
     m_appearances.clear();
     m_indexSize = 0;
-    m_rendererID2OldID.clear();
+    m_rendererID2ExternalID.clear();
+    m_externalID2RendererID.clear();
 
     m_selectionID = -1;
 
@@ -293,34 +310,45 @@ std::vector<size_t> Renderer::getGroupIDs(int ID) const {
     std::vector<Renderer::IndexRange> indicePairs = {it->second.begin(), it->second.end()};
     for (auto& el:indicePairs)
         for(size_t i = el.first; i <= el.second; i++)
-            ret.emplace_back(m_rendererID2OldID.at(i));
+            ret.emplace_back(m_rendererID2ExternalID.at(i));
 
     return ret;
 }
 
-std::tuple<glm::vec3, float> Renderer::getGroupOrbitData(int ID) const {
-    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
-    
-    auto it = m_groupIndices.find(ID);
-    if (it == m_groupIndices.end()) return {};
-
+std::optional<std::tuple<glm::vec3, float>> Renderer::getOrbitData(const std::vector<IndexRange>& ranges) const {
     glm::vec4 pos(0.f);
     size_t ctr = 0;
-    float dist = FLT_MAX;
+    float dist = FLT_MIN;
 
-    std::vector<Renderer::IndexRange> indicePairs = {it->second.begin(), it->second.end()};
-    for (auto& el:indicePairs){
+    for (auto& el:ranges){
         ctr += el.second - el.first + 1;
         for(size_t i = el.first; i <= el.second; i++)
             pos += m_controlPoints[i][0] + m_controlPoints[i][3];
     }
     pos /= ctr*2;
 
-    for (auto& el:indicePairs)
+    for (auto& el:ranges)
         for(size_t i = el.first; i <= el.second; i++)
-            dist = std::min<float>(dist, 
-                std::min<float>(glm::distance(m_controlPoints[i][0], pos), glm::distance(m_controlPoints[i][3], pos))
+            dist = std::max<float>(dist, 
+                std::max<float>(glm::distance(m_controlPoints[i][0], pos), glm::distance(m_controlPoints[i][3], pos))
             );
 
-    return {pos, dist};
+    return std::make_tuple(pos, dist);
+}
+
+std::optional<std::tuple<glm::vec3, float>> Renderer::getGroupOrbitData(int ID) const {
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    auto it = m_groupIndices.find(ID);
+    if (it == m_groupIndices.end()) return std::nullopt;
+    std::vector<Renderer::IndexRange> indicePairs = {it->second.begin(), it->second.end()};
+    return getOrbitData(indicePairs);
+}
+
+std::optional<std::tuple<glm::vec3, float>> Renderer::getIDOrbitData(int externalID) const {
+    std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    auto it = m_externalID2RendererID.find(externalID);
+    if (it == m_externalID2RendererID.end()) return std::nullopt;
+    auto id = it->second;
+    std::vector<Renderer::IndexRange> indicePairs = {IndexRange(id, id)};
+    return getOrbitData(indicePairs);
 }

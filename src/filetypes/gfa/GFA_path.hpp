@@ -4,9 +4,8 @@
 
 #include "gfa/GFA_virtuals.hpp"
 
-class GFA_path : public overlap{
+class GFA_path : public name, public overlap {
 private:
-    std::string name;
     std::vector<size_t> segments; // list of segment names
     std::vector<bool> orientations; //  their orientations
 

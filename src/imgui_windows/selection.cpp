@@ -27,8 +27,8 @@ void selectionWindow::draw() {
             size_t idx = indices[0];
             auto props = channel->file_data->retrieveEdgeData(idx, m_verboseMode);
             if (!props.empty()) {
-                auto* type = std::get_if<int>(&props["Type_I"]);
-                if (*type == datatype::mapType::SEGMENT) {
+                auto* type = std::get_if<char>(&props["Type_C"]);
+                if (*type == GFA::mapType::SEGMENT) {
                     if (auto* name = std::get_if<std::string_view>(&props["Name_SW"]))
                         LabeledSV("Segment:", *name);
                     if (auto* length = std::get_if<long long>(&props["Length_LLI"]))
@@ -62,7 +62,7 @@ void selectionWindow::draw() {
                         }
                     }
                 }
-                else if (*type == datatype::mapType::LINK) {
+                else if (*type == GFA::mapType::LINK) {
                     auto* fromName = std::get_if<std::string_view>(&props["FromName_SW"]);
                     auto* fromOri = std::get_if<char>(&props["FromOrientation_C"]);
                     auto* toName = std::get_if<std::string_view>(&props["ToName_SW"]);

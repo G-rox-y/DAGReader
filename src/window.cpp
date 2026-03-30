@@ -1,9 +1,14 @@
 #include "window.hpp"
 #include "Roboto_Medium.hpp"
+#include "infoExchange.hpp"
+#include <GLFW/glfw3.h>
 
 void Window::manageInputs()
 {
     glfwPollEvents(); // poll inputs
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard) return;
 
     bool moveUp = false, moveLeft = false, moveDown = false, moveRight = false, moveIn = false, moveOut = false, moveFast = false;
     if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) moveUp = true;
@@ -284,18 +289,26 @@ void Window::run()
         ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
         ImGuiIO& io = ImGui::GetIO();
         if (io.WantCaptureKeyboard) return;
-        
-        if (key == GLFW_KEY_H && action == GLFW_RELEASE) {
-            CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
+
+        CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
+        if (key == GLFW_KEY_H && action == GLFW_RELEASE)
             data->channel->controls_window_toggled.store(!data->channel->controls_window_toggled.load());
-        }
-        if (key == GLFW_KEY_X && action == GLFW_RELEASE) {
-            CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
+        if (key == GLFW_KEY_X && action == GLFW_RELEASE)
             data->channel->selection_mode.store(!data->channel->selection_mode.load());
-        }
-        if (key == GLFW_KEY_R && action == GLFW_RELEASE) {
-            CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));
+        if (key == GLFW_KEY_R && action == GLFW_RELEASE)
             data->channel->cam->resetView();
+        if (key == GLFW_KEY_U && action == GLFW_RELEASE){
+            data->channel->renderer->clearGroup(-3); // hardcoded this identity cuz lambda shit
+            data->channel->addControllerTask(tasks::REFRESH_GRAPH);
+        }
+        if (key == GLFW_KEY_F && action == GLFW_RELEASE){
+            if (auto res = data->channel->renderer->getGroupOrbitData(-3)){
+                auto [pos, d] = res.value();
+                data->channel->cam->engageOrbit(pos, d*2);
+                data->channel->cam->disengageOrbit();
+                data->channel->cam->shouldRecalc();
+            }
+            // ^ a hacky way to go about this, but i dont feel like implementing a function just for this
         }
     });
 

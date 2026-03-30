@@ -76,8 +76,10 @@ void menuBar::draw()
             ImGui::Separator();
 
             if (ImGui::MenuItem("Orbit selection")){
-                auto [centerPos, maxDist] = channel->renderer->getGroupOrbitData(groups::SELECTION);
-                channel->cam->engageOrbit(centerPos, maxDist * 2.5f);
+                if (auto res = channel->renderer->getGroupOrbitData(groups::SELECTION)){
+                    auto [centerPos, maxDist] = res.value();
+                    channel->cam->engageOrbit(centerPos, maxDist * 2.5f);
+                }
             }
 
             ImGui::EndMenu();

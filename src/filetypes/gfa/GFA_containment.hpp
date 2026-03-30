@@ -15,4 +15,9 @@ public:
     GFA_containment(size_t crid, bool cro, size_t cdid, bool cdo, long long int p)
     : containerID(crid), containedID(cdid), container_orientation(cro),contained_orientation(cdo), position(p) {};
 
+    size_t getContainerID() const { return containerID; }
+    size_t getContainedID() const { return containedID; }
+    char getContainerOrientation() const { return (container_orientation) ? '+' : '-'; }
+    char getContainedOrientation() const { return (contained_orientation) ? '+' : '-'; }
+    long long int getPositon() const { return position; }
 };

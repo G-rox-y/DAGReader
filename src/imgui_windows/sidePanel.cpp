@@ -1,5 +1,4 @@
 #include "sidePanel.hpp"
-#include <imgui.h>
 
 void sidePanel::draw()
 {
@@ -242,8 +241,8 @@ void sidePanel::draw()
 
             if (ImGui::CollapsingHeader("Search")) {
                 static char searchBuffer[256] = "";
-                static bool filterSegments = true, filterLinks = true, filterPaths = false, filterContainments = false;
-                static std::vector<std::string> results;
+                static bool filterSegments = true, filterLinks = true, filterPaths = false, filterContainments = false, fuzzy = false;
+                static std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> results;
                 
                 ImGui::SetNextItemWidth(w);
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 8));
@@ -273,17 +272,147 @@ void sidePanel::draw()
                 ImGui::SameLine();
                 ImGui::Checkbox("Links", &filterLinks);
 
+                if (auto* _ = std::get_if<size_t>(&data["PathNumber_ULLI"])){
+                    ImGui::SameLine();
+                    ImGui::Checkbox("Paths", &filterPaths);
+                }
+                if (auto* _ = std::get_if<size_t>(&data["ContainmentNumber_ULLI"])){
+                    ImGui::SameLine();
+                    ImGui::Checkbox("Containments", &filterContainments);
+                }
+                ImGui::SameLine();
+                ImGui::Checkbox("Fuzzy [WIP]", &fuzzy);
+
                 ImGui::Spacing();
-                if (ImGui::Button("Search##Button") || enterPressed) 
-                    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
-                        results = gfa->searchForName(filterSegments, filterLinks, filterContainments, filterPaths);
+                int filters = filterSegments * GFA::mapType::SEGMENT + filterLinks * GFA::mapType::LINK
+                    + filterContainments * GFA::mapType::CONTAINMENT + filterPaths * GFA::mapType::PATH;
+                if (ImGui::Button("Search##Button") || enterPressed){
+                    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get())){
+                        if (fuzzy) gfa->searchFuzzyForName(searchBuffer, filters);
+                        else results = gfa->searchStrictForName(searchBuffer, filters);
+                    }
+                }
                 
                 ImGui::SameLine();
                 auto resultCount = results.size();
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextDisabled("(%zu results)", resultCount);
+                ImGui::SameLine();
+                HelpMarker("You can click on a result for more actions");
 
+                // here we display results
+                if (!results.empty()) {
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
 
+                    auto typeLabel = [](GFA::mapType t) -> const char* {
+                        switch (t) {
+                            case GFA::mapType::SEGMENT:     return "SEG";
+                            case GFA::mapType::LINK:        return "LNK";
+                            case GFA::mapType::PATH:        return "PTH";
+                            case GFA::mapType::CONTAINMENT: return "CNT";
+                            default:                        return "???";
+                        }
+                    };
+
+                    auto typeColor = [](GFA::mapType t) -> ImU32 {
+                        switch (t) {
+                            case GFA::mapType::SEGMENT:     return IM_COL32(100, 180, 100, 255);
+                            case GFA::mapType::LINK:        return IM_COL32(100, 150, 200, 255);
+                            case GFA::mapType::PATH:        return IM_COL32(200, 150, 100, 255);
+                            case GFA::mapType::CONTAINMENT: return IM_COL32(180, 100, 180, 255);
+                            default:                        return IM_COL32(150, 150, 150, 255);
+                        }
+                    };
+
+                    float maxHeight = ImGui::GetTextLineHeightWithSpacing() * 10;  // ~10 rows visible
+                    if (ImGui::BeginChild("##SearchResults", ImVec2(0, std::min(maxHeight, ImGui::GetTextLineHeightWithSpacing() * resultCount + 8)), true))
+                    { 
+                        auto* gfa = dynamic_cast<GFA*>(channel->file_data.get());
+                        
+                        ImGuiListClipper clipper;
+                        clipper.Begin(static_cast<int>(results.size()));
+                        
+                        while (clipper.Step()) {
+                            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                                auto& [objectId, type, edgeId] = results[i];
+                                
+                                ImGui::PushID(static_cast<int>(i));
+                                
+                                // Type badge
+                                ImVec2 badgeSize = ImGui::CalcTextSize("SEG");
+                                ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+                                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                                
+                                float padding = 4.0f;
+                                ImVec2 badgeMin = cursorPos;
+                                ImVec2 badgeMax = ImVec2(cursorPos.x + badgeSize.x + padding * 2, cursorPos.y + badgeSize.y + padding);
+                                
+                                drawList->AddRectFilled(badgeMin, badgeMax, typeColor(type), 3.0f);
+                                drawList->AddText(ImVec2(cursorPos.x + padding, cursorPos.y + padding * 0.5f), IM_COL32(255, 255, 255, 255), typeLabel(type));
+                                
+                                ImGui::Dummy(ImVec2(badgeSize.x + padding * 2 + 8, badgeSize.y));
+                                ImGui::SameLine();
+
+                                // Get name based on type
+                                std::string name;
+                                if (gfa) {
+                                    auto props = gfa->retrieveObjectData(objectId, type, false);
+                                    if (auto* sv = std::get_if<std::string_view>(&props["Name_SW"])) {
+                                        name = std::string(*sv);
+                                    } else if (auto* fromSv = std::get_if<std::string_view>(&props["FromName_SW"])) {
+                                        auto* toSv = std::get_if<std::string_view>(&props["ToName_SW"]);
+                                        name = std::string(*fromSv) + " -> " + (toSv ? std::string(*toSv) : "?");
+                                    } else if (auto* fromSv = std::get_if<std::string_view>(&props["ContainerName_SW"])) {
+                                        auto* toSv = std::get_if<std::string_view>(&props["ContainedName_SW"]);
+                                        name = std::string(*fromSv) + " << " + (toSv ? std::string(*toSv) : "?");
+                                    } else {
+                                        name = "Object ID: " + std::to_string(objectId);
+                                    }
+                                }
+
+                                // Selectable row
+                                if (ImGui::Selectable(name.c_str(), false, ImGuiSelectableFlags_SpanAllColumns)) {
+                                    ImGui::OpenPopup("Actions");
+                                }
+                                
+                                if (ImGui::BeginPopup("Actions")) {
+                                    if (edgeId.has_value()){
+                                        if (ImGui::MenuItem("Focus on item")) {
+                                            if (auto ret = channel->renderer->getIDOrbitData(edgeId.value())){
+                                                auto[pos, d] = ret.value();
+                                                channel->cam->engageOrbit(pos, d*5);
+                                                channel->cam->disengageOrbit();
+                                                channel->cam->shouldRecalc(); // 31337 |-|4><
+                                            } 
+                                        }
+                                        if (ImGui::MenuItem("Add to selection")){
+                                            channel->renderer->addID2Group(edgeId.value(), groups::rendererGroup::SELECTION);
+                                            channel->addControllerTask(tasks::REFRESH_GRAPH);
+                                        }
+                                    }
+                                    if (ImGui::MenuItem("Show details [WIP]")) {
+                                        // TODO
+                                    }
+                                    ImGui::EndPopup();
+                                }
+
+                                ImGui::PopID();
+                            }
+                        }
+                        clipper.End();
+                    }
+                    ImGui::EndChild();
+                    
+                    if (ImGui::Button("Select All Results")){
+                        for (auto& [_, __, eid] : results)
+                            if (eid.has_value()) channel->renderer->addID2Group(eid.value(), groups::rendererGroup::SELECTION);
+                        channel->addControllerTask(tasks::REFRESH_GRAPH);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear Results")) results.clear();
+                }
             }
         }
         else{
@@ -292,8 +421,6 @@ void sidePanel::draw()
             ImGui::TextWrapped("Hi, this project is still very much in development");
             ImGui::TextWrapped("if you have any suggestions feel free to submit a feature request on the following link:");
             ImGui::TextLinkOpenURL("Github Issues Page", "https://github.com/G-rox-y/DAGReader/issues");
-            ImGui::Separator();
-            ImGui::TextWrapped("I will add a brief tutorial here soon");
         }
     }
 
