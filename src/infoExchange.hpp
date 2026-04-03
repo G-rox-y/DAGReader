@@ -94,6 +94,9 @@ public:
     std::atomic<bool> info_window_shown{true};
     std::atomic<bool> selection_window_allowed{true};
 
+    // variable for controllng loading parameters
+    std::atomic<bool> minimal_memory_load{false};
+
     // graph data
 private:
     std::string graph_name_string;

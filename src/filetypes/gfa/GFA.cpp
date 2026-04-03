@@ -1,8 +1,4 @@
 #include "GFA.hpp"
-#include <cstddef>
-#include <optional>
-#include <string_view>
-#include <tuple>
 
 void GFA::parser_warning(const std::string& description, const int line_n) const {
     if (line_n != -1) spdlog::warn("GFA Parser warning [at line {}]: {}", line_n, description);
@@ -16,7 +12,7 @@ void GFA::parser_error(const std::string& description, const int line_n) const {
     throw std::runtime_error("GFA Parser error (check logs)");
 }
 
-GFA::GFA(const std::string& path) : parser(path)
+GFA::GFA(const std::string& path, bool minimalMemory) : parser(path)
 {
     // some lambda helpers we will need
 
@@ -83,10 +79,12 @@ GFA::GFA(const std::string& path) : parser(path)
         return {ret, breakSignal};
     };
     // ignore the next string before file end/tab delimitor/next line
-    auto ignoreNextString = [](std::ifstream& file) -> readExit {
+    auto ignoreNextString = [](std::ifstream& file, size_t* num = nullptr) -> readExit {
+        if (num != nullptr) *num = 0;
         for (auto c = file.get(); file.good(); c = file.get()){
             if (c == '\t') return TAB;
             if (c == '\n') return NEWLINE;
+            if (num != nullptr) *num += 1;
         }
         return FILEEND;
     };
@@ -171,7 +169,9 @@ GFA::GFA(const std::string& path) : parser(path)
             // it can just store a reference to where it can find it if needed and get the data at the moment it gets requested
             if (local_file.good() && local_file.peek() == '*') segment.noSequence();
             else segment.setSequence(path, local_file.tellg());
-            signal = ignoreNextString(local_file);
+            size_t segsize = 0;
+            signal = ignoreNextString(local_file, &segsize);
+            segment.setSegmentLength(segsize);
             if (signal != TAB) continue; // other things are optional
             skipTabs(local_file);
 
@@ -294,6 +294,8 @@ GFA::GFA(const std::string& path) : parser(path)
             #pragma omp for schedule(dynamic, 1)
         #endif
         for (size_t i = 0; i < lines['P'].size(); i++){
+            if(minimalMemory) continue;
+
             auto [seekpos, line_n] = lines['P'][i];
             local_file.seekg(seekpos); skipTabs(local_file);
 
@@ -356,6 +358,8 @@ GFA::GFA(const std::string& path) : parser(path)
             #pragma omp for schedule(dynamic, 1)
         #endif
         for (size_t i = 0; i < lines['C'].size(); i++){
+            if(minimalMemory) continue;
+
             auto [seekpos, line_n] = lines['C'][i];
             local_file.seekg(seekpos); skipTabs(local_file);
 

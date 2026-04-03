@@ -1,6 +1,5 @@
 #include "menuBar.hpp"
 #include "infoExchange.hpp"
-#include <imgui.h>
 
 menuBar::menuBar(infoExchange* c) : channel(c) {}
 
@@ -81,6 +80,18 @@ void menuBar::draw()
                     channel->cam->engageOrbit(centerPos, maxDist * 2.5f);
                 }
             }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Performance"))
+        {
+            bool minimalLoad = channel->minimal_memory_load.load();
+            if (ImGui::Checkbox("Minimal Memory Load", &minimalLoad))
+                channel->minimal_memory_load.store(minimalLoad);
+            ImGui::SameLine();
+            HelpMarker("Skips loading of some potentially memorywise large graph information, "
+                    "this may help if the graph is too large to fit in RAM");
 
             ImGui::EndMenu();
         }

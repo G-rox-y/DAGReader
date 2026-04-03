@@ -47,7 +47,7 @@ private:
 
 public:
     // the constructor of this class parses a GFA file from the path provided
-    GFA(const std::string& path);
+    GFA(const std::string& path, bool minimalMemory);
 
     // populate the two provided vectors with graph vertices and edges to be drawn
     void fillData(std::vector<Vertex>& v, std::vector<Edge>& e) override;

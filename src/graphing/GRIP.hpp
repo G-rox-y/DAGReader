@@ -37,15 +37,15 @@ private:
 
     // computes neighbourhoods and fills in their vector (n) for a given vertex
     void compute_vertex_neighbourhoods(
-        int ID, std::vector<std::vector<std::pair<int, int>>>& n, const std::vector<size_t> nbrs, 
-        const std::vector<std::unordered_set<int>>& f_c, const int K, const std::unordered_set<int>& placed
+        int ID, std::vector<std::vector<std::pair<int, int>>>& n, const std::vector<size_t>& nbrs, 
+        const std::vector<int>& f_c, const int K, const std::vector<bool>& placed
     ) const;
 
     // sets the initial position of vertices in the base filter
     void base_filter_placement(const std::vector<int>& base) const;
 
     // sets the vertex initial position given its neighbourhood
-    void vertex_initial_placement(int ID, const std::vector<std::pair<int, int>>& n, const std::unordered_set<int>& placed) const;
+    void vertex_initial_placement(int ID, const std::vector<std::pair<int, int>>& n, const std::vector<bool>& placed) const;
 
     // updates the temperature with given parameters, updates through updating a reference (cos and temp)
     void calc_temp(double& oldTemp, double& oldCos, const glm::dvec3& oldDisp, const glm::dvec3& force) const;

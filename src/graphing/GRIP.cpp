@@ -16,18 +16,24 @@ void GRIP::grip_error(const string& description) const {
 }
 
 void GRIP::compute_filters(std::vector<std::vector<int>>& filters) const {
+    size_t N = mr_g->vertices.size();
     filters.emplace_back(); // create first filter layer (identical to the whole graph)
-    for(auto v: mr_g->vertices)
-        filters.back().emplace_back(v.id);
-    
+    filters.back().reserve(N);
+
+    for(size_t i = 0; i < N; i++) filters.back().emplace_back(i);
+
+    vector<int> layer_copy(N);
+    vector<int> layer_copy_indmap(N); // maps a number stored in a filter to its location in layer_copy
+    vector<bool> visited(N);
+
     int maxDepth = 1;
     while (filters.back().size() > static_cast<size_t>(m_dimensions+1)){
-        vector<int> layer_copy(filters.back().begin(), filters.back().end()); // make a copy where we will pull random vertices from
-        unordered_map<int, size_t> layer_copy_indmap; // map with (vertex id, layer_copy index) pairs
-        for(size_t i = 0; i < layer_copy.size(); i++) // and fill it
-            layer_copy_indmap[layer_copy[i]] = i;
+        layer_copy = filters.back(); // make a copy where we will pull random vertices from
+        fill(visited.begin(), visited.end(), false);
+        fill(layer_copy_indmap.begin(), layer_copy_indmap.end(), -1);
+        for(size_t i = 0; i < layer_copy.size(); i++)
+            layer_copy_indmap.at(layer_copy.at(i)) = i;
         
-        unordered_set<int> visited;
         filters.emplace_back(); // create new level
         while(!layer_copy.empty()){
             queue<int> q; // BFS queue that contains int value pairs (id, depth)
@@ -39,26 +45,34 @@ void GRIP::compute_filters(std::vector<std::vector<int>>& filters) const {
                 int id = q.front(); q.pop(); // extract id 
                 int d = q.front(); q.pop(); // extract depth vertex is on
 
-                if (visited.find(id) != visited.end()) continue; // do this only if unvisited
-                visited.insert(id); // and mark as visited
+                if (visited.at(id)) continue; // do this only if unvisited
+                visited.at(id) = true; // and mark as visited
 
                 // if this id is present in the filter layer you may remove it
-                if (layer_copy_indmap.find(id) != layer_copy_indmap.end()){
-                    size_t index = layer_copy_indmap.at(id); // get its index
-                    layer_copy[index] = layer_copy.back(); // swap with last
-                    layer_copy_indmap[layer_copy[index]] = index; // update the index value of the swapped element
+                if (layer_copy_indmap.at(id) != -1){
+                    int index = layer_copy_indmap.at(id); // get its index
+                    int last = layer_copy.back();
+                    layer_copy.at(index) = last; // swap with last
+                    layer_copy_indmap.at(last) = index; // update the index value of the swapped element
                     layer_copy.pop_back(); // and pop so removal is O(1)
                 }
 
                 if (d < maxDepth){
-                    for(auto& [v, _]:mr_g->adjList.at(id)){
+                    int vID = mr_g->vertices.at(id).id;
+                    for(auto& [v, _]:mr_g->adjList.at(vID)){
                         q.push(v); q.push(d+1); // add next elements if good depth
                     }
                 }
             }
         }
+        filters.back().shrink_to_fit();
         maxDepth *= 2;
     }
+    // destroy the vectors used above to leave more space for next step
+    vector<int>().swap(layer_copy);
+    vector<int>().swap(layer_copy_indmap);
+    vector<bool>().swap(visited);
+
     size_t K = filters.size();
     // if we dont have dimensions+1 points in the last layer we will have to promote some points from the previous layer
     // but we can only do this if there is >=2 filters and enough vertices
@@ -91,36 +105,49 @@ void GRIP::compute_filters(std::vector<std::vector<int>>& filters) const {
 }
 
 void GRIP::compute_vertex_neighbourhoods(
-    int ID, vector<vector<pair<int, int>>>& n, const vector<size_t> nbrs, 
-    const vector<unordered_set<int>>& f_c, const int K, const unordered_set<int>& placed
+    int ID, vector<vector<pair<int, int>>>& n, const vector<size_t>& nbrs, 
+    const vector<int>& f_c, const int K, const vector<bool>& placed
 ) const {
-    queue<pair<int, int>> q; // BFS queue that contains int value pairs (id, depth)
-    unordered_set<int> visited{ID};
+    thread_local vector<bool> visited;
+    thread_local vector<pair<int, int>> q;
+    // this function is executed a lot, so we will make these vars static to avoid reallocation delays
+
+    size_t N = mr_g->vertices.size();
+    if (visited.size() != N) visited.assign(N, false);
+    else std::fill(visited.begin(), visited.end(), false);
+    q.clear();
+    
+    visited.at(ID) = true;
+
     for(auto& [el, _]:mr_g->adjList.at(ID)) // init with vertices next to v
-        q.push(make_pair(el, 1));
+        q.emplace_back(el, 1);
 
+    size_t front = 0;
     n.resize(K+1);
-    for(int i = 0; i <= K; i++){
-        while(n[i].size() < nbrs[i] && !q.empty()){
-            auto [id, d] = q.front(); q.pop();
+    for (int i = 0; i <= K; i++)
+        n.at(i).reserve(nbrs[i]);
 
-            if (visited.find(id) != visited.end()) continue;
-            visited.emplace(id);
+    for(int i = 0; i <= K; i++){
+        while(n[i].size() < nbrs.at(i) && front < q.size()){
+            auto [id, d] = q.at(front++);
+
+            if (visited.at(id)) continue;
+            visited.at(id) = true;
 
             if (
-                ( i < K && f_c[i].find(id) != f_c[i].end())  // if present in the filter they are neighbours
-                || ( i == K && K+1 != (int)nbrs.size() && placed.find(id) != placed.end())
+                ( i < K && f_c.at(id) >= i)  // if present in the filter they are neighbours
+                || ( i == K && K+1 != (int)nbrs.size() && placed.at(id))
                 // ^ for the last neighbourhood we can add only already placed, except if the base layer
             ) n[i].emplace_back(make_pair(id, d));
             
             for(auto& [el, _]:mr_g->adjList.at(id))
-                if (visited.find(el) == visited.end())
-                    q.push(make_pair(el, d+1)); // keep traversing the graph
+                if (!visited.at(el)) q.emplace_back(el, d+1); // keep traversing the graph
         }
         if (i < K) // if the next filter exists
             for(auto& kv:n[i]) // copy all of the current neighbours
-                if (f_c[i+1].find(kv.first) != f_c[i+1].end()) // if they are present in the next filter
+                if (f_c.at(kv.first) >= i+1) // if they are present in the next filter
                     n[i+1].push_back(kv);
+        n[i].shrink_to_fit();
     }
 }
 
@@ -158,12 +185,12 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
 
 }
 
-void GRIP::vertex_initial_placement(int ID, const vector<pair<int, int>>& n, const unordered_set<int>& placed) const {
+void GRIP::vertex_initial_placement(int ID, const vector<pair<int, int>>& n, const vector<bool>& placed) const {
     // since neighbourhoods are built with a BFS, its vector is already sorted by graph distance from v
     int found = 0;
     array<int, 4> ids{};
     for(size_t i = 0; i < n.size() && found < m_dimensions+1; i++){ // first find closest placed vertices
-        if (placed.find(n[i].first) == placed.end()) continue;
+        if (!placed.at(n[i].first)) continue;
         ids[found++] = i; // increment the found variable after use
     }
 
@@ -258,9 +285,11 @@ void GRIP::run()
     size_t K = filters.size();
 
     // a structure for checking if element is a member of a filter
-    vector<unordered_set<int>> filter_finder;
-    for(auto& layer:filters)
-        filter_finder.emplace_back(unordered_set<int>(layer.begin(), layer.end()));
+    // filter_finder[ID] = x where x is the first layer that id this appears on
+    vector<int> filter_finder(N, -1);
+    for(size_t i = 0; i < K; i++)
+        for(auto element:filters.at(i))
+            filter_finder.at(element) = i;
 
     // --- NBRS array and neighbourhoods ---
 
@@ -307,26 +336,29 @@ void GRIP::run()
     vector<double> heat(N, m_defaultEdgeLength/6.0); // default heat is a sixth of edge length
 
     // a set to help track which vertices have already been placed and which havent
-    unordered_set<int> placed_id;
+    vector<bool> placed_id(N, false);
 
     for(int i = static_cast<int>(K-1); i >= 0; i--){ // start with smaller filters and progress to larger filters (to i = 0)
         vector<int>& current_filter = filters.at(i);
 
+        spdlog::debug("Setting up N:{} L:{}", N, i);
         for(int ID:current_filter){ // setup new vertices
-            if (placed_id.find(ID) != placed_id.end()) continue; // do not place twice
+            if (placed_id.at(ID)) continue; // do not place twice
             compute_vertex_neighbourhoods(ID, neighbourhoods.at(ID), nbrs, filter_finder, i, placed_id);
             if (i != static_cast<int>(K-1))
                 vertex_initial_placement(ID, neighbourhoods.at(ID).at(i), placed_id);
-            placed_id.insert(ID);
+            placed_id.at(ID) = true;
         }
         if (i == static_cast<int>(K-1))
             base_filter_placement(current_filter);
 
+
+        spdlog::debug("Refining in N:{} L:{}", N, i);
         for(int r = 0; r < m_rounds_number; r++){
             for(int ID:current_filter){
                 glm::dvec3 force;
-                if (i == 0) force = compute_FRforce(ID, neighbourhoods[ID][i]); // last filter special treatment
-                else force = compute_KKforce(ID, neighbourhoods[ID][i]);
+                if (i == 0) force = compute_FRforce(ID, neighbourhoods.at(ID).at(i)); // last filter special treatment
+                else force = compute_KKforce(ID, neighbourhoods.at(ID).at(i));
 
                 if (glm::length(force) < 1e-4) continue;
 
@@ -337,10 +369,16 @@ void GRIP::run()
                 mr_g->vertices.at(ID).pos += displacements[ID];
         }
 
+        size_t nanAm = 0;
         for(int ID:current_filter){
-            auto& POS = mr_g->vertices.at(ID).pos;
-            double l = glm::length(POS);
-            if (l != l) spdlog::warn("Grip: NaN Detected for ID {} at filter {} of {}", ID, i, K-1);
+            // chech if NaN happened
+            if (isnan(glm::length(mr_g->vertices.at(ID).pos))) nanAm++;
+            // clear neighbourhoods to preserve space
+            std::vector<std::pair<int, int>>().swap(neighbourhoods.at(ID).at(i));
         }
+        // if NaN happened, do a warning
+        if (nanAm) spdlog::warn("Grip: NaN Detected at filter {}/{} for graph N:{} at {}/{} points", i, K-1, N, nanAm, current_filter.size());
+        // we can also clear filters
+        std::vector<int>().swap(filters.at(i));
     }
 }

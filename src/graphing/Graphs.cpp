@@ -20,29 +20,21 @@ void Graph::translate(const glm::dvec3& T){
         v.pos = v.pos + T;
 }
 
-int Graph::findDist(const int id1, const int id2){
-    stdpp::sorted_pair refpair(id1, id2);
-    if (dists.find(refpair) != dists.end()) // check if we alr calculated this
-        return dists.at(refpair);
-
-    std::queue<std::pair<int, int>> q;
-    std::unordered_set<int> visited;
+int Graph::findDist(const size_t id1, const size_t id2){
+    std::queue<std::pair<size_t, int>> q;
+    std::vector<int> visited(vertices.size(), false);
     q.push(std::make_pair(id1, 0));
     while(!q.empty()){
         auto [id, d] = q.front(); q.pop();
-        if (visited.find(id) != visited.end()) continue;
-        visited.insert(id);
+        if (visited.at(id)) continue;
+        visited.at(id) = true;
 
         if (d < 0) [[unlikely]] throw std::runtime_error("Graph: findDist error: Negative distance found");
 
-        stdpp::sorted_pair newpair(id, id1);
-        dists[newpair] = d;
-
         if (id == id2) return d;
 
-        for(auto& v:vertices)
-            if (visited.find(v.id) == visited.end())
-                q.push(std::make_pair(v.id, d+1));
+        for(auto [v, _]:adjList.at(id))
+            if (!visited.at(v)) q.push(std::make_pair(v, d+1));
     }
 
     throw std::runtime_error("Graph: findDist error: Negative distance found");
@@ -51,7 +43,7 @@ int Graph::findDist(const int id1, const int id2){
 void graphCollection::setGraphs(std::vector<Vertex>& v, std::vector<Edge>& e){
     graphs.clear();
     // create and adjacency list, indexed by Vertex ID
-    std::vector<std::vector<std::pair<int, int>>> adjList(v.size(), std::vector<std::pair<int, int>>());
+    std::vector<std::vector<std::pair<size_t, size_t>>> adjList(v.size(), std::vector<std::pair<size_t, size_t>>());
     for(size_t i = 0; i < e.size(); i++){
         adjList[e.at(i).start].push_back(std::make_pair(e.at(i).end, i));
         adjList[e.at(i).end].push_back(std::make_pair(e.at(i).start, i));
@@ -66,10 +58,10 @@ void graphCollection::setGraphs(std::vector<Vertex>& v, std::vector<Edge>& e){
 
         // since vertices and edges will be moved, their indices will change, the change needs to be remembered
         // key = old ID, value = new ID
-        std::unordered_map<int, int> vertMap, edgeMap;
+        std::unordered_map<size_t, size_t> vertMap, edgeMap;
 
         // "Flood Fill" ; Go through all vertices connected to the LastElement
-        std::queue<int> q; 
+        std::queue<long long int> q; 
         q.push(lastElement);
         while(!q.empty()){
             auto VertexID = q.front(); q.pop();
@@ -99,7 +91,7 @@ void graphCollection::setGraphs(std::vector<Vertex>& v, std::vector<Edge>& e){
         }
 
         // copy the adjacency list and modify the IDs inside
-        graphs.back().adjList.resize(vertMap.size(), std::vector<std::pair<int, int>>());
+        graphs.back().adjList.resize(vertMap.size(), std::vector<std::pair<size_t, size_t>>());
         for(const auto& [oldID, newID]:vertMap){
             graphs.back().adjList[newID] = adjList[oldID];
             for(auto& el:graphs.back().adjList.at(newID))

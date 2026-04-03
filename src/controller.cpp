@@ -60,7 +60,7 @@ void Controller::handleFile(tasks::controllerTask t){
 
     spdlog::info("Running the parser on the file");
     channel->loading_file_in_progress.store(true);
-    data = std::make_shared<GFA>(path.string());
+    data = std::make_shared<GFA>(path.string(), channel->minimal_memory_load.load());
 
     gc.clear();
     std::vector<Vertex> v;

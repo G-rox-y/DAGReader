@@ -1,7 +1,6 @@
 #pragma once
 
 #include "pch.hpp"
-#include "dataTypes.hpp"
 
 struct Vertex{
     size_t id;
@@ -16,13 +15,12 @@ struct Edge{
     size_t start;
     size_t end;
     
-    // these values are to be used only if segpart is false
+    // these values are to be used only if segpart is falsefilters
     // an orientation bool is true if the segment is connected with +, and false if with -
-    bool startOri, endOri;
+    bool startOri, endOri, segPart = false;
 
     long long int length;
     long long int originalLength;
-    bool segPart = false;
 
     Edge(size_t ID, size_t v1, size_t v2, long long int v3 = 1) : gid(ID), start(v1), end(v2), originalLength(v3) {}
     void setOrientations(bool s, bool e) { startOri = s; endOri = e; }
@@ -34,10 +32,7 @@ struct Graph{
 
     // adjacency list, indexed by vertex ID, contains vectors of pairs
     // each pair has neighbor (pair.first) and the edge that connects them (pair.second)
-    std::vector<std::vector<std::pair<int, int>>> adjList;
-
-    // graph distances between vertices
-    std::unordered_map<stdpp::sorted_pair<int>, int> dists;
+    std::vector<std::vector<std::pair<size_t, size_t>>> adjList;
 
     void clear() {
         vertices.clear();
@@ -54,7 +49,7 @@ struct Graph{
     void translate(const glm::dvec3& T);
 
     // can find the distance between two vertices using BFS, dont use too much due to complexity
-    int findDist(const int id1, const int id2);
+    int findDist(const size_t id1, const size_t id2);
 };
 
 struct graphCollection {
