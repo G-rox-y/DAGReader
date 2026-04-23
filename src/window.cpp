@@ -60,8 +60,13 @@ void Window::drawStuff()
     ImGui::NewFrame();
     ImGuiIO& io = ImGui::GetIO();
 
+    // selection mode circle indicator
     if (channel->selection_mode.load() && !io.WantCaptureMouse)
-        ImGui::SetMouseCursor(7);
+        ImGui::GetForegroundDrawList()->AddCircleFilled(
+            ImVec2(
+                ImGui::GetMainViewport()->WorkPos.x + ImGui::GetMainViewport()->WorkSize.x * 0.5f,
+                ImGui::GetMainViewport()->WorkPos.y + 20.0f), 10, IM_COL32(255, 100, 100, 200)
+        );
 
     // colors
     ImVec4 c0(1.f, 0.65f, 0.65f, 0.85f);
@@ -139,8 +144,8 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
 
     // add window hints
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    glfwWindowHint(GLFW_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
@@ -160,6 +165,9 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     
     // activate the context
     glfwMakeContextCurrent(m_window);
+    
+    // disable hardware cursor
+    glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     
     // load opengl functions using glew
     glewExperimental = true;
@@ -209,6 +217,8 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     ImGui::StyleColorsDark();
 
     ImGuiIO& io = ImGui::GetIO();
+
+    io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;  // let X handle cursor
 
     static const ImWchar CRO_RANGES[] = {
         0x0020, 0x00FF,   // Basic Latin + Latin-1
