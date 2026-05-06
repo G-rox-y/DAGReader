@@ -86,6 +86,10 @@ void menuBar::draw()
 
         if (ImGui::BeginMenu("Performance"))
         {
+            int m_fps = channel->max_fps.load();
+            if (ImGui::SliderInt("MAX FPS", &m_fps, 3, 300))
+                channel->max_fps.store(m_fps);
+
             bool minimalLoad = channel->minimal_memory_load.load();
             if (ImGui::Checkbox("Minimal Memory Load", &minimalLoad))
                 channel->minimal_memory_load.store(minimalLoad);

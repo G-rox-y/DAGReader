@@ -97,6 +97,9 @@ public:
     // variable for controllng loading parameters
     std::atomic<bool> minimal_memory_load{false};
 
+    // fps performance
+    std::atomic<int> max_fps{90};
+
     // graph data
 private:
     std::string graph_name_string;

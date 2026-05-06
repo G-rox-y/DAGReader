@@ -5,10 +5,7 @@
 
 void Window::manageInputs()
 {
-    glfwPollEvents(); // poll inputs
-
-    ImGuiIO& io = ImGui::GetIO();
-    if (io.WantCaptureKeyboard) return;
+    if (ImGui::GetIO().WantCaptureKeyboard) return;
 
     bool moveUp = false, moveLeft = false, moveDown = false, moveRight = false, moveIn = false, moveOut = false, moveFast = false;
     if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) moveUp = true;
@@ -62,11 +59,10 @@ void Window::drawStuff()
 
     // selection mode circle indicator
     if (channel->selection_mode.load() && !io.WantCaptureMouse)
-        ImGui::GetForegroundDrawList()->AddCircleFilled(
-            ImVec2(
+        ImGui::GetForegroundDrawList()->AddCircleFilled(ImVec2(
                 ImGui::GetMainViewport()->WorkPos.x + ImGui::GetMainViewport()->WorkSize.x * 0.5f,
-                ImGui::GetMainViewport()->WorkPos.y + 20.0f), 10, IM_COL32(255, 100, 100, 200)
-        );
+                ImGui::GetMainViewport()->WorkPos.y + 20.0f), 10, IM_COL32(255, 100, 100, 200
+        ));
 
     // colors
     ImVec4 c0(1.f, 0.65f, 0.65f, 0.85f);
@@ -345,6 +341,8 @@ void Window::run()
     spdlog::debug("Starting the window loop");
     while(!glfwWindowShouldClose(m_window)) // window is running
     {
+        glfwWaitEventsTimeout(1.0 / static_cast<double>(channel->max_fps.load()));
+
         // clear the buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -368,7 +366,6 @@ void Window::run()
         this->drawStuff();
 
         glfwSwapBuffers(m_window);
-        // TODO: consider using glfwSwapInterval
         glFlush();
     }
     spdlog::debug("Window Closed, notifiyng file controller to close...");
