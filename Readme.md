@@ -1,6 +1,6 @@
 # DAGReader
 
-![DAGReader showcase video](misc/orbitVideo.mp4)
+![DAGReader showcase video](misc/orbitVideo.gif)
 
 **3D Interactive Visualization for Genome Assembly Graphs (GFA)**
 
