@@ -14,6 +14,12 @@ void info::draw()
     static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
         | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground;
 
+    // FPS measurement
+    static std::queue<std::chrono::steady_clock::time_point> q;
+    q.push(std::chrono::steady_clock::now());
+    while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - q.front()).count() > 1000) q.pop();
+    int FPS = q.size();
+
     if (ImGui::Begin("Lower-Right HUD", nullptr, flags)){
         float width, avail = ImGui::GetContentRegionAvail().x;
         
@@ -31,6 +37,11 @@ void info::draw()
         ImGui::SetNextItemWidth(width);
         ImGui::Text("%s", version.c_str());
 
+        std::string fps = "FPS: " + std::to_string(FPS);
+        width = ImGui::CalcTextSize(fps.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
+        ImGui::SetNextItemWidth(width);
+        ImGui::Text("%s", fps.c_str());
 
         std::string scale = "Model scale = " + std::to_string(channel->cam->getScale());
         width = ImGui::CalcTextSize(scale.c_str()).x;

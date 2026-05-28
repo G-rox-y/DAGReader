@@ -5,8 +5,8 @@ void selectionWindow::draw() {
     static std::vector<size_t> indices;
 
     // since a fetch can be expensive, we will do it most once every half second
-    static auto start = std::chrono::system_clock::now();
-    auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count();
+    static auto start = std::chrono::steady_clock::now();
+    auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
     bool change = false;
 
     if (std::chrono::milliseconds(delta).count() > 500){
@@ -15,7 +15,7 @@ void selectionWindow::draw() {
             change = true;
             indices = newIndices;
         }
-        start = std::chrono::system_clock::now(); //reset timer
+        start = std::chrono::steady_clock::now(); //reset timer
     }
 
     if (indices.empty() || !channel->selection_window_allowed.load()) return;
