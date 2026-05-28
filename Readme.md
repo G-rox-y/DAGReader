@@ -31,7 +31,7 @@ The code has been optimized for efficiency and works well for large graphs.
   - Search by name (strict + fuzzy) across segments, links, paths, and containments
 - **Selection & inspection** — Click to select segments/links; view metadata, sequence data, and CIGAR strings in floating HUDs.
 - **Camera controls** — Free-fly, pan, rotate, zoom, and *orbit* around selections.
-- **Cross-platform** — Linux, macOS, and Windows (MSYS2).
+- **Linux & Windows compatible** — macOS planned down the line.
 
 ## Quick Start
 
@@ -44,7 +44,6 @@ You only need **CMake**, **git**, and a **C++17 compiler**. All other dependenci
 | Debian / Ubuntu | `sudo apt update && sudo apt install cmake git build-essential libomp-dev` |
 | Fedora | `sudo dnf install cmake git gcc-c++ libomp-devel` |
 | Arch | `sudo pacman -Syu cmake git base-devel openmp` |
-| macOS | `xcode-select --install` then `brew install cmake libomp` |
 
 
 ### Build

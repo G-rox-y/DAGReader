@@ -145,7 +145,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GL_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-    // glfwWindowHintString(GLFW_WAYLAND_APP_ID , "DAGReader"); // this seems to be unsupported rn
+    // glfwWindowHintString(GLFW_WAYLAND_APP_ID , "DAGReader"); // switch from glew to glad for this to be available
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "DAGReader");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "DAGReader");
 

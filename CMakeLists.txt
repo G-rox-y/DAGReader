@@ -49,7 +49,7 @@ FetchContent_MakeAvailable(glfw)
 # add glew-cmake
 FetchContent_Declare(glew
     GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
-    GIT_TAG b51c5193091d48203da8b6e1ed70e6d468bcb532 # master branch Oct 10 2025
+    GIT_TAG 8dd35fa470769374da27b93a8e9ab6de45e6a49e # master branch May 19 2026
 )
 # if no debugging is happening i can turn off the building of utility programs (glewinfo and visualinfo)
 # this is because glewinfo is used to list extensions and visualinfo to list visual/pixel formats
@@ -62,7 +62,7 @@ FetchContent_MakeAvailable(glew)
 # add glm
 FetchContent_Declare(glm
     GIT_REPOSITORY https://github.com/g-truc/glm
-    GIT_TAG 1.0.2
+    GIT_TAG 1.0.3
 )
 FetchContent_MakeAvailable(glm)
 
@@ -77,7 +77,7 @@ FetchContent_MakeAvailable(imgui)
 # TODO: test for dependencies and their availlability (same goes for other packages)
 FetchContent_Declare(nfd
     GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
-    GIT_TAG v1.2.1
+    GIT_TAG v1.3.0
 )
 # Disable installation of NFD library to the system
 set(NFD_INSTALL OFF CACHE BOOL "")
