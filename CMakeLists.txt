@@ -118,14 +118,14 @@ add_subdirectory("src")
 # add shaders
 add_custom_command(
     OUTPUT
-        ${CMAKE_BINARY_DIR}/shaderEmbed.cpp
+        ${CMAKE_BINARY_DIR}/src/shaderEmbed.cpp
     COMMAND ${CMAKE_COMMAND} 
         -DINPUT_VERT=${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
         -DINPUT_TCS=${CMAKE_SOURCE_DIR}/src/shaders/tcs.glsl
         -DINPUT_TES=${CMAKE_SOURCE_DIR}/src/shaders/tes.glsl
         -DINPUT_GEOM=${CMAKE_SOURCE_DIR}/src/shaders/geometry.glsl
         -DINPUT_FRAG=${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
-        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/shaderEmbed.cpp
+        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/src/shaderEmbed.cpp
         -P ${CMAKE_SOURCE_DIR}/src/shaders/shaderEmbed.cmake
     DEPENDS 
         ${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
@@ -134,6 +134,14 @@ add_custom_command(
         ${CMAKE_SOURCE_DIR}/src/shaders/geometry.glsl
         ${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
 )
+
+# Embed the license into the code
+file(READ "${CMAKE_SOURCE_DIR}/LICENSE" licenseText)
+foreach(var licenseText)
+    string(REPLACE "\"" "\\\"" ${var} "${${var}}") # escape quotation marks
+    string(REPLACE "\n" "\\n\"\n\"" ${var} "${${var}}") # convert newline characters
+endforeach()
+file(WRITE "${CMAKE_BINARY_DIR}/src/licenseText.cpp" "const char* licenseText = \"${licenseText}\";\n\n")
 
 # add imguis code since they dont have their own (useable) cmake
 target_sources(${PROJECT_NAME} PUBLIC
@@ -144,7 +152,8 @@ target_sources(${PROJECT_NAME} PUBLIC
     "${imgui_SOURCE_DIR}/imgui_widgets.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
-    "${PROJECT_BINARY_DIR}/shaderEmbed.cpp" # this is where the shaders get added to
+    "${PROJECT_BINARY_DIR}/src/shaderEmbed.cpp" # this is where the shaders get added to
+    "${PROJECT_BINARY_DIR}/src/licenseText.cpp" # this is where the license gets added to
 )
 
 # include dependencies

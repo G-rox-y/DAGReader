@@ -17,6 +17,7 @@
 #include "renderer.hpp"
 #include "infoExchange.hpp"
 #include "selection.hpp"
+#include "license.hpp"
 
 // the class that controls the graphical window of the program
 class Window{

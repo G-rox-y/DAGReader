@@ -1,7 +1,5 @@
 #include "window.hpp"
 #include "Roboto_Medium.hpp"
-#include "infoExchange.hpp"
-#include <GLFW/glfw3.h>
 
 void Window::manageInputs()
 {
@@ -240,6 +238,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     m_imguis.emplace_back(std::make_unique<controls>(channel));
     m_imguis.emplace_back(std::make_unique<info>(channel));
     m_imguis.emplace_back(std::make_unique<selectionWindow>(channel));
+    m_imguis.emplace_back(std::make_unique<license>(channel));
 }
 
 Window::~Window()

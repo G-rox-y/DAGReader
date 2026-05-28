@@ -112,9 +112,11 @@ void menuBar::draw()
             if (ImGui::MenuItem("Dependencies")){
 
             }
-            if (ImGui::MenuItem("License")){
-                
-            }
+
+            bool lws = channel->license_window_shown.load();
+            if (ImGui::MenuItem("License", NULL, lws))
+                channel->license_window_shown.store(!lws);
+            
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
