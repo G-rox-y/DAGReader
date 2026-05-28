@@ -12,6 +12,7 @@
 #include <atomic>
 #include <condition_variable>
 
+#include <chrono>
 #include <memory>
 #include <fstream>
 #include <filesystem>

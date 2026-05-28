@@ -1,8 +1,23 @@
 #include "selection.hpp"
 
 void selectionWindow::draw() {
-    // fetch selection data that will be written
-    auto indices = channel->renderer->getGroupIDs(groups::SELECTION);
+    // selection data that will be written
+    static std::vector<size_t> indices;
+
+    // since a fetch can be expensive, we will do it most once every half second
+    static auto start = std::chrono::system_clock::now();
+    auto delta = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count();
+    bool change = false;
+
+    if (std::chrono::milliseconds(delta).count() > 500){
+        auto newIndices = channel->renderer->getGroupIDs(groups::SELECTION); // fetch selection data
+        if (newIndices != indices){
+            change = true;
+            indices = newIndices;
+        }
+        start = std::chrono::system_clock::now(); //reset timer
+    }
+
     if (indices.empty() || !channel->selection_window_allowed.load()) return;
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport(); // get the viewport
@@ -118,46 +133,53 @@ void selectionWindow::draw() {
             else ImGui::Text("No data on selection");
         }
         else{ // more than one object to show -> show summary
-            size_t segmentCount = 0, linkCount = 0;
+            static size_t segmentCount = 0, linkCount = 0;
 
-            double sumLength = 0, sumDepth = 0;
-            size_t countLength = 0, countDepth = 0;
+            static double sumLength = 0, sumDepth = 0;
+            static size_t countLength = 0, countDepth = 0;
 
-            double sumMismatchGaps = 0, sumMappingQuality = 0;
-            size_t countMismatchGaps = 0, countMappingQuality = 0;
+            static double sumMismatchGaps = 0, sumMappingQuality = 0;
+            static size_t countMismatchGaps = 0, countMappingQuality = 0;
 
-            // Gather stats
-            for (const auto& idx : indices) {
-                auto props = channel->file_data->retrieveEdgeData(idx, m_verboseMode);
-                if (props.empty()) continue;
+            // Gather stats if data is new
+            if (change){
+                // reset all values
+                segmentCount = linkCount = countLength = countDepth = countMismatchGaps = countMappingQuality = 0;
+                sumLength = sumDepth = sumMismatchGaps = sumMappingQuality = 0.0;
 
-                auto* type = std::get_if<int>(&props["Type_I"]);
-                if (!type) continue;
-
-                if (*type == groups::SEGMENT) {
-                    segmentCount++;
-                    if (auto* v = std::get_if<long long>(&props["Length_LLI"])) {
-                        sumLength += *v;
-                        countLength++;
+                for (const auto& idx : indices) {
+                    // get data and always be verbose for this mode since we filter data later to save on processing
+                    auto props = channel->file_data->retrieveEdgeData(idx, true);
+                    if (props.empty()) continue;
+    
+                    auto* type = std::get_if<char>(&props["Type_C"]);
+                    if (!type) continue;
+    
+                    if (*type == GFA::mapType::SEGMENT) {
+                        segmentCount++;
+                        if (auto* v = std::get_if<long long>(&props["Length_LLI"])) {
+                            sumLength += *v;
+                            countLength++;
+                        }
+                        if (auto* v = std::get_if<double>(&props["Depth_D"])) {
+                            sumDepth += *v;
+                            countDepth++;
+                        }
                     }
-                    if (auto* v = std::get_if<double>(&props["Depth_D"])) {
-                        sumDepth += *v;
-                        countDepth++;
-                    }
-                }
-                else if (*type == groups::LINK) {
-                    linkCount++;
-                    if (!m_verboseMode) continue;
-                    if (auto* v = std::get_if<long long>(&props["MismatchGaps_LLI"])) {
-                        sumMismatchGaps += *v;
-                        countMismatchGaps++;
-                    }
-                    if (auto* v = std::get_if<long long>(&props["MappingQuality_LLI"])) {
-                        sumMappingQuality += *v;
-                        countMappingQuality++;
+                    else if (*type == GFA::mapType::LINK) {
+                        linkCount++;
+                        if (auto* v = std::get_if<long long>(&props["MismatchGaps_LLI"])) {
+                            sumMismatchGaps += *v;
+                            countMismatchGaps++;
+                        }
+                        if (auto* v = std::get_if<long long>(&props["MappingQuality_LLI"])) {
+                            sumMappingQuality += *v;
+                            countMappingQuality++;
+                        }
                     }
                 }
             }
+
             // Display summary
             ImGui::Text("Selected: %zu elements", indices.size());
 
