@@ -1,8 +1,4 @@
 #include "renderer.hpp"
-#include <glm/geometric.hpp>
-#include <mutex>
-#include <optional>
-#include <vector>
 
 void Renderer::boxInsert(const BezierBox& b){
     double segment = glm::length(b.end - b.start) / 3.f;
@@ -64,6 +60,41 @@ void Renderer::activateGroup(const int id) {
 void Renderer::deactivateGroup(const int id) {
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     m_active_groups.erase(id);
+}
+
+void Renderer::colorBulkByVector(const std::vector<size_t>& ids, const std::vector<glm::u8vec4>& cols){
+    if (ids.size() != cols.size()){
+        spdlog::warn("Renderer warning: Mismatch in bulk coloring array sizes; ids: {} | cols: {}", ids.size(), cols.size());
+        return;
+    }
+    std::lock_guard lk(m_ownership);
+    std::vector<size_t> updatedIds;
+
+    // do bulk coloring
+    for (size_t i = 0; i < ids.size(); i++){
+        auto p = m_externalID2RendererID.find(ids.at(i));
+        if (p == m_externalID2RendererID.end()){
+            spdlog::warn("Renderer warning: non mapped external id: {}", ids.at(i));
+            continue;
+        }
+        auto rid = p->second;
+        m_appearances[rid].color = cols.at(i);
+        updatedIds.emplace_back(rid);
+    }
+
+    // condense updated ids and notify renderer updates on those ranges are required
+    std::sort(updatedIds.begin(), updatedIds.end());
+    size_t prev = -1, first = -1;
+    for(auto rid:updatedIds){
+        if (first == -1UL) prev = first = rid;
+        else{
+            if (rid == prev+1) prev = rid;
+            else{
+                m_needUpdating.push(IndexRange({first, prev}));
+                prev = first = rid;
+            }
+        }
+    }
 }
 
 bool Renderer::isEntryInGroup(const IndexRange& entry, const int id){

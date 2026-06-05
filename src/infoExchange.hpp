@@ -125,13 +125,19 @@ public:
     // configuration variables for graph drawing
     std::atomic<bool> graph_loaded{false};
     std::atomic<bool> graph_param_change{false};
+
     // graph appearance variables
     std::atomic<glm::u8vec4> segment_color_packed{glm::u8vec4(255, 50, 180, 175)};
     std::atomic<glm::u8vec4> link_color_packed{glm::u8vec4(230, 190, 80, 255)};
     std::atomic<glm::u8vec4> selected_color_packed{glm::u8vec4(140, 180, 220, 230)};
     std::atomic<glm::u8vec4> err_color{glm::u8vec4(255, 0, 0, 255)};
-    std::atomic<bool> randomize_segment_colors{false};
-    std::atomic<bool> randomize_link_colors{false};
+
+    enum colScheme { NONE, RANDOM, DEPTH, LENGTH };
+    enum colRule {NORMAL, SQRT, CBRT, PROGRESSIVE};
+    std::atomic<colScheme> segment_color_scheme{NONE};
+    std::atomic<colRule> segment_color_rule{NORMAL};
+    std::atomic<colScheme> link_color_scheme{NONE};
+    
     std::atomic<float> link_widths{0.015f};
     std::atomic<float> segment_widths{0.06f};
 

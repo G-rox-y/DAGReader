@@ -95,8 +95,41 @@ void sidePanel::draw()
             
             if (ImGui::CollapsingHeader("Appearance"))
             {
-                float sw = channel->segment_widths.load();
+                ImGui::SeparatorText("Dynamic coloring");
 
+                const char* segItems[] = {"None", "Random", "Depth", "Length"};
+                static int seg_item_current = 0;
+                if (ImGui::Combo("Color segments by", &seg_item_current, segItems, IM_ARRAYSIZE(segItems))) {
+                    if (seg_item_current == 0) channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
+                    else if (seg_item_current == 1) channel->segment_color_scheme.store(infoExchange::colScheme::RANDOM);
+                    else if (seg_item_current == 2) channel->segment_color_scheme.store(infoExchange::colScheme::DEPTH);
+                    else channel->segment_color_scheme.store(infoExchange::colScheme::LENGTH);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+
+                if(seg_item_current > 1){
+                    const char* segRules[] = {"Normal", "Sqrt", "Cbrt", "Progressive"};
+                    static int seg_rule_current = 0;
+                    if(ImGui::Combo("Segment Coloring Rule", &seg_rule_current, segRules, IM_ARRAYSIZE(segRules))){
+                        if (seg_rule_current == 0) channel->segment_color_rule.store(infoExchange::colRule::NORMAL);
+                        else if (seg_rule_current == 1) channel->segment_color_rule.store(infoExchange::colRule::SQRT);
+                        else if (seg_rule_current == 2) channel->segment_color_rule.store(infoExchange::colRule::CBRT);
+                        else channel->segment_color_rule.store(infoExchange::colRule::PROGRESSIVE);
+                        channel->addControllerTask(tasks::REFRESH_GRAPH);
+                    }
+                }
+
+                const char* linkItems[] = {"None", "Random"};
+                static int link_item_current = 0;
+                if(ImGui::Combo("Randomize link colors", &link_item_current, linkItems, IM_ARRAYSIZE(linkItems))){
+                    if (link_item_current == 0) channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
+                    else channel->segment_color_scheme.store(infoExchange::colScheme::RANDOM);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+
+                ImGui::SeparatorText("Dimensions");
+
+                float sw = channel->segment_widths.load();
                 if (ImGui::DragFloat("Segment width", &sw, 0.001f, 0.f, 1000.f, "%6.3f", ImGuiSliderFlags_AlwaysClamp)){
                     channel->segment_widths.store(sw);
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
@@ -105,18 +138,6 @@ void sidePanel::draw()
                 float lw = channel->link_widths.load();
                 if (ImGui::DragFloat("Link width", &lw, 0.001f, 0.f, 1000.f, "%6.3f", ImGuiSliderFlags_AlwaysClamp)){
                     channel->link_widths.store(lw);
-                    channel->addControllerTask(tasks::REFRESH_GRAPH);
-                }
-                
-                bool rsc = channel->randomize_segment_colors.load();
-                if (ImGui::Checkbox("Randomize segment colors", &rsc)){
-                    channel->randomize_segment_colors.store(rsc);
-                    channel->addControllerTask(tasks::REFRESH_GRAPH);
-                }
-
-                bool rlc = channel->randomize_link_colors.load();
-                if(ImGui::Checkbox("Randomize link colors", &rlc)){
-                    channel->randomize_link_colors.store(rlc);
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
 
@@ -133,7 +154,7 @@ void sidePanel::draw()
                     static_cast<float>(colors1vec.z)/255.f, static_cast<float>(colors1vec.w)/255.f
                 };
                 ImGui::SeparatorText("Segment color");
-                ImGui::BeginDisabled(rsc);
+                ImGui::BeginDisabled(seg_item_current != 0);
                 ImGui::SetNextItemWidth(w);
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
                 if (ImGui::ColorPicker4("##Segment_colors", (float*)&colors1, colorFlags)){
@@ -156,7 +177,7 @@ void sidePanel::draw()
                     static_cast<float>(colors2vec.z)/255.f, static_cast<float>(colors2vec.w)/255.f
                 };
                 ImGui::SeparatorText("Link color");
-                ImGui::BeginDisabled(rlc);
+                ImGui::BeginDisabled(link_item_current == 0);
                 ImGui::SetNextItemWidth(w);
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
                 if (ImGui::ColorPicker4("##Link_colors", (float*)&colors2, colorFlags)){
@@ -419,7 +440,7 @@ void sidePanel::draw()
             ImGui::SeparatorText("Top Menu > File > Open File");
             ImGui::Separator();
             ImGui::TextWrapped("Hi, this project is still very much in development");
-            ImGui::TextWrapped("if you have any suggestions feel free to submit a feature request on the following link:");
+            ImGui::TextWrapped("if you have any suggestions or bugs to report feel free to submit a feature request on the following link:");
             ImGui::TextLinkOpenURL("Github Issues Page", "https://github.com/G-rox-y/DAGReader/issues");
         }
     }

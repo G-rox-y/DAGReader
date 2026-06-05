@@ -29,6 +29,7 @@ The code has been optimized for efficiency and works well for large graphs.
   - Appearance controls (colors, widths, randomization)
   - Subgraph visibility & selection tables
   - Search by name (strict + fuzzy) across segments, links, paths, and containments
+  - Dynamic coloring of segments by their properties (depth/length)
 - **Selection & inspection** — Click to select segments/links; view metadata, sequence data, and CIGAR strings in floating HUDs.
 - **Camera controls** — Free-fly, pan, rotate, zoom, and *orbit* around selections.
 - **Linux & Windows compatible** — macOS planned down the line.
@@ -63,7 +64,7 @@ cmake --build build -j
 ### Run
 
 ```bash
-./build/DAGReader        # Linux / macOS
+./build/DAGReader        # Linux
 ./build/DAGReader.exe    # Windows (MSYS2)
 ```
 

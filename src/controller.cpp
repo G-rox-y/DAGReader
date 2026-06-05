@@ -361,30 +361,106 @@ void Controller::resetGraph(){
 
 void Controller::refreshGraph(){
     spdlog::info("Task: REFRESH_GRAPH");
-    // memory
-    static glm::u8vec4 prevSegColor, prevLinkColor;
+    
     static float prevSegWidth = 0.f, prevLinkWidth = 0.f;
-    static bool prevSegRandom = false, prevLinkRandom = false;
 
     glm::u8vec4 segColor = channel->segment_color_packed.load();
     glm::u8vec4 linkColor = channel->link_color_packed.load();
     glm::u8vec4 selectionColor = channel->selected_color_packed.load();
+
     float segWidth = channel->segment_widths.load(), linkWidth = channel->link_widths.load();
-    bool segRandom = channel->randomize_segment_colors.load();
-    bool linkRandom = channel->randomize_link_colors.load();
+
+    auto segScheme = channel->segment_color_scheme.load();
+    auto segRule = channel->segment_color_rule.load();
+    auto linkScheme = channel->link_color_scheme.load();
     
     // segment updates
     channel->renderer->activateGroup(groups::SEGMENT);
 
-    channel->renderer->changeGroupColors(segColor);
-    if (segRandom && segRandom != prevSegRandom)
+    if (segScheme == infoExchange::colScheme::NONE)
+        channel->renderer->changeGroupColors(segColor);
+    else if (segScheme == infoExchange::colScheme::RANDOM)
         channel->renderer->randomizeGroupColors();
+    else if (segScheme == infoExchange::colScheme::DEPTH){
+        auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
+        std::vector<glm::u8vec4> colorVec(eids.size());
+        std::vector<double> depths(eids.size(), 0.0);
+        std::vector<double> sortedDepths;
+        double maxdepth = 0.0;
+        for(size_t i = 0; i < eids.size(); i++){
+            auto d = data->retrieveEdgeData(eids[i], false);
+            if (auto* depth = std::get_if<double>(&d["Depth_D"])) depths[i] = *depth;
+            maxdepth = std::max(maxdepth, depths.at(i));
+        }
+
+        if (segRule == infoExchange::colRule::PROGRESSIVE){
+            sortedDepths = depths;
+            std::sort(sortedDepths.begin(), sortedDepths.end());
+        }
+
+        if (maxdepth != 0.0){
+            for(size_t i = 0; i < depths.size(); i++){
+                double ratio = 1.0;
+                if (segRule == infoExchange::colRule::NORMAL) ratio = depths.at(i) / maxdepth;
+                else if (segRule == infoExchange::colRule::SQRT) ratio = std::sqrt(depths.at(i) / maxdepth);
+                else if (segRule == infoExchange::colRule::CBRT) ratio = std::cbrt(depths.at(i) / maxdepth);
+                else if (segRule == infoExchange::colRule::PROGRESSIVE){
+                    // binary search on sorted depths and color according to the index
+                    size_t index = sortedDepths.size() - 1;
+                    for(size_t b = sortedDepths.size()/2; b > 0 && sortedDepths.at(index) != depths.at(i); b/=2)
+                        while(index > b && sortedDepths.at(index-b) >= depths.at(i)) index -= b;
+                    ratio = static_cast<double>(index) / static_cast<double>(sortedDepths.size()-1);
+                }
+
+                int scale = std::min(static_cast<int>(ratio * 255 * 2), 255 * 2);
+                if (scale > 255) colorVec[i] = glm::u8vec4(scale-255, 255*2 - scale, 0, segColor.a);
+                else colorVec[i] = glm::u8vec4(0, scale, 255-scale, segColor.a);
+            }
+        }
+        channel->renderer->colorBulkByVector(eids, colorVec);
+    }
+    else if (segScheme == infoExchange::colScheme::LENGTH){
+        auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
+        std::vector<glm::u8vec4> colorVec(eids.size());
+        std::vector<long long int> lengths(eids.size(), 0);
+        std::vector<long long int> sortedLengths;
+        long long int maxlength = 0;
+        for(size_t i = 0; i < eids.size(); i++){
+            auto d = data->retrieveEdgeData(eids[i], false);
+            if (auto* length = std::get_if<long long int>(&d["Length_LLI"])) lengths[i] = *length;
+            maxlength = std::max(maxlength, lengths.at(i));
+        }
+
+        if (segRule == infoExchange::colRule::PROGRESSIVE){
+            sortedLengths = lengths;
+            std::sort(sortedLengths.begin(), sortedLengths.end());
+        }
+
+        if (maxlength != 0){
+            for(size_t i = 0; i < lengths.size(); i++){
+                double ratio = 1.0;
+                if (segRule == infoExchange::colRule::NORMAL) ratio = static_cast<double>(lengths.at(i)) / static_cast<double>(maxlength);
+                else if (segRule == infoExchange::colRule::SQRT) ratio = std::sqrt(static_cast<double>(lengths.at(i)) / static_cast<double>(maxlength));
+                else if (segRule == infoExchange::colRule::CBRT) ratio = std::cbrt(static_cast<double>(lengths.at(i)) / static_cast<double>(maxlength));
+                else if (segRule == infoExchange::colRule::PROGRESSIVE){
+                    // binary search on sorted depths and color according to the index
+                    size_t index = sortedLengths.size() - 1;
+                    for(size_t b = sortedLengths.size()/2; b > 0 && sortedLengths.at(index) != lengths.at(i); b/=2)
+                        while(index > b && sortedLengths.at(index-b) >= lengths.at(i)) index -= b;
+                    ratio = static_cast<double>(index) / static_cast<double>(sortedLengths.size()-1);
+                }
+
+                int scale = std::min(static_cast<int>(ratio * 255 * 2), 255 * 2);
+                if (scale > 255) colorVec[i] = glm::u8vec4(scale-255, 255*2 - scale, 0, segColor.a);
+                else colorVec[i] = glm::u8vec4(0, scale, 255-scale, segColor.a);
+            }
+        }
+        channel->renderer->colorBulkByVector(eids, colorVec);
+    }
 
     if (segWidth != prevSegWidth)
         channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));
     
-    prevSegRandom = segRandom;
-    prevSegColor = segColor;
     prevSegWidth = segWidth;
     
     channel->renderer->deactivateGroup(groups::SEGMENT);
@@ -392,16 +468,15 @@ void Controller::refreshGraph(){
     // link updates
     channel->renderer->activateGroup(groups::LINK);
 
-    channel->renderer->changeGroupColors(linkColor);
-    if (linkRandom && linkRandom != prevLinkRandom)
+    if (linkScheme == infoExchange::colScheme::NONE)
+        channel->renderer->changeGroupColors(linkColor);
+    else if (linkScheme == infoExchange::colScheme::RANDOM)
         channel->renderer->randomizeGroupColors();
     
     if (linkWidth != prevLinkWidth)
         channel->renderer->changeGroupDims(glm::vec2(channel->link_widths.load()));
     
-    prevLinkRandom = linkRandom;
     prevLinkWidth = linkWidth;
-    prevLinkColor = linkColor;
     
     channel->renderer->deactivateGroup(groups::LINK);
 

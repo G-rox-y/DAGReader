@@ -119,6 +119,9 @@ public:
     void activateGroup(const int id);
     void deactivateGroup(const int id);
 
+    // take a list of external ids and color their vertices accordingly
+    void colorBulkByVector(const std::vector<size_t>& ids, const std::vector<glm::u8vec4>& cols);
+
     // takes in an external ID and adds its local equivalent to the specified group 
     void addID2Group(const size_t id, const int groupID);
 
