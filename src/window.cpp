@@ -219,7 +219,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
         0x0100, 0x017F,   // Latin Extended-A (č ć š đ ž …)
         0
     };
-    ImFont* f = io.Fonts->AddFontFromMemoryCompressedTTF(
+    [[maybe_unused]] ImFont* f = io.Fonts->AddFontFromMemoryCompressedTTF(
         Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 15.0f, nullptr, CRO_RANGES
     );
     IM_ASSERT(f && "Font failed to load");

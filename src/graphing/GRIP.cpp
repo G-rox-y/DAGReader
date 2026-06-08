@@ -341,7 +341,7 @@ void GRIP::run()
     for(int i = static_cast<int>(K-1); i >= 0; i--){ // start with smaller filters and progress to larger filters (to i = 0)
         vector<int>& current_filter = filters.at(i);
 
-        spdlog::debug("Setting up N:{} L:{}", N, i);
+        spdlog::debug("Solving N:{} at layer L:{} ...", N, i);
         for(int ID:current_filter){ // setup new vertices
             if (placed_id.at(ID)) continue; // do not place twice
             compute_vertex_neighbourhoods(ID, neighbourhoods.at(ID), nbrs, filter_finder, i, placed_id);
@@ -352,8 +352,6 @@ void GRIP::run()
         if (i == static_cast<int>(K-1))
             base_filter_placement(current_filter);
 
-
-        spdlog::debug("Refining in N:{} L:{}", N, i);
         for(int r = 0; r < m_rounds_number; r++){
             for(int ID:current_filter){
                 glm::dvec3 force;

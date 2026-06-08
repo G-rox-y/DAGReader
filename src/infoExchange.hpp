@@ -55,7 +55,7 @@ public:
     }
     std::string getControllerTaskPath(){
         std::scoped_lock lk(controller_tasks_mut);
-        std::string ret = controller_tasks_paths.front();
+        std::string ret = controller_tasks_paths.front().string();
         controller_tasks_paths.pop();
         return ret;
     }

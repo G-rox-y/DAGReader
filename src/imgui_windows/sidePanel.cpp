@@ -30,13 +30,13 @@ void sidePanel::draw()
             auto data = channel->file_data->retrieveGeneralData();
 
             if (auto* segnum = std::get_if<size_t>(&data["SegmentNumber_ULLI"]))
-                ImGui::Text("Segments: %lu", *segnum);
+                ImGui::Text("Segments: %zu", *segnum);
             if (auto* linknum = std::get_if<size_t>(&data["LinkNumber_ULLI"]))
-                ImGui::Text("Links: %lu", *linknum);
+                ImGui::Text("Links: %zu", *linknum);
             if (auto* pathnum = std::get_if<size_t>(&data["PathNumber_ULLI"]))
-                ImGui::Text("Paths: %lu", *pathnum);
+                ImGui::Text("Paths: %zu", *pathnum);
             if (auto* contnum = std::get_if<size_t>(&data["ContainmentNumber_ULLI"]))
-                ImGui::Text("Containments: %lu", *contnum);
+                ImGui::Text("Containments: %zu", *contnum);
 
             size_t subgraphNum = channel->subgraphAmount();
             ImGui::Text("Subgraphs: %zu", subgraphNum);
