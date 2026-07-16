@@ -95,11 +95,31 @@ void sidePanel::draw()
             
             if (ImGui::CollapsingHeader("Appearance"))
             {
+                // static because i need this only to init on loading and later on its free to change
+                static glm::u8vec4 segColorsVec = channel->segment_color_packed.load();
+                static float segColors[] = {
+                    static_cast<float>(segColorsVec.x)/255.f , static_cast<float>(segColorsVec.y)/255.f, 
+                    static_cast<float>(segColorsVec.z)/255.f, static_cast<float>(segColorsVec.w)/255.f
+                };
+
+                static glm::u8vec4 linkColorsVec = channel->link_color_packed.load();
+                static float linkColors[] = {
+                    static_cast<float>(linkColorsVec.x)/255.f , static_cast<float>(linkColorsVec.y)/255.f, 
+                    static_cast<float>(linkColorsVec.z)/255.f, static_cast<float>(linkColorsVec.w)/255.f
+                };
+
+
+                static glm::u8vec4 selectedColorsVec = channel->selected_color_packed.load();
+                static float selectionColors[] = {
+                    static_cast<float>(selectedColorsVec.x)/255.f , static_cast<float>(selectedColorsVec.y)/255.f, 
+                    static_cast<float>(selectedColorsVec.z)/255.f, static_cast<float>(selectedColorsVec.w)/255.f
+                };
+
                 ImGui::SeparatorText("Dynamic coloring");
 
                 const char* segItems[] = {"None", "Random", "Depth", "Length"};
                 static int seg_item_current = 0;
-                if (ImGui::Combo("Color segments by", &seg_item_current, segItems, IM_ARRAYSIZE(segItems))) {
+                if (ImGui::Combo("Segment color scheme", &seg_item_current, segItems, IM_ARRAYSIZE(segItems))) {
                     if (seg_item_current == 0) channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
                     else if (seg_item_current == 1) channel->segment_color_scheme.store(infoExchange::colScheme::RANDOM);
                     else if (seg_item_current == 2) channel->segment_color_scheme.store(infoExchange::colScheme::DEPTH);
@@ -110,7 +130,7 @@ void sidePanel::draw()
                 if(seg_item_current > 1){
                     const char* segRules[] = {"Normal", "Sqrt", "Cbrt", "Progressive"};
                     static int seg_rule_current = 0;
-                    if(ImGui::Combo("Segment Coloring Rule", &seg_rule_current, segRules, IM_ARRAYSIZE(segRules))){
+                    if(ImGui::Combo("Segment coloring rule", &seg_rule_current, segRules, IM_ARRAYSIZE(segRules))){
                         if (seg_rule_current == 0) channel->segment_color_rule.store(infoExchange::colRule::NORMAL);
                         else if (seg_rule_current == 1) channel->segment_color_rule.store(infoExchange::colRule::SQRT);
                         else if (seg_rule_current == 2) channel->segment_color_rule.store(infoExchange::colRule::CBRT);
@@ -121,7 +141,7 @@ void sidePanel::draw()
 
                 const char* linkItems[] = {"None", "Random"};
                 static int link_item_current = 0;
-                if(ImGui::Combo("Randomize link colors", &link_item_current, linkItems, IM_ARRAYSIZE(linkItems))){
+                if(ImGui::Combo("Link color scheme", &link_item_current, linkItems, IM_ARRAYSIZE(linkItems))){
                     if (link_item_current == 0) channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
                     else channel->segment_color_scheme.store(infoExchange::colScheme::RANDOM);
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
@@ -141,56 +161,73 @@ void sidePanel::draw()
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
 
+                ImGui::SeparatorText("Transparencies");
                 
-                // ---
+                if(ImGui::SliderFloat("Segment Transparency", (float*)&segColors[3], 0.f, 1.f)){
+                    channel->segment_color_packed.store(
+                        glm::u8vec4(255 * segColors[0], 255 * segColors[1], 255 * segColors[2], 255 * segColors[3])
+                    );
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+
+                if(ImGui::SliderFloat("Link Transparency", (float*)&linkColors[3], 0.f, 1.f)){
+                    channel->segment_color_packed.store(
+                        glm::u8vec4(255 * linkColors[0], 255 * linkColors[1], 255 * linkColors[2], 255 * linkColors[3])
+                    );
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
 
                 static ImGuiItemFlags colorFlags = ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar 
                     | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoSidePreview;
 
-                // static because i need this only to init on loading and later on its free to change
-                static glm::u8vec4 colors1vec = channel->segment_color_packed.load();
-                static float colors1[] = {
-                    static_cast<float>(colors1vec.x)/255.f , static_cast<float>(colors1vec.y)/255.f, 
-                    static_cast<float>(colors1vec.z)/255.f, static_cast<float>(colors1vec.w)/255.f
-                };
-                ImGui::SeparatorText("Segment color");
-                ImGui::BeginDisabled(seg_item_current != 0);
-                ImGui::SetNextItemWidth(w);
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                if (ImGui::ColorPicker4("##Segment_colors", (float*)&colors1, colorFlags)){
-                    channel->segment_color_packed.store(
-                        glm::u8vec4(255 * colors1[0], 255 * colors1[1], 255 * colors1[2], 255 * colors1[3])
+                if (channel->selection_mode.load()){
+                    ImGui::SeparatorText("Selection color");
+                    ImGui::SetNextItemWidth(2*w/3);
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+                    if (ImGui::ColorPicker4("##Selection_colors", (float*)&selectionColors, colorFlags)){
+                        channel->selected_color_packed.store(
+                            glm::u8vec4(255 * selectionColors[0], 255 * selectionColors[1], 255 * selectionColors[2], 255 * selectionColors[3])
+                        );
+                        channel->addControllerTask(tasks::REFRESH_GRAPH);
+                    }
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+                    ImGui::ColorButton("##Selection_preview",
+                        ImVec4(selectionColors[0], selectionColors[1], selectionColors[2], selectionColors[3]), 
+                        ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
                     );
-                    channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
-                ImGui::EndDisabled();
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                ImGui::ColorButton("##Segment_preview",
-                    ImVec4(colors1[0], colors1[1], colors1[2], colors1[3]), ImGuiColorEditFlags_None, ImVec2(w, 0)
-                );
-                
-                // ----
-                
-                static glm::u8vec4 colors2vec = channel->link_color_packed.load();
-                static float colors2[] = {
-                    static_cast<float>(colors2vec.x)/255.f , static_cast<float>(colors2vec.y)/255.f, 
-                    static_cast<float>(colors2vec.z)/255.f, static_cast<float>(colors2vec.w)/255.f
-                };
-                ImGui::SeparatorText("Link color");
-                ImGui::BeginDisabled(link_item_current == 0);
-                ImGui::SetNextItemWidth(w);
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                if (ImGui::ColorPicker4("##Link_colors", (float*)&colors2, colorFlags)){
-                    channel->link_color_packed.store(
-                        glm::u8vec4(255 * colors2[0], 255 * colors2[1], 255 * colors2[2], 255 * colors2[3])
+
+                if (seg_item_current == 0){
+                    ImGui::SeparatorText("Segment color");
+                    ImGui::SetNextItemWidth(2*w/3);
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+                    if (ImGui::ColorPicker4("##Segment_colors", (float*)&segColors, colorFlags)){
+                        channel->segment_color_packed.store(
+                            glm::u8vec4(255 * segColors[0], 255 * segColors[1], 255 * segColors[2], 255 * segColors[3])
+                        );
+                        channel->addControllerTask(tasks::REFRESH_GRAPH);
+                    }
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+                    ImGui::ColorButton("##Segment_preview",
+                        ImVec4(segColors[0], segColors[1], segColors[2], segColors[3]), ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
                     );
-                    channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
-                ImGui::EndDisabled();
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                ImGui::ColorButton("##Link_preview", 
-                    ImVec4(colors2[0], colors2[1], colors2[2], colors2[3]), ImGuiColorEditFlags_None, ImVec2(w, 0)
-                );
+                
+                if (link_item_current == 0){
+                    ImGui::SeparatorText("Link color");
+                    ImGui::SetNextItemWidth(2*w/3);
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+                    if (ImGui::ColorPicker4("##Link_colors", (float*)&linkColors, colorFlags)){
+                        channel->link_color_packed.store(
+                            glm::u8vec4(255 * linkColors[0], 255 * linkColors[1], 255 * linkColors[2], 255 * linkColors[3])
+                        );
+                        channel->addControllerTask(tasks::REFRESH_GRAPH);
+                    }
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
+                    ImGui::ColorButton("##Link_preview", 
+                        ImVec4(linkColors[0], linkColors[1], linkColors[2], linkColors[3]), ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
+                    );
+                }
             }
 
             if (ImGui::CollapsingHeader("Subgraph selection"))

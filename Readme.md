@@ -64,8 +64,7 @@ cmake --build build -j
 ### Run
 
 ```bash
-./build/DAGReader        # Linux
-./build/DAGReader.exe    # Windows (MSYS2)
+./build/DAGReader
 ```
 
 ## Windows Build (MSYS2)
