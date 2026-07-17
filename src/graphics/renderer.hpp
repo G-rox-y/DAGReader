@@ -86,8 +86,6 @@ private:
     int m_selectionID = -1;
 
     // --- other
-    std::mt19937 m_rng{std::random_device{}()};
-
     void boxInsert(const BezierBox& b);
 
     // this function is going to fill the vertex buffer object with data and properly assign its vertex array

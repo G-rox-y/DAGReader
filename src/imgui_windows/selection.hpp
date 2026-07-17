@@ -11,6 +11,8 @@ private:
     bool m_verboseMode = false;
 
     sequenceWindow seqWin;
+
+    float m_customColor[4] = {1.0f, 0.2f, 0.2f, 1.0f}; // default paint color
 public:
     selectionWindow(infoExchange* c) : channel(c), seqWin(c) {}
     void draw() override;

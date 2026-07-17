@@ -320,6 +320,7 @@ void Window::run()
     // lmb callback
     glfwSetMouseButtonCallback(m_window, [](GLFWwindow* window, int button, int action, int mods){
         ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+        if (ImGui::GetIO().WantCaptureMouse) return;
 
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
             CallbackData* data = static_cast<CallbackData*>(glfwGetWindowUserPointer(window));

@@ -9,48 +9,63 @@ void info::draw()
     ImGuiViewport* vp = ImGui::GetMainViewport();
     float margin = 6.0f;
 
-    ImVec2 br(vp->WorkPos.x + vp->WorkSize.x - margin, vp->WorkPos.y + vp->WorkSize.y - margin);
-    ImGui::SetNextWindowPos(br, ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-    static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus
-        | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground;
+    std::string selText = channel->selection_mode.load() ? "SELECTION MODE ACTIVE" : "";
+    std::string version = "DAGReader v" DAGR_VERSION_STRING;
 
     // FPS measurement
     static std::queue<std::chrono::steady_clock::time_point> q;
     q.push(std::chrono::steady_clock::now());
-    while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - q.front()).count() > 1000) q.pop();
-    int FPS = q.size();
+    while (std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now() - q.front()).count() > 1000) q.pop();
+    std::string fps = "FPS: " + std::to_string(q.size());
 
-    if (ImGui::Begin("Lower-Right HUD", nullptr, flags)){
-        float width, avail = ImGui::GetContentRegionAvail().x;
-        
-        if (channel->selection_mode.load()){
-            std::string text = "SELECTION MODE ACTIVE";
-            width = ImGui::CalcTextSize(text.c_str()).x;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
-            ImGui::SetNextItemWidth(width);
-            ImGui::Text("%s", text.c_str());
+    std::string scale = "Model scale: " + fmt::format("{}", channel->cam->getScale());
+    auto nums = channel->cam->getPos();
+    std::string posn = fmt::format("X: {}; Y: {}; Z: {}", nums.x, nums.y, nums.z);
+
+    float maxWidth = ImGui::CalcTextSize(version.c_str()).x;
+    if (!selText.empty())
+        maxWidth = std::max(maxWidth, ImGui::CalcTextSize(selText.c_str()).x);
+    maxWidth = std::max(maxWidth, ImGui::CalcTextSize(fps.c_str()).x);
+    maxWidth = std::max(maxWidth, ImGui::CalcTextSize(scale.c_str()).x);
+    maxWidth = std::max(maxWidth, ImGui::CalcTextSize(posn.c_str()).x);
+
+    float winW = maxWidth + ImGui::GetStyle().WindowPadding.x * 2.f;
+
+    // place and size the window 
+    ImVec2 br(vp->WorkPos.x + vp->WorkSize.x - margin,
+              vp->WorkPos.y + vp->WorkSize.y - margin);
+    ImGui::SetNextWindowPos(br, ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+    ImGui::SetNextWindowSize(ImVec2(winW, 0), ImGuiCond_Always); // fixed width, auto height
+
+    static ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMouseInputs;
+
+    if (ImGui::Begin("Lower-Right HUD", nullptr, flags)) {
+        float avail = ImGui::GetContentRegionAvail().x;
+
+        if (!selText.empty()) {
+            float w = ImGui::CalcTextSize(selText.c_str()).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
+            ImGui::Text("%s", selText.c_str());
         }
 
-        std::string version = "DAGReader v" DAGR_VERSION_STRING;
-        width = ImGui::CalcTextSize(version.c_str()).x;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
-        ImGui::SetNextItemWidth(width);
+        float w = ImGui::CalcTextSize(version.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
         ImGui::Text("%s", version.c_str());
 
-        std::string fps = "FPS: " + std::to_string(FPS);
-        width = ImGui::CalcTextSize(fps.c_str()).x;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
-        ImGui::SetNextItemWidth(width);
+        w = ImGui::CalcTextSize(fps.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
         ImGui::Text("%s", fps.c_str());
 
-        std::string scale = "Model scale = " + std::to_string(channel->cam->getScale());
-        width = ImGui::CalcTextSize(scale.c_str()).x;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - width));
-        ImGui::SetNextItemWidth(width);
+        w = ImGui::CalcTextSize(scale.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
         ImGui::Text("%s", scale.c_str());
 
-        auto nums = channel->cam->getPos();
-        ImGui::Text("X = %f; Y = %f; Z = %f", nums.x, nums.y, nums.z);
+        w = ImGui::CalcTextSize(posn.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
+        ImGui::Text("%s", posn.c_str());
+
         ImGui::End();
     }
 }

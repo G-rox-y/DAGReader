@@ -204,6 +204,47 @@ void selectionWindow::draw() {
             if (ImGui::Button("See more")) m_verboseMode = true;
         }
 
+        
+        // ---- Custom color ----
+        if (!indices.empty()) {
+            ImGui::Separator();
+            if (ImGui::CollapsingHeader("Custom Coloring")){
+                ImGui::Text("Color Selected");
+                static ImGuiColorEditFlags colorFlags =
+                    ImGuiColorEditFlags_PickerHueWheel |
+                    ImGuiColorEditFlags_AlphaBar |
+                    ImGuiColorEditFlags_NoInputs |
+                    ImGuiColorEditFlags_NoSidePreview;
+    
+                ImGui::ColorPicker4("##CustomColor", m_customColor, colorFlags);
+                ImGui::ColorButton("##Selection_preview",
+                    ImVec4(m_customColor[0], m_customColor[1], m_customColor[2], m_customColor[3]),
+                    0, ImVec2(ImGui::GetItemRectSize().x, 0)
+                );
+    
+                if (ImGui::Button("Apply Color")) {
+                    glm::u8vec4 col(
+                        static_cast<uint8_t>(m_customColor[0] * 255),
+                        static_cast<uint8_t>(m_customColor[1] * 255),
+                        static_cast<uint8_t>(m_customColor[2] * 255),
+                        static_cast<uint8_t>(m_customColor[3] * 255)
+                    );
+                    //for (auto idx : indices)
+                    //    channel->setCustomColor(idx, col);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+                if (ImGui::Button("Clear from Selection")) {
+                    //for (auto idx : indices)
+                    //    channel->clearCustomColor(idx);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+                if (ImGui::Button("Reset All Colors")) {
+                    //channel->clearAllCustomColors();
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+            }
+        }
+
         ImGui::End();
     }
     

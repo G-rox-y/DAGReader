@@ -69,7 +69,7 @@ FetchContent_MakeAvailable(glm)
 # add imgui
 FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
-    GIT_TAG v1.91.9
+    GIT_TAG v1.92.8
 )
 FetchContent_MakeAvailable(imgui)
 

@@ -28,12 +28,13 @@ void Renderer::changeGroupColors(const glm::u8vec4 newColor){
 void Renderer::randomizeGroupColors(){
     std::lock_guard lk(m_ownership);
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
+    std::mt19937 rng(12345u);
     static std::uniform_int_distribution<int> dist(0, 255);
     for(const auto group:m_active_groups){
         for(const auto& p:m_groupIndices[group]){
             for(size_t i = p.first; i <= p.second; i++){
                 int alpha = m_appearances[i].color.w; // preserve transparency value
-                m_appearances[i].color = glm::u8vec4(dist(m_rng), dist(m_rng), dist(m_rng), alpha);
+                m_appearances[i].color = glm::u8vec4(dist(rng), dist(rng), dist(rng), alpha);
             }
             m_needUpdating.push(p);
         }
