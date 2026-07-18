@@ -16,7 +16,7 @@ void Controller::handleFile(tasks::controllerTask t){
     fs::path path;
     if (t == tasks::OPEN_NFD){
         spdlog::info("Task: OPEN_NFD");
-        getPathNFD(path);
+        getPathNFD(path, "GFA", "gfa");
     }
     else{
         spdlog::info("Task: OPEN_PATH");
@@ -83,13 +83,55 @@ void Controller::handleFile(tasks::controllerTask t){
     channel->loading_file_in_progress.store(false);
 }
 
-void Controller::getPathNFD(std::filesystem::path& path) const
+void Controller::handleCSV(tasks::controllerTask t){
+    fs::path path;
+    if (t == tasks::OPEN_CSV_NFD){
+        spdlog::info("Task: OPEN_CSV_NFD");
+        getPathNFD(path, "CSV", "csv");
+    }
+    else{
+        spdlog::info("Task: OPEN_CSV_PATH");
+        path = channel->getControllerTaskPath();
+    }
+    if (path.empty()){
+        spdlog::info("Recieved an empty path for CSV");
+        return;
+    }
+    if (!fs::exists(path)){
+        spdlog::warn("Recieved a CSV path that doesnt exist: {}", path.string());
+        return;
+    }
+
+    if (!channel->graph_loaded.load()){
+        spdlog::warn("Cannot load CSV: no graph is currently loaded");
+        return;
+    }
+
+    spdlog::info("Loading CSV label data from: {}", path.string());
+    auto csv = std::make_shared<CSV>(path.string());
+    if (!csv->isValid()){
+        spdlog::warn("Failed to load CSV file: {}", path.string());
+        return;
+    }
+
+    auto gfa = std::dynamic_pointer_cast<GFA>(data);
+    if (!gfa){
+        spdlog::warn("Cannot attach CSV: current data is not a GFA file");
+        return;
+    }
+
+    gfa->attachCSV(csv);
+    spdlog::info("CSV labels attached successfully");
+    channel->addControllerTask(tasks::REFRESH_GRAPH);
+}
+
+void Controller::getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt) const
 {
     // TODO: nfd init can throw an error, you should catch it
     NFD_Init();
 
     nfdu8char_t *outPath;
-    nfdu8filteritem_t filters[1] = { { "GFA", "gfa" } };
+    nfdu8filteritem_t filters[1] = { { filterName, filterExt } };
     nfdopendialogu8args_t args = {0};
     args.filterList = filters;
     args.filterCount = 1;
@@ -565,6 +607,8 @@ void Controller::run()
 
         if (t == tasks::OPEN_NFD || t == tasks::OPEN_PATH)
             handleFile(t);
+        else if (t == tasks::OPEN_CSV_NFD || t == tasks::OPEN_CSV_PATH)
+            handleCSV(t);
         else if (t == tasks::LAYOUT_GRAPH)
             layoutGraph();
         else if (t == tasks::RESET_GRAPH)

@@ -76,6 +76,26 @@ void selectionWindow::draw() {
                             else ImGui::Text("No sequence");
                         }
                     }
+
+                    // CSV label display
+                    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get())) {
+                        if (gfa->hasAttachedCSV()) {
+                            if (auto* name = std::get_if<std::string_view>(&props["Name_SW"])) {
+                                std::string nodeName(name->data(), name->size());
+                                if (const auto* csvData = gfa->getAttachedCSV()->getNodeData(nodeName)) {
+                                    ImGui::Separator();
+                                    ImGui::TextUnformatted("CSV Labels");
+                                    for (const auto& [colName, value] : csvData->columns) {
+                                        LabeledSV(colName.c_str(), std::string_view(value));
+                                    }
+                                }
+                                else {
+                                    ImGui::Separator();
+                                    ImGui::TextDisabled("No CSV labels for this node");
+                                }
+                            }
+                        }
+                    }
                 }
                 else if (*type == GFA::mapType::LINK) {
                     auto* fromName = std::get_if<std::string_view>(&props["FromName_SW"]);
@@ -198,12 +218,12 @@ void selectionWindow::draw() {
             }
         }
 
+        ImGui::Separator();
         if (m_verboseMode){
             if (ImGui::Button("See less")) m_verboseMode = false;
         } else{
             if (ImGui::Button("See more")) m_verboseMode = true;
         }
-
         
         // ---- Custom color ----
         if (!indices.empty()) {

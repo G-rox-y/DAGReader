@@ -9,7 +9,7 @@
 #include "Graphs.hpp"
 #include "parser.hpp"
 #include "datatype.hpp"
-#include <unordered_map>
+#include "csv/CSV.hpp"
 
 struct GFA_field{
     std::string tag, type, value;
@@ -29,6 +29,9 @@ private:
     std::vector<GFA_link> links;
     std::vector<GFA_containment> containments;
     std::vector<GFA_path> paths;
+
+    // csv data to attach to the gfa file
+    std::shared_ptr<CSV> m_attachedCSV;
 
     // name -> OBJECT ID lookup
     std::unordered_map<std::string_view, size_t> segment_lookup, path_lookup;
@@ -72,4 +75,13 @@ public:
 
     // retrieve {OBJECT ID, OBJECT TYPE, EDGE ID (if exists)} of all objects with name similar to "nameStr" 
     std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> searchFuzzyForName(const std::string& nameStr, char filters) const;
+
+    // attach additional csv data to the file
+    void attachCSV(std::shared_ptr<CSV> csv) { m_attachedCSV = csv; }
+
+    // check if there is a csv attachement
+    bool hasAttachedCSV() const { return m_attachedCSV != nullptr; }
+
+    // reach the csv attachement if present
+    const CSV* getAttachedCSV() const { return m_attachedCSV.get(); }
 };

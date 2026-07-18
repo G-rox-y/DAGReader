@@ -33,6 +33,19 @@ void menuBar::draw()
                 else ImGui::TextDisabled("Loading...");
                 ImGui::EndMenu();
             }
+                        ImGui::Separator();
+
+            if (channel->graph_loaded.load()) {
+                if (ImGui::MenuItem("Load CSV labels")) {
+                    channel->addControllerTask(tasks::OPEN_CSV_NFD);
+                }
+            }
+            else {
+                ImGui::BeginDisabled();
+                ImGui::MenuItem("Load CSV labels");
+                ImGui::EndDisabled();
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Clear layout")){
                 channel->renderer->clearAll();
                 channel->graph_loaded.store(false);

@@ -12,6 +12,7 @@ target_sources(${PROJECT_NAME} PUBLIC
     "imgui_windows/sequenceWindow.cpp"
     "filetypes/gfa/GFA.cpp"
     "filetypes/gfa/GFA_segment.cpp"
+    "filetypes/csv/CSV.cpp"
     "graphics/GLProgram.cpp"
     "graphics/camera.cpp"
     "graphics/renderer.cpp"

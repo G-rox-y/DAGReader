@@ -107,6 +107,13 @@ if(NOT OpenMP_CXX_FOUND)
     message(WARNING "OpenMP not found. Building without multithreading support for layout algorithms.")
 endif()
 
+# rapidcsv
+FetchContent_Declare(rapidcsv
+    GIT_REPOSITORY https://github.com/d99kris/rapidcsv
+    GIT_TAG v8.83
+)
+FetchContent_MakeAvailable(rapidcsv)
+
 # -------------------- END OF DEPENDENCIES
 
 # create executable
@@ -144,7 +151,7 @@ endforeach()
 file(WRITE "${CMAKE_BINARY_DIR}/src/licenseText.cpp" "const char* licenseText = \"${licenseText}\";\n\n")
 
 # add imguis code since they dont have their own (useable) cmake
-target_sources(${PROJECT_NAME} PUBLIC
+target_sources(${PROJECT_NAME} PRIVATE
     "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp" # primarily for std::string
     "${imgui_SOURCE_DIR}/imgui.cpp"
     "${imgui_SOURCE_DIR}/imgui_draw.cpp"
@@ -167,6 +174,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     "${nfd_SOURCE_DIR}/src/include"
     "${spdlog_SOURCE_DIR}/include"
     "${inipp_SOURCE_DIR}/"
+    "${rapidcsv_SOURCE_DIR}/src"
 )
 
 # link libraries to the executable
@@ -187,7 +195,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DebugRelease")
     target_compile_definitions(${PROJECT_NAME} PUBLIC DEBUG_LOGGING)
-    target_sources(${PROJECT_NAME} PUBLIC "${imgui_SOURCE_DIR}/imgui_demo.cpp")
+    target_sources(${PROJECT_NAME} PRIVATE "${imgui_SOURCE_DIR}/imgui_demo.cpp")
 endif()
 
 # --- Add the font to the binary ---

@@ -7,6 +7,8 @@
 #include "GRIP.hpp"
 #include "infoExchange.hpp"
 #include "datatype.hpp"
+#include "csv/CSV.hpp"
+#include "rapidcsv.h"
 
 // this class contols file input output and data manipulation
 class Controller {
@@ -22,7 +24,8 @@ private:
     graphCollection gc;
 
     void handleFile(tasks::controllerTask t);
-    void getPathNFD(std::filesystem::path& path) const;
+    void handleCSV(tasks::controllerTask t);
+    void getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt) const;
     void layoutGraph();
     void resetGraph();
     void refreshGraph();
