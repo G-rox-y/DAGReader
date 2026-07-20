@@ -499,6 +499,27 @@ void Controller::refreshGraph(){
         }
         channel->renderer->colorBulkByVector(eids, colorVec);
     }
+    else if (segScheme == infoExchange::colScheme::CSV){
+        auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
+        std::vector<glm::u8vec4> colorVec(eids.size());
+        auto gfa = dynamic_cast<GFA*>(data.get());
+        if (gfa && gfa->hasAttachedCSV()) {
+            const CSV* csv = gfa->getAttachedCSV();
+            for (size_t i = 0; i < eids.size(); i++){
+                auto d = data->retrieveEdgeData(eids[i], false);
+                if (auto* name = std::get_if<std::string_view>(&d["Name_SW"])) {
+                    std::string nodeName(name->data(), name->size());
+                    auto col = csv->getNodeColorParsed(nodeName);
+                    colorVec[i] = col.value_or(segColor); // color csv segments
+                }
+                else colorVec[i] = segColor; // recolor other segments back to the default color
+            }
+        }
+        else {
+            std::fill(colorVec.begin(), colorVec.end(), segColor);
+        }
+        channel->renderer->colorBulkByVector(eids, colorVec);
+    }
 
     if (segWidth != prevSegWidth)
         channel->renderer->changeGroupDims(glm::vec2(channel->segment_widths.load()));

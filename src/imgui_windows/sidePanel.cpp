@@ -118,17 +118,37 @@ void sidePanel::draw()
 
                 ImGui::SeparatorText("Dynamic coloring");
 
-                const char* segItems[] = {"None", "Random", "Depth", "Length"};
+                bool csvAvailable = false;
+                if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
+                    csvAvailable = gfa->hasAttachedCSV();
+
+                const char* segItems[] = {"None", "Random", "Depth", "Length", "CSV"};
                 static int seg_item_current = 0;
+
+                // Safety: if CSV mode was active but CSV is gone, reset to NONE
+                if (seg_item_current == 4 && !csvAvailable) {
+                    seg_item_current = 0;
+                    channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
+                }
+
                 if (ImGui::Combo("Segment color scheme", &seg_item_current, segItems, IM_ARRAYSIZE(segItems))) {
                     if (seg_item_current == 0) channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
                     else if (seg_item_current == 1) channel->segment_color_scheme.store(infoExchange::colScheme::RANDOM);
                     else if (seg_item_current == 2) channel->segment_color_scheme.store(infoExchange::colScheme::DEPTH);
-                    else channel->segment_color_scheme.store(infoExchange::colScheme::LENGTH);
+                    else if (seg_item_current == 3) channel->segment_color_scheme.store(infoExchange::colScheme::LENGTH);
+                    else{
+                        if (!csvAvailable) channel->segment_color_scheme.store(infoExchange::colScheme::NONE);
+                        else channel->segment_color_scheme.store(infoExchange::colScheme::CSV);
+                    }
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
+                if (!csvAvailable) {
+                    ImGui::SameLine();
+                    HelpMarker("CSV coloring requires a CSV to be loaded via File > Load CSV labels");
+                }
 
-                if(seg_item_current > 1){
+                // rules for depth and length
+                if(seg_item_current == 2 || seg_item_current == 3){
                     const char* segRules[] = {"Normal", "Sqrt", "Cbrt", "Progressive"};
                     static int seg_rule_current = 0;
                     if(ImGui::Combo("Segment coloring rule", &seg_rule_current, segRules, IM_ARRAYSIZE(segRules))){

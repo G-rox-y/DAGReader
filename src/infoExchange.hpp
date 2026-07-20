@@ -133,7 +133,7 @@ public:
     std::atomic<glm::u8vec4> selected_color_packed{glm::u8vec4(140, 180, 220, 230)};
     std::atomic<glm::u8vec4> err_color{glm::u8vec4(255, 0, 0, 255)};
 
-    enum colScheme { NONE, RANDOM, DEPTH, LENGTH };
+    enum colScheme { NONE, RANDOM, DEPTH, LENGTH, CSV };
     enum colRule {NORMAL, SQRT, CBRT, PROGRESSIVE};
     std::atomic<colScheme> segment_color_scheme{NONE};
     std::atomic<colRule> segment_color_rule{NORMAL};

@@ -35,6 +35,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <cctype>
 #include <limits>
 #include <random>
 #include <algorithm>
