@@ -96,25 +96,14 @@ void sidePanel::draw()
             
             if (ImGui::CollapsingHeader("Appearance"))
             {
+                auto unpackColor = [](const glm::u8vec4& c) -> std::array<float, 4> {
+                    return { c.x / 255.f, c.y / 255.f, c.z / 255.f, c.w / 255.f };
+                };
+
                 // static because i need this only to init on loading and later on its free to change
-                static glm::u8vec4 segColorsVec = channel->segment_color_packed.load();
-                static float segColors[] = {
-                    static_cast<float>(segColorsVec.x)/255.f , static_cast<float>(segColorsVec.y)/255.f, 
-                    static_cast<float>(segColorsVec.z)/255.f, static_cast<float>(segColorsVec.w)/255.f
-                };
-
-                static glm::u8vec4 linkColorsVec = channel->link_color_packed.load();
-                static float linkColors[] = {
-                    static_cast<float>(linkColorsVec.x)/255.f , static_cast<float>(linkColorsVec.y)/255.f, 
-                    static_cast<float>(linkColorsVec.z)/255.f, static_cast<float>(linkColorsVec.w)/255.f
-                };
-
-
-                static glm::u8vec4 selectedColorsVec = channel->selected_color_packed.load();
-                static float selectionColors[] = {
-                    static_cast<float>(selectedColorsVec.x)/255.f , static_cast<float>(selectedColorsVec.y)/255.f, 
-                    static_cast<float>(selectedColorsVec.z)/255.f, static_cast<float>(selectedColorsVec.w)/255.f
-                };
+                static std::array<float, 4> segColors       = unpackColor(channel->segment_color_packed.load());
+                static std::array<float, 4> linkColors      = unpackColor(channel->link_color_packed.load());
+                static std::array<float, 4> selectionColors = unpackColor(channel->selected_color_packed.load());
 
                 ImGui::SeparatorText("Dynamic coloring");
 
@@ -201,54 +190,28 @@ void sidePanel::draw()
                 static ImGuiItemFlags colorFlags = ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar 
                     | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoSidePreview;
 
-                if (channel->selection_mode.load()){
-                    ImGui::SeparatorText("Selection color");
+                auto colorpicker = [&](const char* name, std::array<float, 4>& colors, std::atomic<glm::u8vec4>& storage){
+                    ImGui::SeparatorText(fmt::format("{} color", name).c_str());
                     ImGui::SetNextItemWidth(2*w/3);
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                    if (ImGui::ColorPicker4("##Selection_colors", (float*)&selectionColors, colorFlags)){
-                        channel->selected_color_packed.store(
-                            glm::u8vec4(255 * selectionColors[0], 255 * selectionColors[1], 255 * selectionColors[2], 255 * selectionColors[3])
-                        );
+                    if (ImGui::ColorPicker4(fmt::format("##{}_colors", name).c_str(), colors.data(), colorFlags)){
+                        storage.store(glm::u8vec4(255 * colors[0], 255 * colors[1], 255 * colors[2], 255 * colors[3]));
                         channel->addControllerTask(tasks::REFRESH_GRAPH);
                     }
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                    ImGui::ColorButton("##Selection_preview",
-                        ImVec4(selectionColors[0], selectionColors[1], selectionColors[2], selectionColors[3]), 
-                        ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
+                    ImGui::ColorButton(fmt::format("##{}_preview", name).c_str(), 
+                        ImVec4(colors[0], colors[1], colors[2], colors[3]), ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
                     );
-                }
+                };
 
-                if (seg_item_current == 0){
-                    ImGui::SeparatorText("Segment color");
-                    ImGui::SetNextItemWidth(2*w/3);
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                    if (ImGui::ColorPicker4("##Segment_colors", (float*)&segColors, colorFlags)){
-                        channel->segment_color_packed.store(
-                            glm::u8vec4(255 * segColors[0], 255 * segColors[1], 255 * segColors[2], 255 * segColors[3])
-                        );
-                        channel->addControllerTask(tasks::REFRESH_GRAPH);
-                    }
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                    ImGui::ColorButton("##Segment_preview",
-                        ImVec4(segColors[0], segColors[1], segColors[2], segColors[3]), ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
-                    );
-                }
+                if (channel->selection_mode.load())
+                    colorpicker("Selection", selectionColors, channel->selected_color_packed);
+
+                if (seg_item_current == 0)
+                    colorpicker("Segment", segColors, channel->segment_color_packed);
                 
-                if (link_item_current == 0){
-                    ImGui::SeparatorText("Link color");
-                    ImGui::SetNextItemWidth(2*w/3);
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                    if (ImGui::ColorPicker4("##Link_colors", (float*)&linkColors, colorFlags)){
-                        channel->link_color_packed.store(
-                            glm::u8vec4(255 * linkColors[0], 255 * linkColors[1], 255 * linkColors[2], 255 * linkColors[3])
-                        );
-                        channel->addControllerTask(tasks::REFRESH_GRAPH);
-                    }
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availX - w) / 2);
-                    ImGui::ColorButton("##Link_preview", 
-                        ImVec4(linkColors[0], linkColors[1], linkColors[2], linkColors[3]), ImGuiColorEditFlags_None, ImVec2(2*w/3, 0)
-                    );
-                }
+                if (link_item_current == 0)
+                    colorpicker("Link", linkColors, channel->link_color_packed);
             }
 
             if (ImGui::CollapsingHeader("Subgraph selection"))

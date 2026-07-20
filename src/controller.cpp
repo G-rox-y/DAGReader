@@ -416,6 +416,47 @@ void Controller::refreshGraph(){
     auto segRule = channel->segment_color_rule.load();
     auto linkScheme = channel->link_color_scheme.load();
     
+
+    // generic scalar coloring: fetch a double per edge, apply segRule/segColor gradient
+    auto colorByScalar = [&](const std::vector<size_t>& eids, auto&& fetchScalar) {
+        std::vector<glm::u8vec4> colorVec(eids.size());
+        std::vector<double> values(eids.size(), 0.0);
+        std::vector<double> sortedValues;
+        
+        double maxValue = 0.0;
+        for (size_t i = 0; i < eids.size(); ++i) {
+            if (auto v = fetchScalar(eids[i])) values[i] = *v;
+            maxValue = std::max(maxValue, values[i]);
+        }
+
+        if (segRule == infoExchange::colRule::PROGRESSIVE) {
+            sortedValues = values;
+            std::sort(sortedValues.begin(), sortedValues.end());
+        }
+
+        if (maxValue != 0.0) {
+            for (size_t i = 0; i < values.size(); ++i) {
+                double ratio = 1.0;
+                if (segRule == infoExchange::colRule::NORMAL) ratio = values[i] / maxValue;
+                else if (segRule == infoExchange::colRule::SQRT) ratio = std::sqrt(values[i] / maxValue);
+                else if (segRule == infoExchange::colRule::CBRT) ratio = std::cbrt(values[i] / maxValue);
+                else if (segRule == infoExchange::colRule::PROGRESSIVE) {
+                    size_t index = sortedValues.size() - 1;
+                    for (size_t b = sortedValues.size() / 2;
+                         b > 0 && sortedValues[index] != values[i]; b /= 2)
+                        while (index > b && sortedValues[index - b] >= values[i])
+                            index -= b;
+                    ratio = static_cast<double>(index) /
+                            static_cast<double>(sortedValues.size() - 1);
+                }
+                int scale = std::min(static_cast<int>(ratio * 255 * 2), 255 * 2);
+                if (scale > 255) colorVec[i] = glm::u8vec4(scale - 255, 255 * 2 - scale, 0, segColor.a);
+                else colorVec[i] = glm::u8vec4(0, scale, 255 - scale, segColor.a);
+            }
+        }
+        channel->renderer->colorBulkByVector(eids, colorVec);
+    };
+
     // segment updates
     channel->renderer->activateGroup(groups::SEGMENT);
 
@@ -423,81 +464,22 @@ void Controller::refreshGraph(){
         channel->renderer->changeGroupColors(segColor);
     else if (segScheme == infoExchange::colScheme::RANDOM)
         channel->renderer->randomizeGroupColors();
-    else if (segScheme == infoExchange::colScheme::DEPTH){
+    else if (segScheme == infoExchange::colScheme::DEPTH) {
         auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
-        std::vector<glm::u8vec4> colorVec(eids.size());
-        std::vector<double> depths(eids.size(), 0.0);
-        std::vector<double> sortedDepths;
-        double maxdepth = 0.0;
-        for(size_t i = 0; i < eids.size(); i++){
-            auto d = data->retrieveEdgeData(eids[i], false);
-            if (auto* depth = std::get_if<double>(&d["Depth_D"])) depths[i] = *depth;
-            maxdepth = std::max(maxdepth, depths.at(i));
-        }
-
-        if (segRule == infoExchange::colRule::PROGRESSIVE){
-            sortedDepths = depths;
-            std::sort(sortedDepths.begin(), sortedDepths.end());
-        }
-
-        if (maxdepth != 0.0){
-            for(size_t i = 0; i < depths.size(); i++){
-                double ratio = 1.0;
-                if (segRule == infoExchange::colRule::NORMAL) ratio = depths.at(i) / maxdepth;
-                else if (segRule == infoExchange::colRule::SQRT) ratio = std::sqrt(depths.at(i) / maxdepth);
-                else if (segRule == infoExchange::colRule::CBRT) ratio = std::cbrt(depths.at(i) / maxdepth);
-                else if (segRule == infoExchange::colRule::PROGRESSIVE){
-                    // binary search on sorted depths and color according to the index
-                    size_t index = sortedDepths.size() - 1;
-                    for(size_t b = sortedDepths.size()/2; b > 0 && sortedDepths.at(index) != depths.at(i); b/=2)
-                        while(index > b && sortedDepths.at(index-b) >= depths.at(i)) index -= b;
-                    ratio = static_cast<double>(index) / static_cast<double>(sortedDepths.size()-1);
-                }
-
-                int scale = std::min(static_cast<int>(ratio * 255 * 2), 255 * 2);
-                if (scale > 255) colorVec[i] = glm::u8vec4(scale-255, 255*2 - scale, 0, segColor.a);
-                else colorVec[i] = glm::u8vec4(0, scale, 255-scale, segColor.a);
-            }
-        }
-        channel->renderer->colorBulkByVector(eids, colorVec);
+        colorByScalar(eids, [&](size_t eid) -> std::optional<double> {
+            auto d = data->retrieveEdgeData(eid, false);
+            if (auto* depth = std::get_if<double>(&d["Depth_D"])) return *depth;
+            return std::nullopt;
+        });
     }
-    else if (segScheme == infoExchange::colScheme::LENGTH){
+    else if (segScheme == infoExchange::colScheme::LENGTH) {
         auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
-        std::vector<glm::u8vec4> colorVec(eids.size());
-        std::vector<long long int> lengths(eids.size(), 0);
-        std::vector<long long int> sortedLengths;
-        long long int maxlength = 0;
-        for(size_t i = 0; i < eids.size(); i++){
-            auto d = data->retrieveEdgeData(eids[i], false);
-            if (auto* length = std::get_if<long long int>(&d["Length_LLI"])) lengths[i] = *length;
-            maxlength = std::max(maxlength, lengths.at(i));
-        }
-
-        if (segRule == infoExchange::colRule::PROGRESSIVE){
-            sortedLengths = lengths;
-            std::sort(sortedLengths.begin(), sortedLengths.end());
-        }
-
-        if (maxlength != 0){
-            for(size_t i = 0; i < lengths.size(); i++){
-                double ratio = 1.0;
-                if (segRule == infoExchange::colRule::NORMAL) ratio = static_cast<double>(lengths.at(i)) / static_cast<double>(maxlength);
-                else if (segRule == infoExchange::colRule::SQRT) ratio = std::sqrt(static_cast<double>(lengths.at(i)) / static_cast<double>(maxlength));
-                else if (segRule == infoExchange::colRule::CBRT) ratio = std::cbrt(static_cast<double>(lengths.at(i)) / static_cast<double>(maxlength));
-                else if (segRule == infoExchange::colRule::PROGRESSIVE){
-                    // binary search on sorted depths and color according to the index
-                    size_t index = sortedLengths.size() - 1;
-                    for(size_t b = sortedLengths.size()/2; b > 0 && sortedLengths.at(index) != lengths.at(i); b/=2)
-                        while(index > b && sortedLengths.at(index-b) >= lengths.at(i)) index -= b;
-                    ratio = static_cast<double>(index) / static_cast<double>(sortedLengths.size()-1);
-                }
-
-                int scale = std::min(static_cast<int>(ratio * 255 * 2), 255 * 2);
-                if (scale > 255) colorVec[i] = glm::u8vec4(scale-255, 255*2 - scale, 0, segColor.a);
-                else colorVec[i] = glm::u8vec4(0, scale, 255-scale, segColor.a);
-            }
-        }
-        channel->renderer->colorBulkByVector(eids, colorVec);
+        colorByScalar(eids, [&](size_t eid) -> std::optional<double> {
+            auto d = data->retrieveEdgeData(eid, false);
+            if (auto* length = std::get_if<long long int>(&d["Length_LLI"]))
+                return static_cast<double>(*length);
+            return std::nullopt;
+        });
     }
     else if (segScheme == infoExchange::colScheme::CSV){
         auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
