@@ -38,6 +38,7 @@
 #include <cctype>
 #include <limits>
 #include <random>
+#include <ranges>
 #include <algorithm>
 
 // this is a header for precompiling

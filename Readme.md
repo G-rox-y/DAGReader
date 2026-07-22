@@ -7,7 +7,7 @@
 DAGReader is a desktop bioinformatics tool that reads [Graphical Fragment Assembly (GFA)](https://github.com/GFA-spec/GFA-spec) files and renders the underlying assembly graphs in three dimensions. It is inspired by [Bandage](https://rrwick.github.io/Bandage/) but built from the ground up as a native 3D viewer with real-time layout, selection, and exploration.
 
 ![License](https://img.shields.io/badge/license-zlib-blue)
-![C++](https://img.shields.io/badge/C%2B%2B-17-blue)
+![C++](https://img.shields.io/badge/C%2B%2B-20-blue)
 [![CMake](https://img.shields.io/badge/build-CMake-green)]()
 
 ## Why DAGReader?
@@ -17,7 +17,7 @@ Genome assembly graphs can be massive, tangled, and difficult to reason about in
 The code has been optimized for efficiency and works well for large graphs.
 
 > [!NOTE]
-> This project is under active development and was originally created as part of a bachelor's thesis.
+> This project is under active development.
 
 ## Features
 
@@ -38,7 +38,7 @@ The code has been optimized for efficiency and works well for large graphs.
 
 ### Dependencies
 
-You only need **CMake**, **git**, and a **C++17 compiler**. All other dependencies (GLFW, GLEW, GLM, Dear ImGui, nativefiledialog-extended, spdlog, inipp) are fetched automatically via CMake `FetchContent`.
+You only need **CMake**, **git**, and a **C++20 compiler**. All other dependencies (GLFW, GLEW, GLM, Dear ImGui, nativefiledialog-extended, spdlog, inipp) are fetched automatically via CMake `FetchContent`.
 
 | Platform | Install command |
 |----------|-----------------|
@@ -94,7 +94,7 @@ If the minimal install above fails during the CMake configuration step, your sys
 |---|---|---|
 | **CMake** ≥ 3.24 | Build system | `cmake` |
 | **Git** | Fetching dependencies | `git` |
-| **C++17 compiler** | The project itself | `build-essential`, `gcc-c++`, `mingw-w64-ucrt-x86_64-gcc` |
+| **C++20 compiler** | The project itself | `build-essential`, `gcc-c++`, `mingw-w64-ucrt-x86_64-gcc` |
 | **OpenMP** *(optional)* | GRIP layout acceleration | `libomp-dev`, `libomp-devel`, `openmp` |
 | **pkg-config / pkgconf** | NFD, GLEW, GLFW discovery | `pkg-config`, `pkgconf-pkg-config`, `pkgconf` |
 | **OpenGL / Mesa dev headers** | GLEW + OpenGL context | `libgl1-mesa-dev`, `mesa-libGL-devel`, `mesa` |

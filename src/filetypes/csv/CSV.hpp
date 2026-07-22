@@ -31,4 +31,7 @@ public:
 
     // Convenience: look up + parse in one call
     std::optional<glm::u8vec4> getNodeColorParsed(const std::string& name) const;
+
+    // Returns a vector/string_view span of all node names the CSV knows about.
+    std::vector<std::string> getNodeNames() const;
 };

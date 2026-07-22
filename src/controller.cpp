@@ -481,26 +481,32 @@ void Controller::refreshGraph(){
             return std::nullopt;
         });
     }
-    else if (segScheme == infoExchange::colScheme::CSV){
-        auto eids = channel->renderer->getGroupIDs(groups::SEGMENT);
-        std::vector<glm::u8vec4> colorVec(eids.size());
+    else if (segScheme == infoExchange::colScheme::CSV) {
+        channel->renderer->changeGroupColors(segColor);
         auto gfa = dynamic_cast<GFA*>(data.get());
         if (gfa && gfa->hasAttachedCSV()) {
             const CSV* csv = gfa->getAttachedCSV();
-            for (size_t i = 0; i < eids.size(); i++){
-                auto d = data->retrieveEdgeData(eids[i], false);
-                if (auto* name = std::get_if<std::string_view>(&d["Name_SW"])) {
-                    std::string nodeName(name->data(), name->size());
-                    auto col = csv->getNodeColorParsed(nodeName);
-                    colorVec[i] = col.value_or(segColor); // color csv segments
+            std::vector<size_t> eids;
+            std::vector<glm::u8vec4> colors;
+            eids.reserve(csv->getNodeNames().size());
+            colors.reserve(csv->getNodeNames().size());
+
+            for (const auto& name : csv->getNodeNames()) {
+                // Lookup the segment by name and fetch its renderer eid.
+                auto results = gfa->searchStrictForName(name, GFA::mapType::SEGMENT);
+                for (const auto& [oid, type, eidOpt] : results) {
+                    if (!eidOpt.has_value()) continue;
+
+                    if (auto col = csv->getNodeColorParsed(name)) {
+                        eids.push_back(*eidOpt);
+                        colors.push_back(*col);
+                    }
                 }
-                else colorVec[i] = segColor; // recolor other segments back to the default color
             }
+
+            if (!eids.empty())
+                channel->renderer->colorBulkByVector(eids, colors);
         }
-        else {
-            std::fill(colorVec.begin(), colorVec.end(), segColor);
-        }
-        channel->renderer->colorBulkByVector(eids, colorVec);
     }
 
     if (segWidth != prevSegWidth)

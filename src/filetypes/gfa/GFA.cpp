@@ -615,6 +615,12 @@ std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> GFA::search
     return res;
 }
 
+std::optional<size_t> GFA::getSegmentEidByName(std::string_view name) const {
+    auto it = segment_lookup.find(std::string(name));
+    if (it == segment_lookup.end()) return std::nullopt;
+    return segments.at(it->second).getExternalID();
+}
+
 std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> GFA::searchFuzzyForName(const std::string& nameStr, char filters) const {
     return {};
 }

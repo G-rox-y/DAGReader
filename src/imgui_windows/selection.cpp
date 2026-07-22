@@ -237,12 +237,12 @@ void selectionWindow::draw() {
                     ImGuiColorEditFlags_NoSidePreview;
     
                 ImGui::ColorPicker4("##CustomColor", m_customColor, colorFlags);
+                float itemWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
                 ImGui::ColorButton("##Selection_preview",
-                    ImVec4(m_customColor[0], m_customColor[1], m_customColor[2], m_customColor[3]),
-                    0, ImVec2(ImGui::GetItemRectSize().x, 0)
+                    ImVec4(m_customColor[0], m_customColor[1], m_customColor[2], m_customColor[3]), 0, ImVec2(itemWidth, 0)
                 );
-    
-                if (ImGui::Button("Apply Color")) {
+                ImGui::SameLine();
+                if (ImGui::Button("Apply Color", ImVec2(itemWidth, 0))) {
                     glm::u8vec4 col(
                         static_cast<uint8_t>(m_customColor[0] * 255),
                         static_cast<uint8_t>(m_customColor[1] * 255),

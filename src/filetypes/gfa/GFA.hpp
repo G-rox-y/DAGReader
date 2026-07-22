@@ -73,6 +73,9 @@ public:
     // retrieve {OBJECT ID, OBJECT TYPE, EDGE ID (if exists)} of all objects with name "nameStr"
     std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> searchStrictForName(const std::string& nameStr, char filters) const;
 
+    // In GFA (cheaper than searchStrictForName for this specific use case)
+    std::optional<size_t> getSegmentEidByName(std::string_view name) const;
+
     // retrieve {OBJECT ID, OBJECT TYPE, EDGE ID (if exists)} of all objects with name similar to "nameStr" 
     std::vector<std::tuple<size_t, GFA::mapType, std::optional<size_t>>> searchFuzzyForName(const std::string& nameStr, char filters) const;
 

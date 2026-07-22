@@ -145,3 +145,8 @@ std::optional<glm::u8vec4> CSV::getNodeColorParsed(const std::string& name) cons
     if (!raw) return std::nullopt;
     return parseColorString(*raw);
 }
+
+std::vector<std::string> CSV::getNodeNames() const {
+    auto ks = std::views::keys(data);
+    return { ks.begin(), ks.end() };
+}
