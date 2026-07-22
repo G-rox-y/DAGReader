@@ -68,6 +68,13 @@ public:
         return t;
     }
 
+    // maps color to element ids with that color (color compressed into uint32_t cause unordered_map cant hash glm::u8vec4)
+    // also has a mutex below that has to be used with it
+    // keep the vector sorted so its easier to work with
+    std::unordered_map<uint32_t, std::vector<size_t>> color_storage;
+    std::mutex color_storage_mut;
+    // should the custom colors be shown
+    std::atomic<bool> show_custom_colors{true};
 
     // the renderer -> thread safe!
     // created by: window (on head)

@@ -504,9 +504,24 @@ void Controller::refreshGraph(){
                 }
             }
 
-            if (!eids.empty())
-                channel->renderer->colorBulkByVector(eids, colors);
+            if (!eids.empty()) channel->renderer->colorBulkByVector(eids, colors);
         }
+    }
+
+    if (channel->show_custom_colors.load()){
+        std::vector<size_t> eids;
+        std::vector<glm::u8vec4> colors;
+        {
+            std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+            for(auto& [k,v]:channel->color_storage){
+                glm::u8vec4 col = std::bit_cast<glm::u8vec4>(k);
+                for(auto eid:v){
+                    eids.emplace_back(eid);
+                    colors.emplace_back(col);
+                }
+            }
+        }
+        if (!eids.empty()) channel->renderer->colorBulkByVector(eids, colors);
     }
 
     if (segWidth != prevSegWidth)

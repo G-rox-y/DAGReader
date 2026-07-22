@@ -230,11 +230,8 @@ void selectionWindow::draw() {
             ImGui::Separator();
             if (ImGui::CollapsingHeader("Custom Coloring")){
                 ImGui::Text("Color Selected");
-                static ImGuiColorEditFlags colorFlags =
-                    ImGuiColorEditFlags_PickerHueWheel |
-                    ImGuiColorEditFlags_AlphaBar |
-                    ImGuiColorEditFlags_NoInputs |
-                    ImGuiColorEditFlags_NoSidePreview;
+                static ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_AlphaBar | 
+                    ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoSidePreview;
     
                 ImGui::ColorPicker4("##CustomColor", m_customColor, colorFlags);
                 float itemWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
@@ -243,25 +240,32 @@ void selectionWindow::draw() {
                 );
                 ImGui::SameLine();
                 if (ImGui::Button("Apply Color", ImVec2(itemWidth, 0))) {
-                    glm::u8vec4 col(
-                        static_cast<uint8_t>(m_customColor[0] * 255),
-                        static_cast<uint8_t>(m_customColor[1] * 255),
-                        static_cast<uint8_t>(m_customColor[2] * 255),
-                        static_cast<uint8_t>(m_customColor[3] * 255)
+                    glm::u8vec4 tmp(
+                        static_cast<uint8_t>(m_customColor[0] * 255), static_cast<uint8_t>(m_customColor[1] * 255),
+                        static_cast<uint8_t>(m_customColor[2] * 255), static_cast<uint8_t>(m_customColor[3] * 255)
                     );
-                    //for (auto idx : indices)
-                    //    channel->setCustomColor(idx, col);
+                    uint32_t col = std::bit_cast<uint32_t>(tmp);
+                    auto eids = channel->renderer->getGroupIDs(groups::SELECTION);
+                    std::sort(eids.begin(), eids.end()); // to keep the map sorted
+                    {
+                        std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+                        auto& vec = channel->color_storage[col];
+                        size_t split = vec.size();
+                        // combine the vectors using inplace_merge (will keep the result sorted under the assumption that vec and eids are sorted)
+                        vec.insert(vec.begin(), eids.begin(), eids.end());
+                        std::inplace_merge(vec.begin(), vec.begin() + split, vec.end());
+                    }
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
-                if (ImGui::Button("Clear from Selection")) {
-                    //for (auto idx : indices)
-                    //    channel->clearCustomColor(idx);
-                    channel->addControllerTask(tasks::REFRESH_GRAPH);
-                }
-                if (ImGui::Button("Reset All Colors")) {
-                    //channel->clearAllCustomColors();
-                    channel->addControllerTask(tasks::REFRESH_GRAPH);
-                }
+            }
+        }
+
+        std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+        if (!channel->color_storage.empty()){
+            ImGui::Separator();
+            if (ImGui::Button("Reset All Custom Colors")) {
+                channel->color_storage.clear();
+                channel->addControllerTask(tasks::REFRESH_GRAPH);
             }
         }
 

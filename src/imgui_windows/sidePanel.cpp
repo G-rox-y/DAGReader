@@ -96,6 +96,14 @@ void sidePanel::draw()
             
             if (ImGui::CollapsingHeader("Appearance"))
             {
+                bool scc = channel->show_custom_colors.load();
+                if (ImGui::Checkbox("Show Custom Color", &scc)){
+                    channel->show_custom_colors.store(scc);
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+                ImGui::SameLine();
+                HelpMarker("Allows you to hide the custom colors you can assign to the segments through the selection dialogue");
+
                 auto unpackColor = [](const glm::u8vec4& c) -> std::array<float, 4> {
                     return { c.x / 255.f, c.y / 255.f, c.z / 255.f, c.w / 255.f };
                 };
