@@ -247,14 +247,26 @@ void selectionWindow::draw() {
                     uint32_t col = std::bit_cast<uint32_t>(tmp);
                     auto eids = channel->renderer->getGroupIDs(groups::SELECTION);
                     std::sort(eids.begin(), eids.end()); // to keep the map sorted
-                    {
-                        std::lock_guard<std::mutex> lk(channel->color_storage_mut);
-                        auto& vec = channel->color_storage[col];
-                        size_t split = vec.size();
-                        // combine the vectors using inplace_merge (will keep the result sorted under the assumption that vec and eids are sorted)
-                        vec.insert(vec.begin(), eids.begin(), eids.end());
-                        std::inplace_merge(vec.begin(), vec.begin() + split, vec.end());
+                    
+                    std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+
+                    // clear the old colors of selected segments (if any) and set the new color in the segment_color_map
+                    for (auto eid:eids){
+                        auto it = channel->segment_color_map.find(eid);
+                        if (it != channel->segment_color_map.end()){
+                            auto eid_vec_it = channel->color_storage.find(it->second);
+                            std::erase_if(eid_vec_it->second, [&](const auto& e){ return e == eid; });
+                            if (eid_vec_it->second.empty()) channel->color_storage.erase(eid_vec_it);
+                        }
+                        channel->segment_color_map[eid] = col;
                     }
+                    // set the new colors in the color_storage
+                    auto& vec = channel->color_storage[col];
+                    size_t split = vec.size();
+                    // combine the vectors using inplace_merge (will keep the result sorted under the assumption that vec and eids are sorted)
+                    vec.insert(vec.begin(), eids.begin(), eids.end());
+                    std::inplace_merge(vec.begin(), vec.begin() + split, vec.end());
+                    
                     channel->addControllerTask(tasks::REFRESH_GRAPH);
                 }
             }
@@ -263,8 +275,51 @@ void selectionWindow::draw() {
         std::lock_guard<std::mutex> lk(channel->color_storage_mut);
         if (!channel->color_storage.empty()){
             ImGui::Separator();
+
+            ImGui::Text("Color Groups");
+            ImGui::SameLine();
+            HelpMarker("Click a color swatch to copy that group's color into the Custom Coloring picker");
+
+            static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit;
+            if (ImGui::BeginTable("ColorGroups", 2, table_flags)) {
+                ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 36.0f);
+                ImGui::TableSetupColumn("Elements", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                ImGui::TableHeadersRow();
+
+                int rowId = 0;
+                for (const auto& [packedColor, ids] : channel->color_storage) {
+                    ImGui::TableNextRow();
+
+                    glm::u8vec4 c = std::bit_cast<glm::u8vec4>(packedColor);
+                    ImVec4 imColor(c.x / 255.0f, c.y / 255.0f, c.z / 255.0f, c.w / 255.0f);
+
+                    // --- Color swatch column ---
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::PushID(rowId++);
+                    if (ImGui::ColorButton("##groupcolor", imColor, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, 
+                        ImVec2(24, 18))
+                    ){
+                        m_customColor[0] = imColor.x;
+                        m_customColor[1] = imColor.y;
+                        m_customColor[2] = imColor.z;
+                        m_customColor[3] = imColor.w;
+                    }
+                    if (ImGui::BeginItemTooltip()) {
+                        ImGui::TextUnformatted("Click to set picker to this color");
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::PopID();
+
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%zu", ids.size());
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::Separator();
             if (ImGui::Button("Reset All Custom Colors")) {
                 channel->color_storage.clear();
+                channel->segment_color_map.clear();
                 channel->addControllerTask(tasks::REFRESH_GRAPH);
             }
         }

@@ -73,6 +73,10 @@ public:
     // keep the vector sorted so its easier to work with
     std::unordered_map<uint32_t, std::vector<size_t>> color_storage;
     std::mutex color_storage_mut;
+    // this maps the segment id to the color it currently has assigned (if any)
+    // also has to be protected by the color storage mutex
+    // we need this to help enforcing each segment to have only one color active
+    std::unordered_map<size_t, uint32_t> segment_color_map;
     // should the custom colors be shown
     std::atomic<bool> show_custom_colors{true};
 
