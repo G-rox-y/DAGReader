@@ -33,28 +33,39 @@ void menuBar::draw()
                 else ImGui::TextDisabled("Loading...");
                 ImGui::EndMenu();
             }
-                        ImGui::Separator();
+            ImGui::Separator();
+
+            bool csvAttached = false;
+            if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
+                csvAttached = gfa->hasAttachedCSV();
 
             if (channel->graph_loaded.load()) {
-                if (ImGui::MenuItem("Load CSV labels")) {
+                if (ImGui::MenuItem("Load CSV labels"))
                     channel->addControllerTask(tasks::OPEN_CSV_NFD);
+                if (csvAttached) {
+                    if (ImGui::MenuItem("Unload CSV labels")){
+                        channel->addControllerTask(tasks::UNLOAD_CSV);
+                        channel->addControllerTask(tasks::REFRESH_GRAPH);
+                    }
+                } else {
+                    ImGui::BeginDisabled();
+                    ImGui::MenuItem("Unload CSV labels");
+                    ImGui::EndDisabled();
                 }
             }
             else {
                 ImGui::BeginDisabled();
                 ImGui::MenuItem("Load CSV labels");
+                ImGui::MenuItem("Unload CSV labels");
                 ImGui::EndDisabled();
             }
 
             // --- Export custom colors ---
             bool hasCustomColors = false;
-            bool csvAttached = false;
             {
                 std::lock_guard lk(channel->color_storage_mut);
                 hasCustomColors = !channel->color_storage.empty();
             }
-            if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
-                csvAttached = gfa->hasAttachedCSV();
 
             if (channel->graph_loaded.load() && hasCustomColors) {
                 if (ImGui::MenuItem("Export custom colors to CSV...")) {

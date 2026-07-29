@@ -9,7 +9,7 @@ namespace tasks{
     // tasks that the fileController could have
     enum controllerTask {
         OPEN_NFD, OPEN_PATH,
-        OPEN_CSV_NFD, OPEN_CSV_PATH,
+        OPEN_CSV_NFD, OPEN_CSV_PATH, UNLOAD_CSV,
         EXPORT_CSV_NEW, EXPORT_CSV_OVERWRITE,
         LAYOUT_GRAPH, RESET_GRAPH, REFRESH_GRAPH,
         EXIT

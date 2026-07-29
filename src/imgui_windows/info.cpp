@@ -9,6 +9,11 @@ void info::draw()
     ImGuiViewport* vp = ImGui::GetMainViewport();
     float margin = 6.0f;
 
+    bool csvAttached = false;
+    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
+        csvAttached = gfa->hasAttachedCSV();
+
+    std::string csvText = csvAttached ? "CSV ATTACHED" : "";
     std::string selText = channel->selection_mode.load() ? "SELECTION MODE ACTIVE" : "";
     std::string version = "DAGReader v" DAGR_VERSION_STRING;
 
@@ -26,6 +31,8 @@ void info::draw()
     float maxWidth = ImGui::CalcTextSize(version.c_str()).x;
     if (!selText.empty())
         maxWidth = std::max(maxWidth, ImGui::CalcTextSize(selText.c_str()).x);
+    if (!csvText.empty())
+        maxWidth = std::max(maxWidth, ImGui::CalcTextSize(csvText.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(fps.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(scale.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(posn.c_str()).x);
@@ -48,6 +55,12 @@ void info::draw()
             float w = ImGui::CalcTextSize(selText.c_str()).x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
             ImGui::Text("%s", selText.c_str());
+        }
+
+        if (!csvText.empty()) {
+            float w = ImGui::CalcTextSize(csvText.c_str()).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
+            ImGui::Text("%s", csvText.c_str());
         }
 
         float w = ImGui::CalcTextSize(version.c_str()).x;

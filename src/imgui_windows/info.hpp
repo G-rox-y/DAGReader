@@ -2,6 +2,7 @@
 
 #include "imguiWindow.hpp"
 #include "infoExchange.hpp"
+#include "gfa/GFA.hpp"
 
 class info : public imguiWindow{
 private:

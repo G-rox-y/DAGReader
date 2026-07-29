@@ -87,4 +87,7 @@ public:
 
     // reach the csv attachement if present
     const CSV* getAttachedCSV() const { return m_attachedCSV.get(); }
+
+    // detach the csv
+    void detachCSV() { m_attachedCSV.reset(); }
 };

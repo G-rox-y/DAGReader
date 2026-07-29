@@ -764,6 +764,14 @@ void Controller::run()
             handleFile(t);
         else if (t == tasks::OPEN_CSV_NFD || t == tasks::OPEN_CSV_PATH)
             handleCSV(t);
+        else if (t == tasks::UNLOAD_CSV) {
+            spdlog::info("Task: UNLOAD_CSV");
+            auto gfa = std::dynamic_pointer_cast<GFA>(data);
+            if (gfa && gfa->hasAttachedCSV()) {
+                gfa->detachCSV();
+                spdlog::info("CSV labels detached");
+            }
+        }
         else if (t == tasks::EXPORT_CSV_NEW || t == tasks::EXPORT_CSV_OVERWRITE)
             handleExportCSV(t);
         else if (t == tasks::LAYOUT_GRAPH)
