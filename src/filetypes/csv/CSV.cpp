@@ -11,7 +11,7 @@ static char detectDelimiter(const std::string& line)
     return ',';
 }
 
-CSV::CSV(const std::string& path)
+CSV::CSV(const std::string& path) : m_sourcePath(path)
 {
     try {
         // delimiter auto detection from the first line
@@ -96,7 +96,7 @@ std::optional<glm::u8vec4> CSV::parseColorString(const std::string& s) {
 
     if (trimmed.empty()) return std::nullopt;
 
-    // Hex: #RRGGBB or #RRGGBBAA
+    // Hex: #RRGGBB or #AARRGGBB
     if (trimmed[0] == '#') {
         std::string hex = trimmed.substr(1);
         if (hex.size() == 6 || hex.size() == 8) {
@@ -108,7 +108,13 @@ std::optional<glm::u8vec4> CSV::parseColorString(const std::string& s) {
                 unsigned int g = pair(hex, 2);
                 unsigned int b = pair(hex, 4);
                 unsigned int a = 255;
-                if (hex.size() == 8) a = pair(hex, 6);
+                if (hex.size() == 8) {
+                    // #AARRGGBB format (Qt/Bandage convention)
+                    a = r;          // bytes 0-1 were alpha
+                    r = pair(hex, 2);  // bytes 2-3
+                    g = pair(hex, 4);  // bytes 4-5
+                    b = pair(hex, 6);  // bytes 6-7
+                }
                 return glm::u8vec4(static_cast<uint8_t>(r), static_cast<uint8_t>(g),
                                    static_cast<uint8_t>(b), static_cast<uint8_t>(a));
             } catch (...) { /* fall through */ }

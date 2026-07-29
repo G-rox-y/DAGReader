@@ -10,6 +10,7 @@ namespace tasks{
     enum controllerTask {
         OPEN_NFD, OPEN_PATH,
         OPEN_CSV_NFD, OPEN_CSV_PATH,
+        EXPORT_CSV_NEW, EXPORT_CSV_OVERWRITE,
         LAYOUT_GRAPH, RESET_GRAPH, REFRESH_GRAPH,
         EXIT
     };

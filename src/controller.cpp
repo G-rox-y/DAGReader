@@ -125,19 +125,152 @@ void Controller::handleCSV(tasks::controllerTask t){
     channel->addControllerTask(tasks::REFRESH_GRAPH);
 }
 
-void Controller::getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt) const
+void Controller::handleExportCSV(tasks::controllerTask t)
+{
+    fs::path outPath;
+    bool merging = false;
+
+    if (t == tasks::EXPORT_CSV_NEW){
+        getPathNFD(outPath, "CSV", "csv", true);
+        if (outPath.empty()) return;
+        if (outPath.extension() != ".csv") outPath += ".csv";
+    }
+    else if (t == tasks::EXPORT_CSV_OVERWRITE){
+        auto gfa = std::dynamic_pointer_cast<GFA>(data);
+        if (!gfa || !gfa->hasAttachedCSV()){
+            spdlog::warn("Cannot export: no CSV is currently attached");
+            return;
+        }
+        outPath = gfa->getAttachedCSV()->getPath();
+        merging = true;
+    }
+
+    // ---- collect name → hex color for every segment that has a custom color ----
+    std::vector<std::pair<std::string, std::string>> rows;
+    {
+        std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+        for (const auto& [eid, packedColor] : channel->segment_color_map){
+            glm::u8vec4 c = std::bit_cast<glm::u8vec4>(packedColor);
+            char hex[16];
+            std::snprintf(hex, sizeof(hex), "#%02X%02X%02X%02X", c.a, c.r, c.g, c.b);
+
+            auto prop = data->retrieveEdgeData(eid, false);
+            auto* type = std::get_if<char>(&prop["Type_C"]);
+            if (!type || *type != GFA::mapType::SEGMENT) [[unlikely]] continue;
+
+            auto* nameSv = std::get_if<std::string_view>(&prop["Name_SW"]);
+            if (!nameSv) continue;
+
+            rows.emplace_back(std::string(*nameSv), std::string(hex));
+        }
+    }
+
+    if (rows.empty()){
+        spdlog::info("No custom segment colors to export");
+        return;
+    }
+
+    // ---- write / merge ----
+    if (merging){
+        try {
+            // detect delimiter from the first line (same logic as CSV.cpp)
+            char sep = ',';
+            {
+                std::ifstream sniff(outPath);
+                if (sniff.is_open()){
+                    std::string firstLine;
+                    if (std::getline(sniff, firstLine)){
+                        size_t commas = std::count(firstLine.begin(), firstLine.end(), ',');
+                        size_t tabs   = std::count(firstLine.begin(), firstLine.end(), '\t');
+                        size_t semis  = std::count(firstLine.begin(), firstLine.end(), ';');
+                        if (tabs > commas && tabs > semis) sep = '\t';
+                        else if (semis > commas && semis > tabs) sep = ';';
+                    }
+                }
+            }
+
+            rapidcsv::Document doc(
+                outPath.string(),
+                rapidcsv::LabelParams(0, -1),
+                rapidcsv::SeparatorParams(sep, true, true)
+            );
+
+            auto headers = doc.GetColumnNames();
+            size_t colorCol = std::string::npos;
+            for (size_t i = 0; i < headers.size(); ++i){
+                std::string lower = headers[i];
+                std::transform(lower.begin(), lower.end(), lower.begin(),
+                               [](unsigned char ch){ return static_cast<char>(std::tolower(ch)); });
+                if (lower == "colour" || lower == "color"){
+                    colorCol = i;
+                    break;
+                }
+            }
+            if (colorCol == std::string::npos){
+                colorCol = headers.size();
+                doc.SetColumnName(colorCol, "Color");
+            }
+
+            for (const auto& [name, color] : rows) {
+                bool found = false;
+                for (size_t r = 0; r < doc.GetRowCount(); ++r) {
+                    if (doc.GetCell<std::string>(0, r) == name) {
+                        doc.SetCell<std::string>(colorCol, r, color);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    std::vector<std::string> newRow(doc.GetColumnCount(), "");
+                    newRow[0]         = name;
+                    newRow[colorCol]  = color;
+                    doc.InsertRow(doc.GetRowCount(), newRow);
+                }
+            }
+
+            doc.Save();
+            spdlog::info("Custom colors merged into existing CSV: {}", outPath.string());
+        }
+        catch (const std::exception& e){
+            spdlog::error("Failed to overwrite CSV '{}': {}", outPath.string(), e.what());
+        }
+    }
+    else {
+        std::ofstream out(outPath, std::ios::trunc);
+        if (!out.is_open()){
+            spdlog::error("Failed to open '{}' for writing", outPath.string());
+            return;
+        }
+        out << "Name,Color\n";
+        for (const auto& [name, color] : rows) out << name << "," << color << "\n";
+        spdlog::info("Custom colors exported to new CSV: {}", outPath.string());
+    }
+}
+
+void Controller::getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt, bool save) const
 {
     // TODO: nfd init can throw an error, you should catch it
     NFD_Init();
 
     nfdu8char_t *outPath;
     nfdu8filteritem_t filters[1] = { { filterName, filterExt } };
-    nfdopendialogu8args_t args = {0};
-    args.filterList = filters;
-    args.filterCount = 1;
-    nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
+    nfdresult_t result;
+    if (save){
+        nfdsavedialogu8args_t args = {0};
+        args.filterList = filters;
+        args.filterCount = 1;
+        args.defaultName = "custom_colors.csv";
+        result = NFD_SaveDialogU8_With(&outPath, &args);
+    }
+    else{
+        nfdopendialogu8args_t args = {0};
+        args.filterList = filters;
+        args.filterCount = 1;
+        result = NFD_OpenDialogU8_With(&outPath, &args);
+    }
     if (result == NFD_OKAY){
-        spdlog::info("NFD path fetched: {}", outPath);
+        if (save) spdlog::info("NFD save path fetched: {}", outPath);
+        else spdlog::info("NFD path fetched: {}", outPath);
         path = outPath;
         NFD_FreePathU8(outPath);
     }
@@ -513,12 +646,10 @@ void Controller::refreshGraph(){
         std::vector<glm::u8vec4> colors;
         {
             std::lock_guard<std::mutex> lk(channel->color_storage_mut);
-            for(auto& [k,v]:channel->color_storage){
-                glm::u8vec4 col = std::bit_cast<glm::u8vec4>(k);
-                for(auto eid:v){
-                    eids.emplace_back(eid);
-                    colors.emplace_back(col);
-                }
+            for(auto& [eid,packedColor]:channel->segment_color_map){
+                glm::u8vec4 col = std::bit_cast<glm::u8vec4>(packedColor);
+                eids.emplace_back(eid);
+                colors.emplace_back(col);
             }
         }
         if (!eids.empty()) channel->renderer->colorBulkByVector(eids, colors);
@@ -633,6 +764,8 @@ void Controller::run()
             handleFile(t);
         else if (t == tasks::OPEN_CSV_NFD || t == tasks::OPEN_CSV_PATH)
             handleCSV(t);
+        else if (t == tasks::EXPORT_CSV_NEW || t == tasks::EXPORT_CSV_OVERWRITE)
+            handleExportCSV(t);
         else if (t == tasks::LAYOUT_GRAPH)
             layoutGraph();
         else if (t == tasks::RESET_GRAPH)

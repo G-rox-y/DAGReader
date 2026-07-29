@@ -25,7 +25,9 @@ private:
 
     void handleFile(tasks::controllerTask t);
     void handleCSV(tasks::controllerTask t);
-    void getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt) const;
+    void handleExportCSV(tasks::controllerTask t);
+    // if save = false then we are getting the path of an existing file, otherwise of a file to be created
+    void getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt, bool save = false) const;
     void layoutGraph();
     void resetGraph();
     void refreshGraph();

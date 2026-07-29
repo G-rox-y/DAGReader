@@ -45,6 +45,29 @@ void menuBar::draw()
                 ImGui::MenuItem("Load CSV labels");
                 ImGui::EndDisabled();
             }
+
+            // --- Export custom colors ---
+            bool hasCustomColors = false;
+            bool csvAttached = false;
+            {
+                std::lock_guard lk(channel->color_storage_mut);
+                hasCustomColors = !channel->color_storage.empty();
+            }
+            if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
+                csvAttached = gfa->hasAttachedCSV();
+
+            if (channel->graph_loaded.load() && hasCustomColors) {
+                if (ImGui::MenuItem("Export custom colors to CSV...")) {
+                    if (csvAttached) m_pendingExportModal = true;
+                    else channel->addControllerTask(tasks::EXPORT_CSV_NEW);
+                }
+            }
+            else {
+                ImGui::BeginDisabled();
+                ImGui::MenuItem("Export custom colors to CSV...");
+                ImGui::EndDisabled();
+            }
+
             ImGui::Separator();
             if (ImGui::MenuItem("Clear layout")){
                 channel->renderer->clearAll();
@@ -133,5 +156,37 @@ void menuBar::draw()
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
+
+    }
+
+    if (m_pendingExportModal){
+        ImGui::OpenPopup("Export Colors CSV");
+        m_pendingExportModal = false;
+    }
+
+    // ---- Modal: overwrite existing CSV or create new? ----
+    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+    if (ImGui::BeginPopupModal("Export Colors CSV", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("A CSV file is already loaded.");
+        ImGui::Text("Would you like to export to the existing file or create a new one?");
+        ImGui::TextColored(ImVec4(0.9f, 0.25f, 0.2f, 1.0f), "Warning: Choosing \"Existing file\" will modify the original CSV.");
+        ImGui::Separator();
+
+        if (ImGui::Button("Existing file", ImVec2(120, 0))) {
+            channel->addControllerTask(tasks::EXPORT_CSV_OVERWRITE);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("New file", ImVec2(120, 0))) {
+            channel->addControllerTask(tasks::EXPORT_CSV_NEW);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 }
