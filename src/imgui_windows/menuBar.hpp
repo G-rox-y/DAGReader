@@ -1,5 +1,7 @@
 #pragma once
 
+#include <GL/glew.h>
+
 #include "about.hpp"
 #include "imguiWindow.hpp"
 #include "controller.hpp"

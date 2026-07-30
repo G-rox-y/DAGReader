@@ -85,16 +85,11 @@ void Renderer::colorBulkByVector(const std::vector<size_t>& ids, const std::vect
 
     // condense updated ids and notify renderer updates on those ranges are required
     std::sort(updatedIds.begin(), updatedIds.end());
-    size_t prev = -1, first = -1;
-    for(auto rid:updatedIds){
-        if (first == -1UL) prev = first = rid;
-        else{
-            if (rid == prev+1) prev = rid;
-            else{
-                m_needUpdating.push(IndexRange({first, prev}));
-                prev = first = rid;
-            }
-        }
+    for (auto it = updatedIds.begin(); it != updatedIds.end(); ) {
+        auto jt = it;
+        while (jt + 1 != updatedIds.end() && *(jt + 1) == *jt + 1) jt++;
+        m_needUpdating.push({*it, *jt});
+        it = jt + 1;
     }
 }
 

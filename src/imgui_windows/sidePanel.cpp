@@ -249,7 +249,7 @@ void sidePanel::draw()
                 }
 
                 bool tableCausedReset = false, tableCausedRefresh = false;
-                static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollY;
+                static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV;
                 if (ImGui::BeginTable("subgraphTable", 5, table_flags)){
                     ImGui::TableSetupColumn("ID");
                     ImGui::TableSetupColumn("segments");

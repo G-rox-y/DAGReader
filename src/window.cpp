@@ -192,8 +192,8 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST); // make sure that the things that are in the back dont get drawn in front
     glDepthMask(GL_TRUE);
-    glEnable(GL_MULTISAMPLE); // turn on MSAA
-    // TODO: ADD option to disable MSAA
+    if (channel->MSAA_enabled.load()) 
+        glEnable(GL_MULTISAMPLE); // turn on MSAA
 
     // loging version info
     spdlog::info("OPENGL version: {}", (char*)glGetString(GL_VERSION));

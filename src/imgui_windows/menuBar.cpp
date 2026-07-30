@@ -144,6 +144,15 @@ void menuBar::draw()
             HelpMarker("Skips loading of some potentially memorywise large graph information, "
                     "this may help if the graph is too large to fit in RAM");
 
+            bool msaa = channel->MSAA_enabled.load();
+            if (ImGui::Checkbox("MSAA", &msaa)){
+                if (!msaa) glDisable(GL_MULTISAMPLE);
+                else glEnable(GL_MULTISAMPLE);
+                channel->MSAA_enabled.store(msaa);
+            }
+            ImGui::SameLine();
+            HelpMarker("Toggle multialiasing, this may help for graphical performance on larger graphs");
+
             ImGui::EndMenu();
         }
 

@@ -515,22 +515,26 @@ void Controller::resetGraph(){
         channel->renderer->deactivateGroup(graphGroupID);
     }
 
-    // now just set the camera to look at the right place
-    double maxX = 0.0, maxY = 0.0;
-    for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
-        if (channel->isGroupHidden(graphGroupID)) continue;
+    // camera framing
+    auto vertices = std::views::iota(size_t{0}, gc.graphs.size())
+        | std::views::filter([&](size_t i){ return !channel->isGroupHidden(i); })
+        | std::views::transform([&](size_t i) -> const auto& { return gc.graphs[i].vertices; })
+        | std::views::join;
 
-        auto& G = gc.graphs.at(graphGroupID);
-        for(auto& v:G.vertices){
-            maxX = std::max<double>(maxX, std::abs(v.pos.x));
-            maxY = std::max<double>(maxY, std::abs(v.pos.y));
-        }
-    }
-    float halfFov = channel->cam->getFOV() / 2.f;
-    float camZ = glm::sin(glm::radians(90.f) - halfFov) * maxX / 2.f / std::sin(halfFov);
-    float scale = channel->cam->getFarCP() / camZ / 150.f;
-    channel->cam->setDefPos(glm::vec3(maxX/2.f, maxX/2.f, camZ * 1.5f));
-    channel->cam->setDefScale(scale);
+    auto first = vertices.begin();
+    if (first == vertices.end()) return;
+
+    auto [xMin, xMax] = std::ranges::minmax_element(vertices, {}, [](const auto& v){ return v.pos.x; });
+    auto [yMin, yMax] = std::ranges::minmax_element(vertices, {}, [](const auto& v){ return v.pos.y; });
+
+    double cx  = (xMin->pos.x + xMax->pos.x) * 0.5;
+    double cy  = (yMin->pos.y + yMax->pos.y) * 0.5;
+    double ext = std::max(xMax->pos.x - xMin->pos.x, yMax->pos.y - yMin->pos.y) * 0.5;
+
+    float camZ = static_cast<float>(ext * 1.25 / std::tan(channel->cam->getFOV() * 0.5f));
+
+    channel->cam->setDefPos(glm::vec3(static_cast<float>(cx), static_cast<float>(cy), camZ));
+    channel->cam->setDefScale(channel->cam->getFarCP() / camZ / 150.f);
     channel->cam->resetView();
 }
 

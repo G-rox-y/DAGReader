@@ -107,9 +107,12 @@ public:
     std::atomic<bool> info_window_shown{true};
     std::atomic<bool> selection_window_allowed{true};
     std::atomic<bool> license_window_shown{false};
-
+    
     // variable for controllng loading parameters
     std::atomic<bool> minimal_memory_load{false};
+
+    // MSAA control
+    std::atomic<bool> MSAA_enabled{true};
 
     // fps performance
     std::atomic<int> max_fps{90};
