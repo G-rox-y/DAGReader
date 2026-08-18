@@ -24,7 +24,8 @@ void info::draw()
                std::chrono::steady_clock::now() - q.front()).count() > 1000) q.pop();
     std::string fps = "FPS: " + std::to_string(q.size());
 
-    std::string scale = "Model scale: " + fmt::format("{}", channel->cam->getScale());
+    static std::string prevspeed = "";
+    std::string speed = "Camera speed: " + fmt::format("{} units/frame", channel->cam->getMovementSpeed());
     auto nums = channel->cam->getPos();
     std::string posn = fmt::format("X: {}; Y: {}; Z: {}", nums.x, nums.y, nums.z);
 
@@ -34,7 +35,7 @@ void info::draw()
     if (!csvText.empty())
         maxWidth = std::max(maxWidth, ImGui::CalcTextSize(csvText.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(fps.c_str()).x);
-    maxWidth = std::max(maxWidth, ImGui::CalcTextSize(scale.c_str()).x);
+    maxWidth = std::max(maxWidth, ImGui::CalcTextSize(speed.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(posn.c_str()).x);
 
     float winW = maxWidth + ImGui::GetStyle().WindowPadding.x * 2.f;
@@ -71,9 +72,15 @@ void info::draw()
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
         ImGui::Text("%s", fps.c_str());
 
-        w = ImGui::CalcTextSize(scale.c_str()).x;
+        w = ImGui::CalcTextSize(speed.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
-        ImGui::Text("%s", scale.c_str());
+        if (prevspeed != speed){
+            prevspeed = speed;
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+            ImGui::Text("%s", speed.c_str());
+            ImGui::PopStyleColor();
+        }
+        else ImGui::Text("%s", speed.c_str());
 
         w = ImGui::CalcTextSize(posn.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));

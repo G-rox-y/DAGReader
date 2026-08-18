@@ -70,4 +70,5 @@ public:
     float getFOV() const { return m_FOV; }
     float getScale() const { return m_scale; }
     float getFarCP() const { return m_farCP; }
+    float getMovementSpeed() const { return m_pan_sens / m_scale; }
 };
