@@ -37,42 +37,46 @@ void sidePanel::drawAppearance(float availX, float w)
 {
     if (!ImGui::CollapsingHeader("Appearance")) return;
 
+    bool csvAvailable = false;
+    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
+        csvAvailable = gfa->hasAttachedCSV();
+
     bool scc = channel->show_custom_colors.load();
     if (ImGui::Checkbox("Show Custom Color", &scc)){
         channel->show_custom_colors.store(scc);
         channel->addControllerTask(REFRESH_GRAPH);
     }
-
     ImGui::SameLine();
-    HelpMarker("Allows you to hide the custom colors you can assign to the segments through the selection dialogue");
+    HelpMarker("Allows you to show/hide the custom colors you can assign to the segments through the selection dialogue");
+
+    bool scsvc = channel->show_csv_colors.load();
+    if (!csvAvailable) {
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("Show CSV Colors", &scsvc);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        HelpMarker("No CSV file is currently loaded; CSV coloring requires a CSV to be loaded via File > Load CSV labels");
+    }
+    else{
+        if (ImGui::Checkbox("Show CSV Colors", &scsvc)){
+            channel->show_csv_colors.store(scsvc);
+            channel->addControllerTask(REFRESH_GRAPH);
+        }
+        ImGui::SameLine();
+        HelpMarker("Allows you to show/hide the custom colors loaded through CSV files");
+    }
 
     ImGui::SeparatorText("Dynamic coloring");
 
     // segment coloring
-    const char* segItems[] = {"None", "Random", "Depth", "Length", "CSV"};
+    const char* segItems[] = {"None", "Random", "Depth", "Length"};
 
-    bool csvAvailable = false;
-    if (auto* gfa = dynamic_cast<GFA*>(channel->file_data.get()))
-        csvAvailable = gfa->hasAttachedCSV();
-
-    if (m_segColorScheme == 4 && !csvAvailable) { // Safety: if CSV mode was active but CSV is gone, reset to NONE
-        m_segColorScheme = 0;
-        channel->segment_color_scheme.store(NONE);
-    }
     if (ImGui::Combo("Segment color scheme", &m_segColorScheme, segItems, IM_ARRAYSIZE(segItems))) {
         if (m_segColorScheme == 0) channel->segment_color_scheme.store(NONE);
         else if (m_segColorScheme == 1) channel->segment_color_scheme.store(RANDOM);
         else if (m_segColorScheme == 2) channel->segment_color_scheme.store(DEPTH);
         else if (m_segColorScheme == 3) channel->segment_color_scheme.store(LENGTH);
-        else{
-            if (!csvAvailable) channel->segment_color_scheme.store(NONE);
-            else channel->segment_color_scheme.store(CSV);
-        }
         channel->addControllerTask(REFRESH_GRAPH);
-    }
-    if (!csvAvailable) {
-        ImGui::SameLine();
-        HelpMarker("CSV coloring requires a CSV to be loaded via File > Load CSV labels");
     }
 
     // segment coloring rules
@@ -147,7 +151,7 @@ void sidePanel::drawAppearance(float availX, float w)
     if (channel->selection_mode.load())
         colorpicker("Selection", m_selectionColors, channel->selected_color_packed);
 
-    if (m_segColorScheme == 0 || m_segColorScheme == 4)
+    if (m_segColorScheme == 0)
         colorpicker("Segment", m_segColors, channel->segment_color_packed);
     
     if (m_linkColorScheme == 0)

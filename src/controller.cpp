@@ -120,6 +120,42 @@ void Controller::handleCSV(tasks::controllerTask t){
         return;
     }
 
+    // we should copy the colors into the color store
+    std::vector<size_t> eids;
+    std::vector<glm::u8vec4> colors;
+    eids.reserve(csv->getNodeNames().size());
+    colors.reserve(csv->getNodeNames().size());
+
+    // Build the CSV color group cache
+    std::unordered_map<uint32_t, std::vector<size_t>> temp_csv_storage;
+    std::unordered_map<size_t, uint32_t> temp_csv_map;
+
+    for (const auto& name : csv->getNodeNames()) {
+        auto eidOpt = gfa->getSegmentEidByName(name);
+        if (!eidOpt) continue;
+
+        auto col = csv->getNodeColorParsed(name);
+        if (!col) continue;
+
+        eids.push_back(*eidOpt);
+        colors.push_back(*col);
+
+        uint32_t packed = std::bit_cast<uint32_t>(*col);
+        temp_csv_map[*eidOpt] = packed;
+        temp_csv_storage[packed].push_back(*eidOpt);
+    }
+
+    // keep vectors sorted
+    for (auto& [_, vec] : temp_csv_storage)
+        std::sort(vec.begin(), vec.end());
+
+    {
+        std::lock_guard<std::mutex> lk(channel->csv_color_storage_mut);
+        channel->csv_color_storage = std::move(temp_csv_storage);
+        channel->csv_segment_color_map = std::move(temp_csv_map);
+    }
+
+    // lastly, attach csv to gfa
     gfa->attachCSV(csv);
     spdlog::info("CSV labels attached successfully");
     channel->addControllerTask(tasks::REFRESH_GRAPH);
@@ -143,6 +179,29 @@ void Controller::handleExportCSV(tasks::controllerTask t)
         }
         outPath = gfa->getAttachedCSV()->getPath();
         merging = true;
+
+        // if its an overwrite, the internal csv color table should also be updated
+        std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+        std::lock_guard<std::mutex> lk2(channel->csv_color_storage_mut);
+        
+        channel->csv_segment_color_map.reserve(channel->csv_segment_color_map.size() + channel->segment_color_map.size());
+        for (const auto& [k, v]: channel->segment_color_map)
+            channel->csv_segment_color_map.insert_or_assign(k, v);
+
+        channel->csv_color_storage.reserve(channel->csv_color_storage.size() + channel->color_storage.size());
+        for (const auto& [key, vec_b] : channel->color_storage) {
+            auto [it, inserted] = channel->csv_color_storage.try_emplace(key, vec_b); // copy whole vector if key is new
+            if (!inserted) {
+                auto& vec_a = it->second;
+
+                // Linear merge of two sorted ranges
+                std::vector<size_t> merged;
+                merged.reserve(vec_a.size() + vec_b.size());
+
+                std::ranges::merge(vec_a, vec_b, std::back_inserter(merged));
+                vec_a = std::move(merged);
+            }
+        }
     }
 
     // ---- collect name → hex color for every segment that has a custom color ----
@@ -163,6 +222,10 @@ void Controller::handleExportCSV(tasks::controllerTask t)
 
             rows.emplace_back(std::string(*nameSv), std::string(hex));
         }
+
+        // after this we wont need the colors again so we can clear them
+        channel->color_storage.clear();
+        channel->segment_color_map.clear();
     }
 
     if (rows.empty()){
@@ -552,7 +615,6 @@ void Controller::refreshGraph(){
     auto segScheme = channel->segment_color_scheme.load();
     auto segRule = channel->segment_color_rule.load();
     auto linkScheme = channel->link_color_scheme.load();
-    
 
     // generic scalar coloring: fetch a double per edge, apply segRule/segColor gradient
     auto colorByScalar = [&](const std::vector<size_t>& eids, auto&& fetchScalar) {
@@ -618,26 +680,21 @@ void Controller::refreshGraph(){
             return std::nullopt;
         });
     }
-    else if (segScheme == infoExchange::colScheme::CSV) {
-        channel->renderer->changeGroupColors(segColor);
+    
+    if (channel->show_csv_colors.load()) {
         auto gfa = dynamic_cast<GFA*>(data.get());
         if (gfa && gfa->hasAttachedCSV()) {
-            const CSV* csv = gfa->getAttachedCSV();
             std::vector<size_t> eids;
             std::vector<glm::u8vec4> colors;
-            eids.reserve(csv->getNodeNames().size());
-            colors.reserve(csv->getNodeNames().size());
+            {
+                std::lock_guard<std::mutex> lk(channel->csv_color_storage_mut);
+                size_t S = channel->csv_segment_color_map.size();
+                eids.reserve(S);
+                colors.reserve(S);
 
-            for (const auto& name : csv->getNodeNames()) {
-                // Lookup the segment by name and fetch its renderer eid.
-                auto results = gfa->searchStrictForName(name, GFA::mapType::SEGMENT);
-                for (const auto& [oid, type, eidOpt] : results) {
-                    if (!eidOpt.has_value()) continue;
-
-                    if (auto col = csv->getNodeColorParsed(name)) {
-                        eids.push_back(*eidOpt);
-                        colors.push_back(*col);
-                    }
+                for (const auto& [k, v] : channel->csv_segment_color_map) {
+                    eids.push_back(k);
+                    colors.push_back(std::bit_cast<glm::u8vec4>(v));
                 }
             }
 
@@ -773,6 +830,9 @@ void Controller::run()
             auto gfa = std::dynamic_pointer_cast<GFA>(data);
             if (gfa && gfa->hasAttachedCSV()) {
                 gfa->detachCSV();
+                std::lock_guard<std::mutex> lk(channel->csv_color_storage_mut);
+                channel->csv_color_storage.clear();
+                channel->csv_segment_color_map.clear();
                 spdlog::info("CSV labels detached");
             }
         }

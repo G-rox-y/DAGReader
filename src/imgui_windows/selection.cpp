@@ -18,7 +18,7 @@ void selectionWindow::draw() {
         start = std::chrono::steady_clock::now(); //reset timer
     }
 
-    if (indices.empty() || !channel->selection_window_allowed.load()) return;
+    if (!channel->selection_window_allowed.load()) return;
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport(); // get the viewport
 
@@ -152,7 +152,7 @@ void selectionWindow::draw() {
             }
             else ImGui::Text("No data on selection");
         }
-        else{ // more than one object to show -> show summary
+        else if (indices.size() > 1) { // more than one object to show -> show summary
             static size_t segmentCount = 0, linkCount = 0;
 
             static double sumLength = 0, sumDepth = 0;
@@ -218,15 +218,21 @@ void selectionWindow::draw() {
             }
         }
 
-        ImGui::Separator();
-        if (m_verboseMode){
-            if (ImGui::Button("See less")) m_verboseMode = false;
-        } else{
-            if (ImGui::Button("See more")) m_verboseMode = true;
+        // "see more" button
+        if (!indices.empty()){
+            ImGui::Separator();
+            if (m_verboseMode){
+                if (ImGui::Button("See less")) m_verboseMode = false;
+            } else{
+                if (ImGui::Button("See more")) m_verboseMode = true;
+            }
         }
+
+        
         
         // ---- Custom color ----
-        if (!indices.empty()) {
+        bool scc = channel->show_custom_colors.load();
+        if (!indices.empty() && scc) {
             ImGui::Separator();
             if (ImGui::CollapsingHeader("Custom Coloring")){
                 ImGui::Text("Color Selected");
@@ -272,55 +278,127 @@ void selectionWindow::draw() {
             }
         }
 
-        std::lock_guard<std::mutex> lk(channel->color_storage_mut);
-        if (!channel->color_storage.empty()){
-            ImGui::Separator();
+        // ---- Custom Color Groups ----
+        if (scc){
+            std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+            if (!channel->color_storage.empty()){
+                ImGui::Separator();
+                ImGui::SeparatorText("Custom Color Groups");
 
-            ImGui::Text("Color Groups");
-            ImGui::SameLine();
-            HelpMarker("Click a color swatch to copy that group's color into the Custom Coloring picker");
+                ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit;
+                if (ImGui::BeginTable("CustomColorGroups", 3, table_flags)) {
+                    ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 36.0f);
+                    ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 45.0f);
+                    ImGui::TableHeadersRow();
 
-            static ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit;
-            if (ImGui::BeginTable("ColorGroups", 2, table_flags)) {
-                ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 36.0f);
-                ImGui::TableSetupColumn("Elements", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-                ImGui::TableHeadersRow();
+                    int rowId = 0;
+                    for (const auto& [packedColor, ids] : channel->color_storage) {
+                        ImGui::TableNextRow();
 
-                int rowId = 0;
-                for (const auto& [packedColor, ids] : channel->color_storage) {
-                    ImGui::TableNextRow();
+                        glm::u8vec4 c = std::bit_cast<glm::u8vec4>(packedColor);
+                        ImVec4 imColor(c.x / 255.0f, c.y / 255.0f, c.z / 255.0f, c.w / 255.0f);
 
-                    glm::u8vec4 c = std::bit_cast<glm::u8vec4>(packedColor);
-                    ImVec4 imColor(c.x / 255.0f, c.y / 255.0f, c.z / 255.0f, c.w / 255.0f);
+                        // Color swatch (clickable)
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::PushID(rowId++);
+                        if (ImGui::ColorButton("##groupcolor", imColor,
+                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop,
+                                ImVec2(24, 18)))
+                        {
+                            m_customColor[0] = imColor.x;
+                            m_customColor[1] = imColor.y;
+                            m_customColor[2] = imColor.z;
+                            m_customColor[3] = imColor.w;
+                        }
+                        if (ImGui::BeginItemTooltip()) {
+                            ImGui::TextUnformatted("Click to set custom color picker to this color");
+                            ImGui::EndTooltip();
+                        }
+                        ImGui::PopID();
 
-                    // --- Color swatch column ---
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::PushID(rowId++);
-                    if (ImGui::ColorButton("##groupcolor", imColor, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, 
-                        ImVec2(24, 18))
-                    ){
-                        m_customColor[0] = imColor.x;
-                        m_customColor[1] = imColor.y;
-                        m_customColor[2] = imColor.z;
-                        m_customColor[3] = imColor.w;
+                        // Count
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%zu", ids.size());
+
+                        // Select all members
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::PushID(rowId++);
+                        if (ImGui::Button("Select", ImVec2(40, 0))) {
+                            for (auto eid : ids)
+                                channel->renderer->addID2Group(eid, groups::SELECTION);
+                            channel->addControllerTask(tasks::REFRESH_GRAPH);
+                        }
+                        ImGui::PopID();
                     }
-                    if (ImGui::BeginItemTooltip()) {
-                        ImGui::TextUnformatted("Click to set picker to this color");
-                        ImGui::EndTooltip();
-                    }
-                    ImGui::PopID();
-
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%zu", ids.size());
+                    ImGui::EndTable();
                 }
-                ImGui::EndTable();
-            }
 
-            ImGui::Separator();
-            if (ImGui::Button("Reset All Custom Colors")) {
-                channel->color_storage.clear();
-                channel->segment_color_map.clear();
-                channel->addControllerTask(tasks::REFRESH_GRAPH);
+                ImGui::Separator();
+                if (ImGui::Button("Reset All Custom Colors")) {
+                    channel->color_storage.clear();
+                    channel->segment_color_map.clear();
+                    channel->addControllerTask(tasks::REFRESH_GRAPH);
+                }
+            }
+        }
+
+        // ---- CSV Color Groups ----
+        bool scsv = channel->show_csv_colors.load();
+        if (scsv){
+            std::lock_guard<std::mutex> lk(channel->csv_color_storage_mut);
+            if (!channel->csv_color_storage.empty()){
+                ImGui::Separator();
+                ImGui::SeparatorText("CSV Color Groups");
+
+                ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit;
+                if (ImGui::BeginTable("CSVColorGroups", 3, table_flags)) {
+                    ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 36.0f);
+                    ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 45.0f);
+                    ImGui::TableHeadersRow();
+
+                    int rowId = 0;
+                    for (const auto& [packedColor, ids] : channel->csv_color_storage) {
+                        ImGui::TableNextRow();
+
+                        glm::u8vec4 c = std::bit_cast<glm::u8vec4>(packedColor);
+                        ImVec4 imColor(c.x / 255.0f, c.y / 255.0f, c.z / 255.0f, c.w / 255.0f);
+
+                        // Color swatch (read-only)
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::PushID(rowId++);
+                        if (ImGui::ColorButton("##csvgroupcolor", imColor,
+                            ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop,
+                            ImVec2(24, 18)) && scc)
+                        {
+                            m_customColor[0] = imColor.x;
+                            m_customColor[1] = imColor.y;
+                            m_customColor[2] = imColor.z;
+                            m_customColor[3] = imColor.w;
+                        }
+                        if (ImGui::BeginItemTooltip() && scc) {
+                            ImGui::TextUnformatted("Click to set custom color picker to this color");
+                            ImGui::EndTooltip();
+                        }
+                        ImGui::PopID();
+
+                        // Count
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%zu", ids.size());
+
+                        // Select all members
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::PushID(rowId++);
+                        if (ImGui::Button("Select", ImVec2(40, 0))) {
+                            for (auto eid : ids)
+                                channel->renderer->addID2Group(eid, groups::SELECTION);
+                            channel->addControllerTask(tasks::REFRESH_GRAPH);
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
+                }
             }
         }
 

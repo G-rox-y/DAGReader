@@ -81,6 +81,15 @@ public:
     // should the custom colors be shown
     std::atomic<bool> show_custom_colors{true};
 
+    // maps CSV-derived color to element ids with that color
+    // again, should be sorted, and has a mutex that has to be used with it
+    std::unordered_map<uint32_t, std::vector<size_t>> csv_color_storage;
+    // again, maps the segment id to csv color, should be used with a mutex
+    std::unordered_map<size_t, uint32_t> csv_segment_color_map;
+    std::mutex csv_color_storage_mut;
+    // should the csv colors be shown
+    std::atomic<bool> show_csv_colors{true};
+
     // the renderer -> thread safe!
     // created by: window (on head)
     // modified by: controller (adds elements through member functions)
@@ -148,7 +157,7 @@ public:
     std::atomic<glm::u8vec4> selected_color_packed{glm::u8vec4(140, 180, 220, 230)};
     std::atomic<glm::u8vec4> err_color{glm::u8vec4(255, 0, 0, 255)};
 
-    enum colScheme { NONE, RANDOM, DEPTH, LENGTH, CSV };
+    enum colScheme { NONE, RANDOM, DEPTH, LENGTH };
     enum colRule {NORMAL, SQRT, CBRT, PROGRESSIVE};
     std::atomic<colScheme> segment_color_scheme{NONE};
     std::atomic<colRule> segment_color_rule{NORMAL};
