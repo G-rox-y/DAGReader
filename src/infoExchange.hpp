@@ -11,6 +11,7 @@ namespace tasks{
         OPEN_NFD, OPEN_PATH,
         OPEN_CSV_NFD, OPEN_CSV_PATH, UNLOAD_CSV,
         EXPORT_CSV_NEW, EXPORT_CSV_OVERWRITE,
+        EXPORT_FASTA,
         LAYOUT_GRAPH, RESET_GRAPH, REFRESH_GRAPH,
         EXIT
     };

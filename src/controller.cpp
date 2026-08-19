@@ -310,6 +310,83 @@ void Controller::handleExportCSV(tasks::controllerTask t)
     }
 }
 
+void Controller::handleExportFASTA()
+{
+    // ---- get save path ----
+    fs::path outPath;
+    getPathNFD(outPath, "FASTA", "fasta", true);
+    if (outPath.empty()) return;
+    if (outPath.extension() != ".fasta") outPath += ".fasta";
+
+    // ---- get selection ----
+    auto eids = channel->renderer->getGroupIDs(groups::SELECTION);
+    if (eids.empty()){
+        spdlog::warn("FASTA export: no elements selected");
+        return;
+    }
+
+    auto gfa = std::dynamic_pointer_cast<GFA>(data);
+    if (!gfa){
+        spdlog::warn("FASTA export: current data is not GFA");
+        return;
+    }
+
+    std::ofstream out(outPath, std::ios::trunc);
+    if (!out.is_open()){
+        spdlog::error("FASTA export: failed to open '{}' for writing", outPath.string());
+        return;
+    }
+
+    size_t exported = 0, skipped = 0;
+
+    for (size_t eid : eids)
+    {
+        // --- only segments have sequence data ---
+        auto props = data->retrieveEdgeData(eid, false);
+        auto* type = std::get_if<char>(&props["Type_C"]);
+        if (!type || *type != GFA::mapType::SEGMENT) continue; // we dont care about non segments
+
+        auto* nameSv = std::get_if<std::string_view>(&props["Name_SW"]);
+        if (!nameSv) continue;
+        std::string name(*nameSv);
+
+        // --- fetch sequence location ---
+        auto seqOpt = gfa->retrieveSequence(eid);
+        if (!seqOpt){
+            skipped++;
+            continue;
+        }
+        auto& [filePath, pos] = *seqOpt;
+
+        std::ifstream in(filePath, std::ios::binary);
+        if (!in.is_open()){
+            spdlog::warn("FASTA export: cannot open sequence file for '{}'", name);
+            continue;
+        }
+        in.seekg(pos);
+        std::string seq;
+        char c;
+        while (in.get(c)){
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0') break;
+            seq += c;
+        }
+
+        // --- write FASTA record ---
+        out << '>' << name;
+        if (auto* len = std::get_if<long long>(&props["Length_LLI"]))
+            out << " length_" << *len;
+        if (auto* dep = std::get_if<double>(&props["Depth_D"]))
+            out << " depth_" << std::fixed << std::setprecision(2) << *dep;
+        out << '\n' << seq << '\n';
+
+        exported++;
+    }
+
+    out.close();
+    spdlog::info("FASTA export: {} segment(s) written to '{}' ({} skipped)",
+                 exported, outPath.string(), skipped);
+}
+
 void Controller::getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt, bool save) const
 {
     // TODO: nfd init can throw an error, you should catch it
@@ -838,6 +915,8 @@ void Controller::run()
         }
         else if (t == tasks::EXPORT_CSV_NEW || t == tasks::EXPORT_CSV_OVERWRITE)
             handleExportCSV(t);
+        else if (t == tasks::EXPORT_FASTA)
+            handleExportFASTA();
         else if (t == tasks::LAYOUT_GRAPH)
             layoutGraph();
         else if (t == tasks::RESET_GRAPH)

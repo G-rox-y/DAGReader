@@ -79,6 +79,22 @@ void menuBar::draw()
                 ImGui::EndDisabled();
             }
 
+            // --- Export selection to FASTA ---
+            bool hasSelection = false;
+            if (channel->graph_loaded.load())
+                hasSelection = !channel->renderer->getGroupIDs(groups::SELECTION).empty();
+
+            if (channel->graph_loaded.load() && hasSelection){
+                if (ImGui::MenuItem("Export selection to FASTA...")){
+                    channel->addControllerTask(tasks::EXPORT_FASTA);
+                }
+            }
+            else {
+                ImGui::BeginDisabled();
+                ImGui::MenuItem("Export selection to FASTA...");
+                ImGui::EndDisabled();
+            }
+
             ImGui::Separator();
             if (ImGui::MenuItem("Clear layout")){
                 channel->renderer->clearAll();
