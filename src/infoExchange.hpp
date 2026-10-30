@@ -25,6 +25,14 @@ namespace groups{
     };
 }
 
+// layout algorithms
+namespace layouts{
+    enum algo{
+        GRIP,
+        FMMM
+    };
+}
+
 // this struct will be used to exchange information between window and controller threads
 // it contains data which can be used by either thread, all data will be either atomic (a_) or just have a mutex (s_)
 // this struct will be created on main and its pointer passed to window and controller threads
@@ -247,6 +255,14 @@ public:
             throw std::runtime_error("Error: Wrong subgraph data ID");
         subgraphData.at(id).radius = rad;
     }
+
+    // layout variables
+    std::atomic<int> current_layout_algorithm = layouts::GRIP;
+
+    // scaling variables
+    std::atomic<long long int> seg_size_scale{1};
+    std::atomic<long long int> min_seg_size{1};
+    std::atomic<long long int> max_seg_size{10};
 
     // grip variables
     std::atomic<float> grip_scalingFactor{0.05f};

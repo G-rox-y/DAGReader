@@ -232,7 +232,7 @@ glm::dvec3 GRIP::compute_KKforce(int ID, const vector<pair<int, int>>& n) const 
         double distR = glm::length2(delta);
         double edgeL = find_edge_length(ID, OTHER_ID);
         double distG = edgeL*edgeL * static_cast<double>(d*d);
-        force += delta * (distR / distG - 1.0);
+        force += delta * (distR / distG - 1.0) * edgeL;
     }
     return force;
 }
@@ -341,7 +341,7 @@ void GRIP::run()
     for(int i = static_cast<int>(K-1); i >= 0; i--){ // start with smaller filters and progress to larger filters (to i = 0)
         vector<int>& current_filter = filters.at(i);
 
-        spdlog::debug("Solving N:{} at layer L:{} ...", N, i);
+        // spdlog::debug("Solving N:{} at layer L:{} ...", N, i);
         for(int ID:current_filter){ // setup new vertices
             if (placed_id.at(ID)) continue; // do not place twice
             compute_vertex_neighbourhoods(ID, neighbourhoods.at(ID), nbrs, filter_finder, i, placed_id);

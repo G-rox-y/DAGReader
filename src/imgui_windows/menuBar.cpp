@@ -98,6 +98,12 @@ void menuBar::draw()
             ImGui::Separator();
             if (ImGui::MenuItem("Clear layout")){
                 channel->renderer->clearAll();
+                {
+                    std::lock_guard<std::mutex> lk(channel->color_storage_mut);
+                    std::lock_guard<std::mutex> lk2(channel->csv_color_storage_mut);
+                    channel->color_storage.clear();
+                    channel->csv_color_storage.clear();
+                }
                 channel->graph_loaded.store(false);
             }
             ImGui::EndMenu();

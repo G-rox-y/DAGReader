@@ -383,8 +383,7 @@ void Controller::handleExportFASTA()
     }
 
     out.close();
-    spdlog::info("FASTA export: {} segment(s) written to '{}' ({} skipped)",
-                 exported, outPath.string(), skipped);
+    spdlog::info("FASTA export: {} segment(s) written to '{}' ({} skipped)", exported, outPath.string(), skipped);
 }
 
 void Controller::getPathNFD(std::filesystem::path& path, const char* filterName, const char* filterExt, bool save) const
@@ -430,15 +429,28 @@ void Controller::layoutGraph(){
         // Normalize segment lengths
         // TODO: make an actually functional segment length system
         long long int maxSize = std::numeric_limits<long long int>::min();
-        for (auto& G:gc.graphs)
-            for(auto& e:G.edges)
+        long long int minSize = std::numeric_limits<long long int>::max();
+        for (auto& G:gc.graphs){
+            for(auto& e:G.edges){
                 if (maxSize < e.originalLength) maxSize = e.originalLength;
-        long long int segLen = maxSize / 20;
+                if (minSize > e.originalLength) minSize = e.originalLength;
+            }
+        }
+        long long int mxss = channel->max_seg_size.load();
+        long long int mnss = channel->min_seg_size.load();
+        long long int segLen = std::max(minSize, maxSize/20);
+        if (mxss != maxSize || mnss != minSize){
+            channel->max_seg_size.store(maxSize);
+            channel->min_seg_size.store(minSize);
+            channel->seg_size_scale.store(segLen);
+        }
+        else segLen = channel->seg_size_scale.load();
+        
 
         // adjust the segment lengths
         for (auto& G:gc.graphs)
             for(auto& e:G.edges)
-                e.length = (e.originalLength / segLen) + 1;
+                e.length = (e.originalLength / segLen)+1;
 
         // layout the graphs, multithreading ahead!
         #ifdef HAS_OPENMP

@@ -8,29 +8,47 @@ void sidePanel::drawLayout(float availX, float w)
 {
     if(!ImGui::CollapsingHeader("Layout settings")) return;
 
-    int copy_grm = channel->grip_roundsNum.load();
-    if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
-        channel->grip_roundsNum.store(copy_grm);
+    if (channel->current_layout_algorithm.load() == layouts::GRIP){
+        if(ImGui::TreeNodeEx("GRIP settings", ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_DefaultOpen)){
+            int copy_grm = channel->grip_roundsNum.load();
+            if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
+                channel->grip_roundsNum.store(copy_grm);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+        
+            float copy_gtg = channel->grip_tempGain.load();
+            if (ImGui::SliderFloat("Temp Gain", &copy_gtg, 0.f, 1.f, "%.2f")){
+                channel->grip_tempGain.store(copy_gtg);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+        
+            float copy_gtng = channel->grip_tempNarrowGain.load();
+            if (ImGui::SliderFloat("Temp Narrow Gain", &copy_gtng, 1.f, 3.f, "%.2f")){
+                channel->grip_tempNarrowGain.store(copy_gtng);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+        
+            float copy_gsf = channel->grip_scalingFactor.load();
+            if (ImGui::SliderFloat("Scaling Factor", &copy_gsf, 0.f, 2.f, "%.3f")){
+                channel->grip_scalingFactor.store(copy_gsf);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+
+            ImGui::Separator();
+
+            ImGui::TreePop();
+        }
+    }
+
+    long long int sss = channel->seg_size_scale.load();
+    long long int mnss = channel->min_seg_size.load();
+    long long int mxss = channel->max_seg_size.load();
+    int mmlr = mxss/sss;
+    if (ImGui::SliderInt("Max/Min Length Ratio", &mmlr, 1, 100, "%d")){
+        channel->seg_size_scale.store(std::max(mnss, mxss/mmlr));
         if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
     }
 
-    float copy_gtg = channel->grip_tempGain.load();
-    if (ImGui::SliderFloat("Temp Gain", &copy_gtg, 0.f, 1.f, "%.2f")){
-        channel->grip_tempGain.store(copy_gtg);
-        if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
-    }
-
-    float copy_gtng = channel->grip_tempNarrowGain.load();
-    if (ImGui::SliderFloat("Temp Narrow Gain", &copy_gtng, 1.f, 3.f, "%.2f")){
-        channel->grip_tempNarrowGain.store(copy_gtng);
-        if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
-    }
-
-    float copy_gsf = channel->grip_scalingFactor.load();
-    if (ImGui::SliderFloat("Scaling Factor", &copy_gsf, 0.f, 2.f, "%.3f")){
-        channel->grip_scalingFactor.store(copy_gsf);
-        if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
-    }
 }
 
 void sidePanel::drawAppearance(float availX, float w)
