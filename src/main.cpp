@@ -2,6 +2,8 @@
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include "cmakevars.hpp"
+
 #include "window.hpp"
 #include "controller.hpp"
 #include "infoExchange.hpp"
@@ -21,6 +23,9 @@ int main()
     spdlog::set_level(spdlog::level::info);
     spdlog::info("logging set to async mode");
 #endif
+    // we gotta know our versions
+    spdlog::info("DAGReader Version: {}", DAGR_VERSION_STRING);
+
     spdlog::debug("Starting the program!");
 
     // initialize the communication channel for threads

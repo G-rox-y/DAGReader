@@ -34,8 +34,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 # build the version string for defines
 set(DAGReader_VERSION_STRING "${DAGReader_VERSION_MAJOR}.${DAGReader_VERSION_MINOR}")
-if(DEFINED DAGReader_VERSION_MICRO)
-  string(APPEND DAGReader_VERSION_STRING ".${DAGReader_VERSION_MICRO}")
+if(DEFINED DAGReader_VERSION_PATCH)
+  string(APPEND DAGReader_VERSION_STRING ".${DAGReader_VERSION_PATCH}")
 endif()
 
 # write defines to a file
