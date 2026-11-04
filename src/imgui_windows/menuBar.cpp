@@ -183,13 +183,6 @@ void menuBar::draw()
             bool aws = channel->about_window_shown.load();
             if (ImGui::MenuItem("About DAGReader", NULL, aws))
                 channel->about_window_shown.store(!aws);
-            
-            if (ImGui::MenuItem("How to use")){
-                
-            }
-            if (ImGui::MenuItem("Dependencies")){
-
-            }
 
             bool lws = channel->license_window_shown.load();
             if (ImGui::MenuItem("License", NULL, lws))

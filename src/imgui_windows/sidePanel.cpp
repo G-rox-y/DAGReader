@@ -9,7 +9,7 @@ void sidePanel::drawLayout(float availX, float w)
     if(!ImGui::CollapsingHeader("Layout settings")) return;
 
     if (channel->current_layout_algorithm.load() == layouts::GRIP){
-        if(ImGui::TreeNodeEx("GRIP settings", ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_DefaultOpen)){
+        if(ImGui::TreeNodeEx("GRIP settings", ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_DrawLinesFull)){
             int copy_grm = channel->grip_roundsNum.load();
             if (ImGui::SliderInt("Number of Rounds", &copy_grm, 3, 50, "%d")){
                 channel->grip_roundsNum.store(copy_grm);
@@ -40,15 +40,35 @@ void sidePanel::drawLayout(float availX, float w)
         }
     }
 
-    long long int sss = channel->seg_size_scale.load();
-    long long int mnss = channel->min_seg_size.load();
-    long long int mxss = channel->max_seg_size.load();
-    int mmlr = mxss/sss;
-    if (ImGui::SliderInt("Max/Min Length Ratio", &mmlr, 1, 100, "%d")){
-        channel->seg_size_scale.store(std::max(mnss, mxss/mmlr));
+    int lc = channel->length_compression.load();
+    if (ImGui::SliderInt("Length Compression", &lc, 1, 1000, "%d")){
+        channel->length_compression.store(lc);
         if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
     }
+    ImGui::SameLine();
+    HelpMarker("LC is the ratio between longest allowed segment and the shortest.\n"
+        "If N is the length of the longest segment then that segment will be drawn with integer length LC.\n"
+        "Every other segment whose length is M will be drawn with integer length of int(M/N*LC).");
 
+    
+    int minseg2 = channel->min_seg_segmentation_degree.load();
+    int maxseg2 = channel->max_seg_segmentation_degree.load();
+
+    if (ImGui::SliderInt("Min Segment Subdiv", &minseg2, 0, 3, "%d")){
+        channel->min_seg_segmentation_degree.store(minseg2);
+        if (maxseg2 < minseg2) channel->max_seg_segmentation_degree.store(minseg2);
+        if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+    }
+    ImGui::SameLine();
+    HelpMarker("Minimum number of individual Berier curves required to draw a single segment/link.");
+    
+    
+    if (ImGui::SliderInt("Max Segment Subdiv", &maxseg2, minseg2, 31, "%d")){
+        channel->max_seg_segmentation_degree.store(maxseg2);
+        if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+    }
+    ImGui::SameLine();
+    HelpMarker("Maximum allowed number of individual Berier curves to draw a single segment/link.");
 }
 
 void sidePanel::drawAppearance(float availX, float w)

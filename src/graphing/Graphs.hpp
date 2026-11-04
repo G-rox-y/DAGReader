@@ -10,17 +10,17 @@ struct Vertex{
 };
 
 struct Edge{
-    size_t gid, lid;
+    size_t gid, lid; // global id is unique to every edge, and local id is unique to every edge in a subgraph
 
     size_t start;
     size_t end;
-    
-    // these values are to be used only if segpart is falsefilters
-    // an orientation bool is true if the segment is connected with +, and false if with -
-    bool startOri, endOri, segPart = false;
 
     long long int length;
     long long int originalLength;
+
+    // these values are to be used only if segpart is falsefilters
+    // an orientation bool is true if the segment is connected with +, and false if with -
+    bool startOri, endOri, segPart = false;
 
     Edge(size_t ID, size_t v1, size_t v2, long long int v3 = 1) : gid(ID), start(v1), end(v2), originalLength(v3) {}
     void setOrientations(bool s, bool e) { startOri = s; endOri = e; }

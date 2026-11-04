@@ -260,9 +260,11 @@ public:
     std::atomic<int> current_layout_algorithm = layouts::GRIP;
 
     // scaling variables
-    std::atomic<long long int> seg_size_scale{1};
-    std::atomic<long long int> min_seg_size{1};
-    std::atomic<long long int> max_seg_size{10};
+    std::atomic<int> length_compression{20};
+
+    // segment segmentation
+    std::atomic<int> max_seg_segmentation_degree{0};
+    std::atomic<int> min_seg_segmentation_degree{0};
 
     // grip variables
     std::atomic<float> grip_scalingFactor{0.05f};

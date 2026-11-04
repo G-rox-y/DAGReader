@@ -67,6 +67,7 @@ void Controller::handleFile(tasks::controllerTask t){
     std::vector<Edge> e;
     data->fillData(v, e);
     gc.setGraphs(v, e);
+    // gc.subdivide_edges();
 
     channel->clearSubGraphData();
     for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
@@ -429,23 +430,11 @@ void Controller::layoutGraph(){
         // Normalize segment lengths
         // TODO: make an actually functional segment length system
         long long int maxSize = std::numeric_limits<long long int>::min();
-        long long int minSize = std::numeric_limits<long long int>::max();
-        for (auto& G:gc.graphs){
-            for(auto& e:G.edges){
+        for (auto& G:gc.graphs)
+            for(auto& e:G.edges)
                 if (maxSize < e.originalLength) maxSize = e.originalLength;
-                if (minSize > e.originalLength) minSize = e.originalLength;
-            }
-        }
-        long long int mxss = channel->max_seg_size.load();
-        long long int mnss = channel->min_seg_size.load();
-        long long int segLen = std::max(minSize, maxSize/20);
-        if (mxss != maxSize || mnss != minSize){
-            channel->max_seg_size.store(maxSize);
-            channel->min_seg_size.store(minSize);
-            channel->seg_size_scale.store(segLen);
-        }
-        else segLen = channel->seg_size_scale.load();
-        
+
+        long long int segLen = maxSize / channel->length_compression.load();
 
         // adjust the segment lengths
         for (auto& G:gc.graphs)
@@ -536,9 +525,12 @@ void Controller::resetGraph(){
         auto& G = gc.graphs.at(graphGroupID);
 
         std::vector<BezierBox> boxes;
-        std::vector<bool> boxSelector; // if true at [id] then boxes[id] is selected ; first we will set true for all segments
         std::unordered_map<size_t, size_t> boxEdgeIndices; // first: edge id, second: boxes id
         std::unordered_map<size_t, std::set<size_t>> vertexTouchpoints; // first: vertex id, second: set of edges that have it
+
+        // if true at [id] then boxes[id] is selected ; first we will set true for all segments
+        // we use this structure to differ segment boxes and link boxes
+        std::vector<bool> boxSelector;
 
         // first step: segbox layout (only positions)
         for(const auto& e:G.edges){

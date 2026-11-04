@@ -8,8 +8,29 @@
 #include "controller.hpp"
 #include "infoExchange.hpp"
 
-// TODO: at this stage, the code is poorly commented, that should be fixed
-// TODO: at some later stages code structure should also be modified to be more readable to an outsider (especially the gfa parser)
+// Roadmaps (subject to change):
+//
+// V 1.1 "The Graphics update" Roadmap:
+// [] - Adding curve segmentation
+// [] - Replace Geometry shaders with Compute shaders
+// [] - Switch graphics backend to Vulkan
+// [] - Mac support
+// [] - Adding compute shaders for RMF calculations
+// [] - Add Maxent as default layout
+//
+// V 1.2 "The GFA1 update" Roadmap:
+// [] - Adding Fuzzy search
+// [] - Containment visualization
+// [] - Path visualization
+// [] - GFA 1.1 / 1.2 support
+// [] - Walk visualization
+// [] - Jump visualization
+//
+// Other planned features
+// [] - Export image of view
+// [] - Modify (non-color) CSV data inside DAGReader
+// [] - Import FASTA
+// [] - Better explanations of side panel options
 
 int main()
 {
