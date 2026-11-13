@@ -1,14 +1,10 @@
 #include "renderer.hpp"
 
 void Renderer::boxInsert(const BezierBox& b){
-    double segment = glm::length(b.end - b.start) / 3.f;
-    glm::vec3 pt1 = b.start + b.startOri * segment;
-    glm::vec3 pt2 = b.end + b.endOri * segment;
-
     m_rendererID2ExternalID[m_controlPoints.size()] = b.originalID;
-    m_externalID2RendererID[b.originalID] = m_controlPoints.size();
+    m_externalID2RendererID[b.originalID].insert(m_controlPoints.size());
     m_controlPoints.emplace_back(std::array<glm::vec4, 4>{
-        glm::vec4(b.start, 1.f), glm::vec4(pt1, 1.f), glm::vec4(pt2, 1.f), glm::vec4(b.end, 1.f)
+        glm::vec4(b.start, 1.f), glm::vec4(b.CP1, 1.f), glm::vec4(b.CP2, 1.f), glm::vec4(b.end, 1.f)
     });
     m_appearances.emplace_back(appearance{b.color, b.dims});
 }
@@ -78,9 +74,10 @@ void Renderer::colorBulkByVector(const std::vector<size_t>& ids, const std::vect
             spdlog::warn("Renderer warning: non mapped external id: {}", ids.at(i));
             continue;
         }
-        auto rid = p->second;
-        m_appearances[rid].color = cols.at(i);
-        updatedIds.emplace_back(rid);
+        for (auto rid:p->second){
+            m_appearances[rid].color = cols.at(i);
+            updatedIds.emplace_back(rid);
+        }
     }
 
     // condense updated ids and notify renderer updates on those ranges are required
@@ -165,7 +162,8 @@ void Renderer::addID2Group(const size_t id, const int groupID){
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     auto elit = m_externalID2RendererID.find(id);
     if (elit == m_externalID2RendererID.end()) return;
-    addEntryToGroup({elit->second, elit->second}, groupID);
+    for(auto rid:elit->second)
+        addEntryToGroup({rid, rid}, groupID);
 }
 
 void Renderer::clearGroup(const int groupID){
@@ -316,14 +314,15 @@ void Renderer::draw()
 
 bool Renderer::addMouseSelectionToGroup(const int id){
     std::lock_guard lk(m_ownership);
-    if (m_selectionID != -1){
-        auto entry = std::make_pair(m_selectionID, m_selectionID);
+    if (m_selectionID == -1) return false;
+    auto ids = m_externalID2RendererID.at(m_rendererID2ExternalID.at(m_selectionID));
+    for (auto el:ids){
+        auto entry = std::make_pair(el, el);
         if (isEntryInGroup(entry, id))
             removeEntryFromGroup(entry, id);
         else addEntryToGroup(entry, id);
-        return true;
     }
-    else return false;
+    return true;
 }
 
 std::vector<size_t> Renderer::getGroupIDs(int ID) const {
@@ -338,6 +337,11 @@ std::vector<size_t> Renderer::getGroupIDs(int ID) const {
     for (auto& el:indicePairs)
         for(size_t i = el.first; i <= el.second; i++)
             ret.emplace_back(m_rendererID2ExternalID.at(i));
+
+    // sort and remove duplicates
+    sort(ret.begin(), ret.end());
+    auto dit = unique(ret.begin(), ret.end());
+    ret.erase(dit, ret.end());
 
     return ret;
 }
@@ -375,7 +379,7 @@ std::optional<std::tuple<glm::vec3, float>> Renderer::getIDOrbitData(int externa
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     auto it = m_externalID2RendererID.find(externalID);
     if (it == m_externalID2RendererID.end()) return std::nullopt;
-    auto id = it->second;
+    auto id = *it->second.begin();
     std::vector<Renderer::IndexRange> indicePairs = {IndexRange(id, id)};
     return getOrbitData(indicePairs);
 }

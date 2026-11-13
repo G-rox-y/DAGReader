@@ -8,7 +8,7 @@
 
 struct BezierBox{
     glm::dvec3 start, end;
-    glm::dvec3 startOri, endOri;
+    glm::dvec3 CP1, CP2;
     glm::dvec2 dims;
     glm::u8vec4 color;
     size_t originalID;
@@ -43,7 +43,9 @@ private:
     // indices within the structures like m_controlPoints are called "Renderer ID"
     // since the renderer creates this indexing from the data that already had its own external indexing,
     // we need to make a mapping between the "Renderer ID" and the "External ID"
-    std::unordered_map<size_t, size_t> m_rendererID2ExternalID, m_externalID2RendererID;
+    // due to curve segmentatoins, a single External ID can map to multiple renderer IDs
+    std::unordered_map<size_t, size_t> m_rendererID2ExternalID;
+    std::unordered_map<size_t, std::set<size_t>> m_externalID2RendererID;
 
     // --- opengl data
 
