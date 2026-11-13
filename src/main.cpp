@@ -11,12 +11,13 @@
 // Roadmaps (subject to change):
 //
 // V 1.1 "The Graphics update" Roadmap:
-// [] - Adding curve segmentation
+// [x] - Adding curve segmentation
 // [] - Replace Geometry shaders with Compute shaders
 // [] - Switch graphics backend to Vulkan
 // [] - Mac support
 // [] - Adding compute shaders for RMF calculations
 // [] - Add Maxent as default layout
+// [] - 2D control scheme
 //
 // V 1.2 "The GFA1 update" Roadmap:
 // [] - Adding Fuzzy search
@@ -25,12 +26,20 @@
 // [] - GFA 1.1 / 1.2 support
 // [] - Walk visualization
 // [] - Jump visualization
+// [] - GC content coloring
+// [] - Determining contiguity and coloring based on it
+// [] - More graph info (like in Bandage), also can be turned into subgraph info
+// [] - Modify GFA data stored in tags
+// [] - Tag based coloring
 //
 // Other planned features
 // [] - Export image of view
 // [] - Modify (non-color) CSV data inside DAGReader
 // [] - Import FASTA
 // [] - Better explanations of side panel options
+// [] - Moving segments and links (like in Bandage)
+// [] - Memory optimizations
+// [] - Changeable debug timestamp precision (save in .ini)
 
 int main()
 {
