@@ -264,7 +264,7 @@ public:
     std::atomic<int> min_seg_segmentation_degree{0};
     std::atomic<bool> simplify_subdivision{true};
     std::atomic<float> simplification_tolerance{0.1};
-    std::atomic<float> simplification_tension{0.5};
+    std::atomic<float> bezier_tolerance{1.0};
 
     // if we run subdivision the graph collection will be mangled
     // and we will have to redo it if we rerun the layout phase again

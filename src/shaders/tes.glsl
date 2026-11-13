@@ -95,7 +95,7 @@ void main(){
 
     // unpack the color and remember if mouse is close and in selection mode
     float idist = point2Mouse(pos);
-    if (idist < a.halfExt.x * 3.0 && Selection != 0){
+    if (idist < a.halfExt.x * 9.0 && Selection != 0){
         teOUT.color = unpackUnorm4x8(-a.color);
         uint idx = atomicCounterIncrement(counter);
         if (idx < 16){

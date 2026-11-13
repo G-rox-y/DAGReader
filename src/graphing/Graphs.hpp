@@ -73,4 +73,4 @@ struct graphCollection {
 Graph subdivide_graph(Graph& G, int minSubDiv, int maxSubDiv);
 
 // this simplification relies on the coordinate positions in the graph, a layout is required before using it
-Graph simplify_graph(Graph& G, Graph& S, float tolerance, float tension);
+Graph simplify_graph(Graph& G, Graph& S, float prune_tolerance, float bezier_tolerance);

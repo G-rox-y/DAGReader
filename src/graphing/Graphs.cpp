@@ -154,7 +154,7 @@ Graph subdivide_graph(Graph& G, int minSubDiv, int maxSubDiv){
     return S;
 }
 
-Graph simplify_graph(Graph& G, Graph& S, float tolerance, float tension){
+Graph simplify_graph(Graph& G, Graph& S, float prune_tolerance, float bezier_tolerance){
     Graph R;
     
     // we will be locating groups and storing their position pairs (start, end) in a vector indexed by LID of graph G
@@ -184,7 +184,7 @@ Graph simplify_graph(Graph& G, Graph& S, float tolerance, float tension){
             ml += glm::length(S.vertices.at(pts.at(i)).pos - S.vertices.at(pts.at(i-1)).pos);
         ml /= static_cast<double>(pts.size()-1);
 
-        double error = ml * tolerance;
+        double error = ml * prune_tolerance;
 
         std::vector<bool> select_pts(pts.size(), false);
         select_pts.at(0) = true;
@@ -224,73 +224,160 @@ Graph simplify_graph(Graph& G, Graph& S, float tolerance, float tension){
             if (select_pts.at(i)) pruned.at(parent_lid).emplace_back(pts.at(i));
     }
 
-    // map S-vertex ID to R-vertex ID
-    std::unordered_map<size_t, size_t> sid_to_rid;
-    // catmull rom
+    
+    // calculate bezier curves from the simplified thing
+    std::unordered_map<size_t, size_t> sid_to_rid; // map S-vertex ID to R-vertex ID
     for(size_t plid = 0; plid < pruned.size(); plid++){
         const auto& relpts = pruned.at(plid);
-        const size_t N = relpts.size(); 
+        const size_t N = relpts.size();
         if(relpts.size() < 2){
             spdlog::warn("Degenerate Edge detected in graph simplification");
-            continue;    
-        } 
-
-        // copy relevant points vertices to R
-        std::vector<size_t> rids; // and remember their assigned R-vertex IDs
-        rids.reserve(N);
-        for(size_t sid : relpts){
-            auto it = sid_to_rid.find(sid);
-            if(it == sid_to_rid.end()){
-                size_t rid = R.vertices.size();
-                R.vertices.emplace_back(rid, S.vertices.at(sid).pos);
-                sid_to_rid.emplace(sid, rid);
-                rids.push_back(rid);
-            }
-            else rids.push_back(it->second);
-        }
-
-        // First: only segments need catmull rom, links can be skipped
-        if (!G.edges.at(plid).segPart) {
-            for(size_t i = 0; i+1 < N; i++){
-                size_t newLid = R.edges.size();
-                Edge ne(G.edges.at(plid).gid, rids[i], rids[i+1], G.edges.at(plid).originalLength);
-                ne.lid = newLid;
-                ne.segPart = false;
-                ne.length = G.edges.at(plid).length;
-                ne.parent_lid = plid;
-                R.edges.push_back(std::move(ne));
-            }
             continue;
         }
 
-        size_t baseLid = R.edges.size(); // remember how many edges before adding new ones
-        // add edges with dummy data
-        int len = std::max(1, G.edges.at(plid).length / static_cast<int>(N));
-        for(size_t i = 0; i+1 < N; i++){
-            Edge ne(G.edges.at(plid).gid, rids[i], rids[i+1]);
-            ne.segPart = true;
-            ne.length = len;
-            ne.lid = R.edges.size();
-            ne.parent_lid = plid;
+        // First: only segments need what follows, links can be skipped
+        if (!G.edges.at(plid).segPart) {
+            if (N != 2){
+                spdlog::warn("Degenerate non-segment found in simplification, skipping");
+                continue;
+            }
+            auto mapv = [&](size_t sid)->size_t{
+                auto it = sid_to_rid.find(sid);
+                if(it != sid_to_rid.end()) return it->second;
+                size_t rid = R.vertices.size();
+                R.vertices.emplace_back(rid, S.vertices.at(sid).pos);
+                sid_to_rid.emplace(sid, rid);
+                return rid;
+            };
+            size_t rid0 = mapv(relpts.front()), rid1 = mapv(relpts.back());
+            size_t lid = R.edges.size();
+            Edge ne(G.edges.at(plid).gid, rid0, rid1, G.edges.at(plid).originalLength);
+            ne.lid = lid; ne.segPart = false; ne.length = G.edges.at(plid).length; ne.parent_lid = plid;
             R.edges.push_back(std::move(ne));
+            continue;
         }
 
-        // catmull rom -> cubic Bezier for this point chain.
-        // we duplicate the endpoints as phantom neighbours so the open curve starts and ends exactly at them
-        const float s = tension / 6.0f;
-        for(size_t i = 0; i+1 < N; i++){
-            glm::dvec3 p_curr = R.vertices.at(rids.at(i)).pos;
-            glm::dvec3 p_next = R.vertices.at(rids.at(i+1)).pos;
-            
-            glm::dvec3 p_prev = (i == 0) ? R.vertices.at(rids.at(0)).pos : R.vertices.at(rids.at(i-1)).pos;
-            glm::dvec3 p_next2 = (i+2 < N) ? R.vertices.at(rids.at(i+2)).pos : p_next;
+        // copy 3D positions of pruned points (simpler code)
+        std::vector<glm::dvec3> pos;
+        pos.reserve(N);
+        for(size_t sid : relpts) pos.push_back(S.vertices.at(sid).pos);
 
-            glm::dvec3 c1 = p_curr + (p_next-p_prev) * static_cast<double>(s);
-            glm::dvec3 c2 = p_next - (p_next2-p_curr) * static_cast<double>(s);
+        // centripetal parameterisation of the whole anchor chain [0..1]
+        std::vector<double> t(N, 0.0);
+        double total = 0.0;
+        for(size_t i = 1; i < N; i++) total += std::sqrt(glm::length(pos[i]-pos[i-1]) + 1e-12);
+        double acc = 0.0;
+        for(size_t i = 1; i < N; i++){
+            acc += std::sqrt(glm::length(pos[i]-pos[i-1]) + 1e-12);
+            t[i] = (total > 1e-12) ? (acc/total) : (double(i)/(N-1));
+        }
 
-            size_t segLid = baseLid + i;
-            if (R.ctpts.size() <= segLid) R.ctpts.resize(segLid + 1);
-            R.ctpts[segLid] = std::make_pair(c1, c2);
+        // scale invariant tolerance (same idea as DP)
+        double tol = 0.0;
+        for(size_t i=1;i<N;i++) tol += glm::length(pos[i]-pos[i-1]);
+        tol = (N>1) ? (tol/(N-1) * bezier_tolerance) : 0.0;
+
+        struct Chunk { int s, e; glm::dvec3 c1, c2; };
+        std::vector<Chunk> chunks;
+
+        // recursive least squares cubic fit
+        std::function<void(int,int)> split = [&](int s, int e){
+            // two points = straight cubic
+            if(e == s+1){
+                chunks.push_back({s,e,
+                    pos[s] + (pos[e]-pos[s])/3.0,
+                    pos[e] - (pos[e]-pos[s])/3.0
+                });
+                return;
+            }
+
+            double t0 = t[s], t1 = t[e];
+            double range = t1 - t0;
+            if(range < 1e-12){
+                chunks.push_back({s,e,
+                    pos[s] + (pos[e]-pos[s])/3.0,
+                    pos[e] - (pos[e]-pos[s])/3.0});
+                return;
+            }
+
+            // Normal equations for LS fit of inner control points
+            double a00=0,a01=0,a11=0;
+            double bx0=0,bx1=0, by0=0,by1=0, bz0=0,bz1=0;
+            for(int k=s;k<=e;k++){
+                double tt = (t[k]-t0)/range;
+                double A0 = 3.0*(1.0-tt)*(1.0-tt)*tt;
+                double A1 = 3.0*(1.0-tt)*tt*tt;
+                a00 += A0*A0; a01 += A0*A1; a11 += A1*A1;
+                glm::dvec3 target = pos[k]
+                    - std::pow(1.0-tt,3.0)*pos[s]
+                    - std::pow(tt,3.0)*pos[e];
+                bx0 += A0*target.x; bx1 += A1*target.x;
+                by0 += A0*target.y; by1 += A1*target.y;
+                bz0 += A0*target.z; bz1 += A1*target.z;
+            }
+
+            double det = a00*a11 - a01*a01;
+            glm::dvec3 C1,C2;
+            bool ok = false;
+            if(std::abs(det) > 1e-14){
+                C1.x=(bx0*a11-bx1*a01)/det; C2.x=(a00*bx1-a01*bx0)/det;
+                C1.y=(by0*a11-by1*a01)/det; C2.y=(a00*by1-a01*by0)/det;
+                C1.z=(bz0*a11-bz1*a01)/det; C2.z=(a00*bz1-a01*bz0)/det;
+
+                double maxErr = 0.0;
+                for(int k=s;k<=e;k++){
+                    double tt = (t[k]-t0)/range;
+                    double b0=std::pow(1.0-tt,3.0);
+                    double b1=3.0*(1.0-tt)*(1.0-tt)*tt;
+                    double b2=3.0*(1.0-tt)*tt*tt;
+                    double b3=std::pow(tt,3.0);
+                    glm::dvec3 B = b0*pos[s] + b1*C1 + b2*C2 + b3*pos[e];
+                    maxErr = std::max(maxErr, (double)glm::length(B-pos[k]));
+                }
+                if(maxErr <= tol) ok = true;
+            }
+
+            if(ok){
+                chunks.push_back({s,e,C1,C2});
+            } else {
+                int mid = s + (e-s)/2;
+                split(s,mid);
+                split(mid,e);
+            }
+        };
+
+        split(0, static_cast<int>(N)-1);
+
+        // Emit one edge per chunk (interior anchors are consumed by the cubic)
+        for(const auto& ck : chunks){
+            size_t sid0 = relpts[ck.s];
+            size_t sid1 = relpts[ck.e];
+
+            size_t rid0, rid1;
+            auto it = sid_to_rid.find(sid0);
+            if(it==sid_to_rid.end()){
+                rid0 = R.vertices.size();
+                R.vertices.emplace_back(rid0, S.vertices.at(sid0).pos);
+                sid_to_rid.emplace(sid0, rid0);
+            } else rid0 = it->second;
+
+            it = sid_to_rid.find(sid1);
+            if(it==sid_to_rid.end()){
+                rid1 = R.vertices.size();
+                R.vertices.emplace_back(rid1, S.vertices.at(sid1).pos);
+                sid_to_rid.emplace(sid1, rid1);
+            } else rid1 = it->second;
+
+            size_t segLid = R.edges.size();
+            Edge ne(G.edges.at(plid).gid, rid0, rid1);
+            ne.segPart = true;
+            ne.length  = std::max(1, G.edges.at(plid).length / static_cast<int>(chunks.size()));
+            ne.parent_lid = plid;
+            ne.lid = segLid;
+            R.edges.push_back(std::move(ne));
+
+            if(R.ctpts.size() <= segLid) R.ctpts.resize(segLid+1);
+            R.ctpts[segLid] = std::make_pair(ck.c1, ck.c2);
         }
     }
     

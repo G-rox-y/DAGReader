@@ -457,8 +457,8 @@ void Controller::layoutGraph(){
         bool simplify = channel->simplify_subdivision.load();
         int mins = channel->min_seg_segmentation_degree.load();
         int maxs = channel->max_seg_segmentation_degree.load();
-        float tol = channel->simplification_tolerance.load();
-        float tens = channel->simplification_tension.load();
+        float stol = channel->simplification_tolerance.load();
+        float btol = channel->bezier_tolerance.load();
         #ifdef HAS_OPENMP
             unsigned int available_threads = std::max<unsigned int>(std::thread::hardware_concurrency()-2 , 2);
             spdlog::info("splitting the workload for layout, max threads: {}", available_threads);
@@ -484,7 +484,7 @@ void Controller::layoutGraph(){
             if (toUse == &S){
                 // simplifications
                 if (simplify){
-                    auto R = simplify_graph(G, S, tol, tens);
+                    auto R = simplify_graph(G, S, stol, btol);
                     G = std::move(R);
                 }
                 else G = std::move(S);

@@ -300,7 +300,7 @@ void Renderer::draw()
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
         glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
     
-        int bestID = -1; float bestDist = 1e5;
+        int bestID = -1; float bestDist = 1e10;
         for(GLuint i = 0; i < count; i++){
             if (results.dists[i] < bestDist){
                 bestID = results.ids[i];

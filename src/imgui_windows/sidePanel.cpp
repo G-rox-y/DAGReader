@@ -80,13 +80,13 @@ void sidePanel::drawLayout(float availX, float w)
             HelpMarker("Colinearity factor that determines how non-collinear the point has to be to matter,\n"
                 "Larger number means more aggressive simplification, and smaller means less aggressive.");
         
-            float sten = channel->simplification_tension.load();
-            if (ImGui::SliderFloat("Subdivision Tension", &sten, 0.05f, 1.f, "%.2f")){
-                channel->simplification_tension.store(sten);
+            float sten = channel->bezier_tolerance.load();
+            if (ImGui::SliderFloat("Bezier Tolerance", &sten, 0.1f, 3.f, "%.1f")){
+                channel->bezier_tolerance.store(sten);
                 if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
             }
             ImGui::SameLine();
-            HelpMarker("How much will the subdivisions curve");
+            HelpMarker("How much will the Bezier curves be curving after simplification");
         }
     }
 }
