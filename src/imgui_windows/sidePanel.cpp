@@ -39,36 +39,56 @@ void sidePanel::drawLayout(float availX, float w)
             ImGui::TreePop();
         }
     }
-
-    int lc = channel->length_compression.load();
-    if (ImGui::SliderInt("Length Compression", &lc, 1, 1000, "%d")){
-        channel->length_compression.store(lc);
-        if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
-    }
-    ImGui::SameLine();
-    HelpMarker("LC is the ratio between longest allowed segment and the shortest.\n"
-        "If N is the length of the longest segment then that segment will be drawn with integer length LC.\n"
-        "Every other segment whose length is M will be drawn with integer length of int(M/N*LC).");
-
     
     int minseg2 = channel->min_seg_segmentation_degree.load();
     int maxseg2 = channel->max_seg_segmentation_degree.load();
 
-    if (ImGui::SliderInt("Min Segment Subdiv", &minseg2, 0, 3, "%d")){
+    if (ImGui::SliderInt("Min Segment Subdiv", &minseg2, 0, 16, "%d")){
         channel->min_seg_segmentation_degree.store(minseg2);
         if (maxseg2 < minseg2) channel->max_seg_segmentation_degree.store(minseg2);
         if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
     }
     ImGui::SameLine();
-    HelpMarker("Minimum number of individual Berier curves required to draw a single segment/link.");
+    HelpMarker("Minimum number of individual Berier curves required to draw a single segment/link.\n"
+        "Be careful with this one, it multiplies the amount of computation");
     
     
-    if (ImGui::SliderInt("Max Segment Subdiv", &maxseg2, minseg2, 31, "%d")){
+    if (ImGui::SliderInt("Max Segment Subdiv", &maxseg2, minseg2, 2048, "%d")){
         channel->max_seg_segmentation_degree.store(maxseg2);
         if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
     }
     ImGui::SameLine();
-    HelpMarker("Maximum allowed number of individual Berier curves to draw a single segment/link.");
+    HelpMarker("Maximum allowed number of individual Berier curves to draw a single segment/link.\n"
+        "Be careful with this one, it can significantly increase the amount of computation if you have a lot of long links");
+
+    if (minseg2 || maxseg2){
+        bool sseg = channel->simplify_subdivision.load();
+        if (ImGui::Checkbox("Simplify Segmentation", &sseg)){
+            channel->simplify_subdivision.store(sseg);
+            channel->graph_param_change.store(true);
+        }
+        ImGui::SameLine();
+        HelpMarker("Geometric simplification of the graph after layout is done [recommended on]");
+
+        if (sseg){
+            float stol = channel->simplification_tolerance.load();
+            if (ImGui::SliderFloat("Simplification Tolerance", &stol, 0.01f, 1.f, "%.2f")){
+                channel->simplification_tolerance.store(stol);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+            ImGui::SameLine();
+            HelpMarker("Colinearity factor that determines how non-collinear the point has to be to matter,\n"
+                "Larger number means more aggressive simplification, and smaller means less aggressive.");
+        
+            float sten = channel->simplification_tension.load();
+            if (ImGui::SliderFloat("Subdivision Tension", &sten, 0.05f, 1.f, "%.2f")){
+                channel->simplification_tension.store(sten);
+                if (channel->graph_loaded.load()) channel->graph_param_change.store(true);
+            }
+            ImGui::SameLine();
+            HelpMarker("How much will the subdivisions curve");
+        }
+    }
 }
 
 void sidePanel::drawAppearance(float availX, float w)
@@ -225,7 +245,7 @@ void sidePanel::drawSubgraphSelection(float availX, float w, size_t subgraphNum)
     if (ImGui::BeginTable("subgraphTable", 5, table_flags)){
         ImGui::TableSetupColumn("ID");
         ImGui::TableSetupColumn("segments");
-        ImGui::TableSetupColumn("edges");
+        ImGui::TableSetupColumn("links");
         ImGui::TableSetupColumn("show");
         ImGui::TableSetupColumn("select");
         ImGui::TableSetupScrollFreeze(0, 1); // Make row always visible
@@ -239,7 +259,7 @@ void sidePanel::drawSubgraphSelection(float availX, float w, size_t subgraphNum)
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%zu", D.segment_num);
             ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%zu", D.edge_num);
+            ImGui::Text("%zu", D.link_num);
             ImGui::TableSetColumnIndex(3);
             bool val = !channel->isGroupHidden(graphID);
             if (ImGui::Checkbox(fmt::format("##Hide{}", graphID).c_str(), &val)){

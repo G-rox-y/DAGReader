@@ -62,18 +62,19 @@ void Controller::handleFile(tasks::controllerTask t){
     channel->loading_file_in_progress.store(true);
     data = std::make_shared<GFA>(path.string(), channel->minimal_memory_load.load());
 
+    spdlog::debug("Structuring the Graph");
     gc.clear();
     std::vector<Vertex> v;
     std::vector<Edge> e;
     data->fillData(v, e);
     gc.setGraphs(v, e);
-    // gc.subdivide_edges();
 
+    // save subgraph data before potential geometric modifications
     channel->clearSubGraphData();
     for(size_t graphGroupID = 0; graphGroupID < gc.graphs.size(); graphGroupID++){
         auto& G = gc.graphs.at(graphGroupID);
         channel->addSubgraphData(infoExchange::SubgraphData{
-            G.vertices.size(), G.edges.size()
+            G.vertices.size() / 2, G.edges.size() - G.vertices.size() / 2
         });
     }
     
@@ -82,6 +83,7 @@ void Controller::handleFile(tasks::controllerTask t){
     channel->graph_loaded.store(true);
     channel->graph_param_change.store(true); // new things to draw now available
     channel->loading_file_in_progress.store(false);
+    channel->controller_gc_mangled.store(false);
 }
 
 void Controller::handleCSV(tasks::controllerTask t){
@@ -424,17 +426,27 @@ void Controller::getPathNFD(std::filesystem::path& path, const char* filterName,
 
 void Controller::layoutGraph(){
     spdlog::info("Task: LAYOUT_GRAPH");
+
+    if (channel->controller_gc_mangled.load()){
+        spdlog::debug("Restructuring the Graph");
+        gc.clear();
+        std::vector<Vertex> v;
+        std::vector<Edge> e;
+        data->fillData(v, e);
+        gc.setGraphs(v, e);
+        channel->controller_gc_mangled.store(false);
+    }
+
     if (!gc.empty()){
         channel->layout_in_progress.store(true);
 
         // Normalize segment lengths
-        // TODO: make an actually functional segment length system
         long long int maxSize = std::numeric_limits<long long int>::min();
         for (auto& G:gc.graphs)
             for(auto& e:G.edges)
                 if (maxSize < e.originalLength) maxSize = e.originalLength;
 
-        long long int segLen = maxSize / channel->length_compression.load();
+        long long int segLen = maxSize / channel->max_seg_segmentation_degree.load();
 
         // adjust the segment lengths
         for (auto& G:gc.graphs)
@@ -442,18 +454,42 @@ void Controller::layoutGraph(){
                 e.length = (e.originalLength / segLen)+1;
 
         // layout the graphs, multithreading ahead!
+        bool simplify = channel->simplify_subdivision.load();
+        int mins = channel->min_seg_segmentation_degree.load();
+        int maxs = channel->max_seg_segmentation_degree.load();
+        float tol = channel->simplification_tolerance.load();
+        float tens = channel->simplification_tension.load();
         #ifdef HAS_OPENMP
             unsigned int available_threads = std::max<unsigned int>(std::thread::hardware_concurrency()-2 , 2);
-            spdlog::info("splitting the workload, max threads: {}", available_threads);
+            spdlog::info("splitting the workload for layout, max threads: {}", available_threads);
             #pragma omp parallel for num_threads(available_threads) schedule(dynamic, 1)
         #endif
-        for(size_t i = 0; i < gc.graphs.size(); i++){
-            GRIP layout(gc.graphs.at(i));
+        for(auto& G:gc.graphs){
+            Graph* toUse = &G;
+            Graph S;
+
+            // segmentations
+            if (mins || maxs){
+                S = subdivide_graph(G, mins, maxs);
+                toUse = &S;
+            }
+
+            GRIP layout(*toUse);
             layout.setFRscaling(channel->grip_scalingFactor.load());
             layout.setRoundsNumber(channel->grip_roundsNum.load());
             layout.setTempGain(channel->grip_tempGain.load());
             layout.setTempNarrowGainInc(channel->grip_tempNarrowGain.load());
             layout.run();
+
+            if (toUse == &S){
+                // simplifications
+                if (simplify){
+                    auto R = simplify_graph(G, S, tol, tens);
+                    G = std::move(R);
+                }
+                else G = std::move(S);
+                channel->controller_gc_mangled.store(true);
+            }
         }
 
         channel->layout_in_progress.store(false); // layout phase done
@@ -507,7 +543,7 @@ void Controller::resetGraph(){
 
     // render the graphs
     if (!channel->renderer) [[unlikely]] {
-        spdlog::warn("Shared datastructure pointer is not defined");
+        spdlog::warn("Pointer to renderer is not defined");
         return;
     }
 
@@ -540,18 +576,16 @@ void Controller::resetGraph(){
             if (e.segPart){
                 boxSelector.push_back(true);
                 auto S = G.vertices.at(e.start).pos, E = G.vertices.at(e.end).pos;
-                boxes.emplace_back(BezierBox{
-                    S, E, 
-                    glm::normalize(S-E), glm::normalize(E-S), // we will fill orientations later
-                    segWidth, errColor, e.gid
-                });
+                glm::dvec3 P1(0.0, 0.0, 0.0), P2(0.0, 0.0, 0.0);
+                if (G.ctpts.size() > e.lid) std::tie(P1, P2) = G.ctpts.at(e.lid);
+                boxes.emplace_back(BezierBox{S, E, P1, P2, segWidth, segColor, e.gid});
             }
             else {
                 boxSelector.push_back(false);
                 auto S = G.vertices.at(e.start).pos, E = G.vertices.at(e.end).pos;
                 boxes.emplace_back(BezierBox{
                     S, E,
-                    glm::normalize(S-E), glm::normalize(E-S), // we will fill orientations later
+                    glm::normalize(S-E), glm::normalize(E-S), // we will fill these later
                     linkWidth, errColor, e.gid
                 });
             }
@@ -581,64 +615,38 @@ void Controller::resetGraph(){
                 spdlog::warn("No segments at the segbox connection! Skipping orientation adjusting");
             else if (segNum > 2)
                 spdlog::warn("More than two segments at the segbox connection! Skipping orientation adjusting");
-            else {
-                // if this is a segment - link(s) connection
-                if (linkNum > 0){
-                    // calculate the orientation
-                    linkCenter /= linkNum;
-                    glm::dvec3 ori = glm::normalize(G.vertices.at(v).pos - linkCenter);
+            else if (segNum == 1 && linkNum > 0){
+                // calculate the orientation
+                linkCenter /= linkNum;
+                glm::dvec3 ori = glm::normalize(G.vertices.at(v).pos - linkCenter);
 
-                    // apply it to the segment box
-                    auto& TheSegBox = boxes.at(boxEdgeIndices.at(segInds[0]));
-                    TheSegBox.color = segColor;
-                    if (v == G.edges.at(segInds[0]).start) TheSegBox.startOri = ori;
-                    else TheSegBox.endOri = ori;
-
-                    // apply it to link boxes
-                    for(auto el:touchPointVector){
-                        const auto& E = G.edges.at(el);
-                        if (E.segPart) continue;
-                        auto& TheLinkBox = boxes.at(boxEdgeIndices.at(el));
-                        TheLinkBox.color = linkColor;
-                        if (v == E.start) TheLinkBox.startOri = -ori;
-                        else TheLinkBox.endOri = -ori;
-                    }
+                // for segment boxes check if they have control points already and if not, then apply it to them as well
+                auto& TheSegBox = boxes.at(boxEdgeIndices.at(segInds[0]));
+                double segment = glm::length(TheSegBox.end - TheSegBox.start) / 3.0;
+                if (v == G.edges.at(segInds[0]).start) {
+                    if (glm::length(TheSegBox.CP1) <= 0.001) TheSegBox.CP1 = TheSegBox.start + ori * segment;
+                } else {
+                    if (glm::length(TheSegBox.CP2) <= 0.001) TheSegBox.CP2 = TheSegBox.end + ori * segment;
                 }
-                // if this is a segment - segment connection
-                else if (segNum == 2){
-                    // calculate the orientation
-                    size_t Seg1FarInd, Seg2FarInd;
-                    if (G.edges.at(segInds[0]).start == v) Seg1FarInd = G.edges.at(segInds[0]).end;
-                    else Seg1FarInd = G.edges.at(segInds[0]).start;
-                    if (G.edges.at(segInds[1]).start == v) Seg2FarInd = G.edges.at(segInds[1]).end;
-                    else Seg2FarInd = G.edges.at(segInds[1]).start;
-                    glm::dvec3 ori = glm::normalize(G.vertices.at(Seg1FarInd).pos - G.vertices.at(Seg2FarInd).pos);
 
-                    // apply to segbox 1
-                    auto& TheSegBox1 = boxes.at(boxEdgeIndices.at(segInds[0]));
-                    TheSegBox1.color = segColor;
-                    if (v == G.edges.at(segInds[0]).start) TheSegBox1.startOri = ori;
-                    else TheSegBox1.endOri = ori;
+                // for link boxes just apply it
+                for(auto el:touchPointVector){
+                    const auto& E = G.edges.at(el);
+                    if (E.segPart) continue;
+                    auto& TheLinkBox = boxes.at(boxEdgeIndices.at(el));
+                    TheLinkBox.color = linkColor;
 
-                    // apply to segbox 2
-                    auto& TheSegBox2 = boxes.at(boxEdgeIndices.at(segInds[1]));
-                    TheSegBox2.color = segColor;
-                    if (v == G.edges.at(segInds[1]).start) TheSegBox2.startOri = ori;
-                    else TheSegBox2.endOri = ori;
+                    double segment = glm::length(TheLinkBox.end - TheLinkBox.start) / 3.f;
+                    if (v == E.start) TheLinkBox.CP1 = TheLinkBox.start - ori * segment;
+                    else TheLinkBox.CP2 = TheLinkBox.end - ori * segment;
                 }
-                // if this is a Segment end with no connections
-                else{
-                    // calculate the orientation
-                    size_t SegFarInd;
-                    if (G.edges.at(segInds[0]).start == v) SegFarInd = G.edges.at(segInds[0]).end;
-                    else SegFarInd = G.edges.at(segInds[0]).start;
-                    glm::dvec3 ori = glm::normalize(G.vertices.at(SegFarInd).pos - G.vertices.at(v).pos);
-
-                    // apply to segbox
-                    auto& TheSegBox = boxes.at(boxEdgeIndices.at(segInds[0]));
-                    TheSegBox.color = segColor;
-                    if (v == G.edges.at(segInds[0]).start) TheSegBox.startOri = ori;
-                    else TheSegBox.endOri = ori;
+            }
+            else{
+                // check if segment boxes have control points already and if not, then apply it to them as well
+                for (auto ind:segInds){
+                    auto& TheSegBox = boxes.at(boxEdgeIndices.at(ind));
+                    TheSegBox.CP1 = TheSegBox.start + (TheSegBox.end - TheSegBox.start) / 3.0;
+                    TheSegBox.CP2 = TheSegBox.end - (TheSegBox.end - TheSegBox.start) / 3.0;
                 }
             }
         }

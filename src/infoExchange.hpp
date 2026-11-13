@@ -202,7 +202,7 @@ public:
 
     // subgraph data, and data control
     struct SubgraphData{
-        size_t segment_num, edge_num;
+        size_t segment_num, link_num;
         glm::vec3 pos;
         float radius;
         bool selected = false;
@@ -259,12 +259,16 @@ public:
     // layout variables
     std::atomic<int> current_layout_algorithm = layouts::GRIP;
 
-    // scaling variables
-    std::atomic<int> length_compression{20};
-
-    // segment segmentation
-    std::atomic<int> max_seg_segmentation_degree{0};
+    // segment subdivision
+    std::atomic<int> max_seg_segmentation_degree{64};
     std::atomic<int> min_seg_segmentation_degree{0};
+    std::atomic<bool> simplify_subdivision{true};
+    std::atomic<float> simplification_tolerance{0.1};
+    std::atomic<float> simplification_tension{0.5};
+
+    // if we run subdivision the graph collection will be mangled
+    // and we will have to redo it if we rerun the layout phase again
+    std::atomic<bool> controller_gc_mangled{false};
 
     // grip variables
     std::atomic<float> grip_scalingFactor{0.05f};
