@@ -156,33 +156,39 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
     mr_g->vertices[base[0]].pos = glm::dvec3(0.0);
 
     if (base.size() < 2) return;
-    double dist01 = static_cast<double>(mr_g->findDist(base[0], base[1]) * find_edge_length(base[0], base[1]));
+    double dist01 = static_cast<double>(mr_g->findDist(base[0], base[1])) * find_edge_length(base[0], base[1]);
     mr_g->vertices[base[1]].pos = glm::dvec3(dist01, 0.0, 0.0);
 
     if (base.size() < 3 || m_dimensions+1 < 3) return;
-    double dist02 = static_cast<double>(mr_g->findDist(base[0], base[2]) * find_edge_length(base[0], base[2]));
-    double dist12 = static_cast<double>(mr_g->findDist(base[1], base[2]) * find_edge_length(base[1], base[2]));
-    double x2 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / dist01 / 2.0;
-    double y2 = sqrt(dist02*dist02 - x2*x2);
+    double dist02 = static_cast<double>(mr_g->findDist(base[0], base[2])) * find_edge_length(base[0], base[2]);
+    double dist12 = static_cast<double>(mr_g->findDist(base[1], base[2])) * find_edge_length(base[1], base[2]);
+    double x2 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / (dist01 * 2.0);
+    double y2sq = dist02*dist02 - x2*x2;
+    double y2 = (y2sq > 0.0) ? std::sqrt(y2sq) : 0.0;
     mr_g->vertices[base[2]].pos = glm::dvec3(x2, y2, 0.0);
     
-    if (base.size() == 4 && m_dimensions+1 == 4) return;
-    double dist03 = static_cast<double>(mr_g->findDist(base[0], base[3]) * find_edge_length(base[0], base[3]));
-    double dist13 = static_cast<double>(mr_g->findDist(base[1], base[3]) * find_edge_length(base[1], base[3]));
-    double dist23 = static_cast<double>(mr_g->findDist(base[2], base[3]) * find_edge_length(base[2], base[3]));
+    if (base.size() < 4 || m_dimensions+1 < 4) return;
+    
+    // first three are (nearly) colinear; kick the third point off the X-axis
+    // so the fourth point has a plane to sit on
+    if (std::abs(y2) < 1e-5)
+        mr_g->vertices[base[2]].pos = glm::dvec3(x2, 0.1 * dist01, 0.0);
 
-    if (abs(y2) < 1e-5){ // if first three were colinear
-        double x3 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / dist01 / 2.0;
-        double y3 = sqrt(dist02*dist02 - x3*x3);
-        mr_g->vertices[base[2]].pos = glm::dvec3(x3, y3, 0.0);
-    }
-    else{
-        double x3 = (dist01*dist01 + dist03*dist03 - dist13*dist13) / (2.0 * dist01);
-        double y3 = (x2*x2 + y2*y2 + dist03*dist03 - dist23*dist23 - 2.0*x2*x3) / (2.0 * y2);
-        double z3 = sqrt(dist03*dist03 - x3*x3 - y3*y3);
-        mr_g->vertices[base[3]].pos = glm::dvec3(x3, y3, z3);
-    }
+    double dist03 = static_cast<double>(mr_g->findDist(base[0], base[3])) * find_edge_length(base[0], base[3]);
+    double dist13 = static_cast<double>(mr_g->findDist(base[1], base[3])) * find_edge_length(base[1], base[3]);
+    double dist23 = static_cast<double>(mr_g->findDist(base[2], base[3])) * find_edge_length(base[2], base[3]);
 
+    // Re-fetch x2,y2 in case we perturbed base[2] above
+    const glm::dvec3& p2 = mr_g->vertices[base[2]].pos;
+    x2 = p2.x;
+    y2 = p2.y;
+
+    double x3 = (dist01*dist01 + dist03*dist03 - dist13*dist13) / (2.0 * dist01);
+    double y3 = (x2*x2 + y2*y2 + dist03*dist03 - dist23*dist23 - 2.0*x2*x3) / (2.0 * y2);
+    double z3sq = dist03*dist03 - x3*x3 - y3*y3;
+    double z3 = (z3sq > 0.0) ? std::sqrt(z3sq) : 0.0;
+
+    mr_g->vertices[base[3]].pos = glm::dvec3(x3, y3, z3);
 }
 
 void GRIP::vertex_initial_placement(int ID, const vector<pair<int, int>>& n, const vector<bool>& placed) const {
@@ -351,6 +357,9 @@ void GRIP::run()
         }
         if (i == static_cast<int>(K-1))
             base_filter_placement(current_filter);
+
+        // single-layer graphs are already placed correctly
+        if (K == 1 && N <= static_cast<size_t>(m_dimensions + 1)) break;
 
         for(int r = 0; r < m_rounds_number; r++){
             for(int ID:current_filter){
