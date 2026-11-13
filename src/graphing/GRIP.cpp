@@ -3,12 +3,6 @@
 using namespace std;
 using namespace stdpp;
 
-double GRIP::find_edge_length(int id1, int id2) const {
-    sorted_pair p(id1, id2);
-    if (m_edgeLengths.find(p) == m_edgeLengths.end()) return m_defaultEdgeLength;
-    else return m_defaultEdgeLength * m_edgeLengths.at(p);
-}
-
 [[noreturn]]
 void GRIP::grip_error(const string& description) const {
     spdlog::error("GRIP error: {}", description);
@@ -156,12 +150,12 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
     mr_g->vertices[base[0]].pos = glm::dvec3(0.0);
 
     if (base.size() < 2) return;
-    double dist01 = static_cast<double>(mr_g->findDist(base[0], base[1])) * find_edge_length(base[0], base[1]);
+    double dist01 = static_cast<double>(mr_g->findDist(base[0], base[1])) * m_defaultEdgeLength;
     mr_g->vertices[base[1]].pos = glm::dvec3(dist01, 0.0, 0.0);
 
     if (base.size() < 3 || m_dimensions+1 < 3) return;
-    double dist02 = static_cast<double>(mr_g->findDist(base[0], base[2])) * find_edge_length(base[0], base[2]);
-    double dist12 = static_cast<double>(mr_g->findDist(base[1], base[2])) * find_edge_length(base[1], base[2]);
+    double dist02 = static_cast<double>(mr_g->findDist(base[0], base[2])) * m_defaultEdgeLength;
+    double dist12 = static_cast<double>(mr_g->findDist(base[1], base[2])) * m_defaultEdgeLength;
     double x2 = (dist01*dist01 + dist02*dist02 - dist12*dist12) / (dist01 * 2.0);
     double y2sq = dist02*dist02 - x2*x2;
     double y2 = (y2sq > 0.0) ? std::sqrt(y2sq) : 0.0;
@@ -174,9 +168,9 @@ void GRIP::base_filter_placement(const vector<int>& base) const {
     if (std::abs(y2) < 1e-5)
         mr_g->vertices[base[2]].pos = glm::dvec3(x2, 0.1 * dist01, 0.0);
 
-    double dist03 = static_cast<double>(mr_g->findDist(base[0], base[3])) * find_edge_length(base[0], base[3]);
-    double dist13 = static_cast<double>(mr_g->findDist(base[1], base[3])) * find_edge_length(base[1], base[3]);
-    double dist23 = static_cast<double>(mr_g->findDist(base[2], base[3])) * find_edge_length(base[2], base[3]);
+    double dist03 = static_cast<double>(mr_g->findDist(base[0], base[3])) * m_defaultEdgeLength;
+    double dist13 = static_cast<double>(mr_g->findDist(base[1], base[3])) * m_defaultEdgeLength;
+    double dist23 = static_cast<double>(mr_g->findDist(base[2], base[3])) * m_defaultEdgeLength;
 
     // Re-fetch x2,y2 in case we perturbed base[2] above
     const glm::dvec3& p2 = mr_g->vertices[base[2]].pos;
@@ -236,9 +230,8 @@ glm::dvec3 GRIP::compute_KKforce(int ID, const vector<pair<int, int>>& n) const 
     for(auto& [OTHER_ID, d]:n){
         glm::dvec3 delta = mr_g->vertices.at(OTHER_ID).pos - POS;
         double distR = glm::length2(delta);
-        double edgeL = find_edge_length(ID, OTHER_ID);
-        double distG = edgeL*edgeL * static_cast<double>(d*d);
-        force += delta * (distR / distG - 1.0) * edgeL;
+        double distG = m_defaultEdgeLength*m_defaultEdgeLength * static_cast<double>(d*d);
+        force += delta * (distR / distG - 1.0) * m_defaultEdgeLength;
     }
     return force;
 }
@@ -248,26 +241,19 @@ glm::dvec3 GRIP::compute_FRforce(int ID, const vector<pair<int, int>>& n) const 
     glm::dvec3& POS = mr_g->vertices.at(ID).pos;
     for(auto& [OTHER_ID, _]:mr_g->adjList.at(ID)){
         glm::dvec3 delta = mr_g->vertices.at(OTHER_ID).pos - POS;
-        double edgeL = find_edge_length(ID, OTHER_ID);
-        double factor = glm::length2(delta) / (edgeL*edgeL);
+        double factor = glm::length2(delta) / (m_defaultEdgeLength*m_defaultEdgeLength);
         force += delta * factor;
     }
     for(auto& [OTHER_ID, d]:n){
         glm::dvec3 delta = POS - mr_g->vertices.at(OTHER_ID).pos;
-        double edgeL = find_edge_length(ID, OTHER_ID);
-        double factor = edgeL*edgeL / max<double>(glm::length2(delta), 1e-4);
+        double factor = m_defaultEdgeLength*m_defaultEdgeLength / max<double>(glm::length2(delta), 1e-4);
         force += delta * factor * m_scalingFactor;
     }
     return force;
 }
 
 
-GRIP::GRIP(Graph& G) : mr_g(&G) {
-    // fill edge lengths
-    for(auto& e:mr_g->edges)
-        if (e.length != 1)
-            m_edgeLengths[sorted_pair<int>(e.start, e.end)] = e.length;
-}
+GRIP::GRIP(Graph& G) : mr_g(&G) {}
 
 void GRIP::run()
 {

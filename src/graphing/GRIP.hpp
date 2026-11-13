@@ -12,10 +12,6 @@ private:
     
     double m_defaultEdgeLength = 1.0; // what is the worldspace length equivalent of a graph length of 1
 
-    // override for edge lengths of pairs
-    // if this map contiains a pair, than this value is ued, if not, the default value is used
-    std::unordered_map<stdpp::sorted_pair<int>, int> m_edgeLengths;
-
     double m_scalingFactor = 0.05; // the scaling factor for the Fruchterman-Reingold computation
 
     double m_temperatureGain = 0.45; // keep within <0,1>
@@ -29,9 +25,6 @@ private:
     int m_smallGraphLimit = 10000;
 
     mutable std::mt19937 m_rng{std::random_device{}()};
-
-    // finds out if default value should be used for edge_length or some other value
-    double find_edge_length(int id1, int id2) const;
 
     void compute_filters(std::vector<std::vector<int>>& filters) const;
 
