@@ -29,7 +29,8 @@ void info::draw()
     auto nums = channel->cam->getPos();
     std::string posn = fmt::format("X: {}; Y: {}; Z: {}", nums.x, nums.y, nums.z);
 
-    std::string meshSize = "Vertices drawn: " + std::to_string(channel->renderer->getMeshElNum());
+    auto meshElNum = channel->renderer->getMeshElNum();
+    std::string meshSize = "Triangles: " + std::to_string(meshElNum);
 
     float maxWidth = ImGui::CalcTextSize(version.c_str()).x;
     if (!selText.empty())
@@ -75,9 +76,11 @@ void info::draw()
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
         ImGui::Text("%s", fps.c_str());
 
-        w = ImGui::CalcTextSize(meshSize.c_str()).x;
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
-        ImGui::Text("%s", meshSize.c_str());
+        if (meshElNum){
+            w = ImGui::CalcTextSize(meshSize.c_str()).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
+            ImGui::Text("%s", meshSize.c_str());
+        }
 
         w = ImGui::CalcTextSize(speed.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));

@@ -79,9 +79,10 @@ private:
     // output buffers for bezier shader
     struct VertexOut { glm::vec4 pos; glm::vec4 color; };
     GLBuffer m_meshBuffer;
-    GLBuffer m_meshCounter;
-    size_t m_meshCapacity = 0;
-    size_t m_lastMeshNum = 0;
+    GLBuffer m_meshIndexBuffer;
+    GLBuffer m_drawCountsBuffer;
+    size_t m_vertCapacity, m_indCapacity = 0;
+    size_t m_lastIndNum = 0, m_lastVertNum = 0;
 
     GLVertexArray m_VA; // id of the vertex array
 
@@ -160,5 +161,5 @@ public:
     std::optional<std::tuple<glm::vec3, float>> getIDOrbitData(int externalID) const;
 
     // get mesh element number (as debug info)
-    size_t getMeshElNum() { return m_lastMeshNum; }
+    size_t getMeshElNum() { return m_lastIndNum / 3; }
 };

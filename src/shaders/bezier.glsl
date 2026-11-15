@@ -19,7 +19,8 @@ layout(binding = 0, offset = 0) uniform atomic_uint counter;
 // generated mesh output 
 struct VertexOut { vec4 pos; vec4 color; };
 layout(std430, binding = 3) buffer MeshOutput { VertexOut verts[]; };
-layout(std430, binding = 4) buffer VertexCounter { uint vertCount; };
+layout(std430, binding = 4) buffer MeshIndices { uint indices[]; };
+layout(std430, binding = 5) buffer DrawCounts { uint vertCount; uint idxCount; };
 
 // uniforms 
 uniform mat4 MVP;
@@ -99,14 +100,6 @@ float computeTess(ControlPoints b, float halfExt) {
     return clamp(tess, 2.0, maxAllowedTess);
 }
 
-// mesh emit helpers 
-void writeTri(VertexOut a, VertexOut b, VertexOut c) {
-    uint base = atomicAdd(vertCount, 3);
-    verts[base] = a;
-    verts[base + 1] = b;
-    verts[base + 2] = c;
-}
-
 // i = corner index, used only for body shading (i%2==0 → darken)
 VertexOut makePoint(vec3 p, vec3 N, vec3 B, vec2 h, ivec2 cor, vec4 col, bool end, int i) {
     vec3 world = p + h.x * cor.x * N + h.y * cor.y * B;
@@ -114,6 +107,13 @@ VertexOut makePoint(vec3 p, vec3 N, vec3 B, vec2 h, ivec2 cor, vec4 col, bool en
     if (end)       c.rgb *= 0.95;
     else if (i%2==0) c.rgb *= 0.9;
     return VertexOut(MVP * vec4(world, 1.0), c);
+}
+
+void emitVert(inout uint vOff, inout uint lv, VertexOut v) { verts[vOff + lv++] = v; }
+void emitIdx(inout uint iOff, inout uint li, uint a, uint b, uint c) {
+    indices[iOff + li++] = a;
+    indices[iOff + li++] = b;
+    indices[iOff + li++] = c;
 }
 
 void main() {
@@ -124,13 +124,10 @@ void main() {
     Appearance a = aps[idx];
     vec4 baseColor = unpackUnorm4x8(a.color);
 
-    // T0 / N0
+    // init frame data
     vec3 T0 = normalize(3.0 * (b.P[1].xyz - b.P[0].xyz));
     vec3 ref = (abs(T0.y) > 0.9) ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
     vec3 N0 = normalize(cross(ref, T0));
-
-    float tess = computeTess(b, a.halfExt.x);
-    int numSegs = max(2, int(floor(tess * 0.5 + 0.5)) * 2); // nearest even, same as hw
 
     vec3 prevPos = bezier(b.P, 0.0);
     vec3 prevT = normalize(bezierDeriv(b.P, 0.0));
@@ -151,14 +148,31 @@ void main() {
         }
     }
 
+    // tesselation data
+    float tess = computeTess(b, a.halfExt.x);
+    int numSegs = max(2, int(floor(tess * 0.5 + 0.5)) * 2); // nearest even, same as hw
+
+    // data for index buffer
+    uint nRings = uint(numSegs) + 1; //shared seams
+    uint myVerts = 4 + 4*nRings + 4; // start cap + body + end cap
+    uint myIdx = 6 + 24*uint(numSegs) + 6; // caps + body tris + caps
+
+    uint vOff = atomicAdd(vertCount, myVerts);
+    uint iOff = atomicAdd(idxCount, myIdx);
+
+    uint lv = 0; // local vertex offset inside this curve
+    uint li = 0; // local index offset inside this curve
+
     // start cap
-    VertexOut scap[4];
-    for (int i = 0; i < 4; i++) {
-        int ci = (i + 2) % 4;
-        scap[i] = makePoint(prevPos, prevN, prevB, a.halfExt, endCorners[ci], prevColor, true, 0);
-    }
-    writeTri(scap[2], scap[1], scap[0]);
-    writeTri(scap[3], scap[2], scap[0]);
+    for (int c = 0; c < 4; c++)
+        emitVert(vOff, lv, makePoint(prevPos, prevN, prevB, a.halfExt, endCorners[c], prevColor, true, 0));
+    emitIdx(iOff, li, vOff+2, vOff+1, vOff+0);
+    emitIdx(iOff, li, vOff+3, vOff+2, vOff+0);
+
+    // first ring
+    for (int c = 0; c < 4; c++)
+        emitVert(vOff, lv, makePoint(prevPos, prevN, prevB, a.halfExt, corners[c], prevColor, false, c));
+    uint prevRing = 4; // local vertex index where the previous ring starts
 
     // body segments + end cap
     for (int seg = 0; seg < numSegs; seg++) {
@@ -183,26 +197,32 @@ void main() {
             }
         }
 
-        // tube wall: generate the 8-vertex strip, then decompose into 8 independent triangles
-        VertexOut strip[8];
-        for (int i = 0; i < 4; i++) {
-            strip[i*2] = makePoint(prevPos, prevN, prevB, a.halfExt, corners[i], prevColor, false, i);
-            strip[i*2+1] = makePoint(pos, N, B, a.halfExt, corners[i], ptCol, false, i);
-        }
-        for (int i = 0; i < 4; i++){
-            writeTri(strip[2*i], strip[(2*i+2)%8], strip[(2*i+1)%8]);
-            writeTri(strip[(2*i+1)%8], strip[(2*i+2)%8], strip[(2*i+3)%8]);
+        uint nextRing = prevRing + 4;
+        for (int c = 0; c < 4; c++)
+            emitVert(vOff, lv, makePoint(pos, N, B, a.halfExt, corners[c], ptCol, false, c));
+
+        // 4 faces, each 2 triangles = 8 triangles per segment
+        for (int side = 0; side < 4; side++) {
+            int c0 = side;
+            int c1 = (side + 1) % 4;
+
+            uint p0 = vOff + prevRing + c0;
+            uint p1 = vOff + prevRing + c1;
+            uint n0 = vOff + nextRing + c0;
+            uint n1 = vOff + nextRing + c1;
+
+            emitIdx(iOff, li, n0, p0, p1);
+            emitIdx(iOff, li, n0, p1, n1);
         }
 
-        // end cap on last segment
-        if (seg == numSegs - 1) {
-            VertexOut ecap[4];
-            for (int i = 0; i < 4; i++)
-                ecap[i] = makePoint(pos, N, B, a.halfExt, endCorners[i], ptCol, true, 0);
-            writeTri(ecap[0], ecap[1], ecap[2]);
-            writeTri(ecap[2], ecap[3], ecap[0]);
-        }
-
+        prevRing = nextRing;
         prevPos = pos; prevN = N; prevB = B; prevColor = ptCol;
     }
+
+    uint capBase = vOff + lv; // local offset where cap starts
+    for (int c = 0; c < 4; c++)
+        emitVert(vOff, lv, makePoint(prevPos, prevN, prevB, a.halfExt, endCorners[c], prevColor, true, 0));
+
+    emitIdx(iOff, li, capBase+0, capBase+1, capBase+2);
+    emitIdx(iOff, li, capBase+2, capBase+3, capBase+0);
 }

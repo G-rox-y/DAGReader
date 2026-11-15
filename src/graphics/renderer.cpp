@@ -263,9 +263,9 @@ void Renderer::updateBuffers()
         glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
         
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshCounter);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshCounter);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_drawCountsBuffer);
 
         while(!m_needUpdating.empty()) m_needUpdating.pop();
         m_resizeHappened = false;
@@ -299,16 +299,20 @@ void Renderer::draw() {
     glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
     glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshCounter);
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), &zero);
+    GLuint zeroes[2] = {0, 0};
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(zeroes), zeroes);
 
-    // grow mesh buffer if needed: worst case 64 segs × 24 + caps 12 + selection 195 ≈ 1.7k verts/curve
-    size_t maxVerts = m_indexSize * 1743;
-    if (maxVerts > m_meshCapacity) {
-        m_meshCapacity = std::max<size_t>(maxVerts * 2, 65536);
+    // grow buffers if needed
+    if (m_lastVertNum > m_vertCapacity) {
+        m_vertCapacity = m_lastVertNum;
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, m_meshCapacity * sizeof(VertexOut),
-                     nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, m_vertCapacity * sizeof(VertexOut), nullptr, GL_DYNAMIC_DRAW);
+    }
+    if (m_lastIndNum > m_indCapacity) {
+        m_indCapacity = m_lastIndNum;
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshIndexBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, m_indCapacity * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
     }
 
     // bind all buffers to the slots the shader expects
@@ -317,7 +321,8 @@ void Renderer::draw() {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_VB2);
     glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshBuffer);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshCounter);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshIndexBuffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_drawCountsBuffer);
 
     // one thread per curve
     glDispatchCompute((m_indexSize + 63) / 64, 1, 1);
@@ -343,14 +348,17 @@ void Renderer::draw() {
     m_selectionID = bestID;
 
     // ── DRAW PASS ──
-    GLuint totalVerts;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshCounter);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), &totalVerts);
-    m_lastMeshNum = totalVerts;
+    GLuint counts[2];
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(counts), &counts);
+    GLuint totalIndices = counts[1];
+    m_lastIndNum = totalIndices;
+    m_lastVertNum = counts[0];
 
     m_graphics->use();
-    glBindVertexArray(m_VA); // dummy VAO, no attribs bound
-    glDrawArrays(GL_TRIANGLES, 0, totalVerts);
+    glBindVertexArray(m_VA);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_meshIndexBuffer);
+    glDrawElements(GL_TRIANGLES, totalIndices, GL_UNSIGNED_INT, nullptr);
 }
 
 bool Renderer::addMouseSelectionToGroup(const int id){
