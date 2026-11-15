@@ -73,8 +73,8 @@ private:
     };
 
     // VB0 and VB1 are for control points and appearances
-    // VB2 is for selection retrieval data and AC0 is its atomic counter
-    GLBuffer m_VB0, m_VB1, m_VB2, m_AC0;
+    // VB2 is for selection retrieval data
+    GLBuffer m_VB0, m_VB1, m_VB2;
 
     // output buffers for bezier shader
     struct VertexOut { glm::vec4 pos; glm::vec4 color; };

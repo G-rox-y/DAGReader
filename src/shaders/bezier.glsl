@@ -14,13 +14,12 @@ layout(std430, binding = 2) buffer OutputBuffer {
     int IDs[16];
     float Dists[16];
 };
-layout(binding = 0, offset = 0) uniform atomic_uint counter;
 
 // generated mesh output 
 struct VertexOut { vec4 pos; vec4 color; };
 layout(std430, binding = 3) buffer MeshOutput { VertexOut verts[]; };
 layout(std430, binding = 4) buffer MeshIndices { uint indices[]; };
-layout(std430, binding = 5) buffer DrawCounts { uint vertCount; uint idxCount; };
+layout(std430, binding = 5) buffer DrawCounts { uint vertCount; uint idxCount; uint selCount; };
 
 // uniforms 
 uniform mat4 MVP;
@@ -140,7 +139,7 @@ void main() {
     vec4 prevColor = prevHover ? unpackUnorm4x8(-a.color) : baseColor;
 
     if (prevHover) {
-        uint ac = atomicCounterIncrement(counter);
+        uint ac = atomicAdd(selCount, 1);
         if (ac < 16) {
             IDs[ac] = int(idx);
             Dists[ac] = prevDist; 
@@ -187,7 +186,7 @@ void main() {
         vec4 ptCol = hover ? unpackUnorm4x8(-a.color) : baseColor;
 
         if (hover) {
-            uint ac = atomicCounterIncrement(counter);
+            uint ac = atomicAdd(selCount, 1);
             if (ac < 16) {
                 IDs[ac] = int(idx);
                 Dists[ac] = idist;

@@ -259,12 +259,8 @@ void Renderer::updateBuffers()
         glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(selections), nullptr, GL_DYNAMIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_VB2);
         
-        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
-        glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
-        
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, 2 * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, 3 * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_drawCountsBuffer);
 
         while(!m_needUpdating.empty()) m_needUpdating.pop();
@@ -295,11 +291,7 @@ void Renderer::draw() {
     m_bezier->use();
 
     // reset counters
-    GLuint zero = 0;
-    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
-    glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
-
-    GLuint zeroes[2] = {0, 0};
+    GLuint zeroes[3] = {0, 0, 0};
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(zeroes), zeroes);
 
@@ -319,7 +311,6 @@ void Renderer::draw() {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_VB0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_VB1);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_VB2);
-    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshBuffer);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshIndexBuffer);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, m_drawCountsBuffer);
@@ -328,37 +319,33 @@ void Renderer::draw() {
     glDispatchCompute((m_indexSize + 63) / 64, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
 
-    // ── SELECTION READBACK (unchanged logic) ──
-    GLuint count;
-    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
-    glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &count);
-    count = std::min<int>(count, MAX_SELECTIONS);
+    // draw pass
+    GLuint counts[3];
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(counts), &counts);
+    GLuint totalIndices = counts[1];
+    m_lastIndNum = totalIndices;
+    m_lastVertNum = counts[0];
+    GLuint selectionCount = counts[2];
 
+    m_graphics->use();
+    glBindVertexArray(m_VA);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_meshIndexBuffer);
+    glDrawElements(GL_TRIANGLES, totalIndices, GL_UNSIGNED_INT, nullptr);
+
+    // selection readback
     selections results;
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
 
     int bestID = -1; float bestDist = 1e10;
-    for (GLuint i = 0; i < count; i++) {
+    for (GLuint i = 0; i < selectionCount; i++) {
         if (results.dists[i] < bestDist) {
             bestID = results.ids[i];
             bestDist = results.dists[i];
         }
     }
     m_selectionID = bestID;
-
-    // ── DRAW PASS ──
-    GLuint counts[2];
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_drawCountsBuffer);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(counts), &counts);
-    GLuint totalIndices = counts[1];
-    m_lastIndNum = totalIndices;
-    m_lastVertNum = counts[0];
-
-    m_graphics->use();
-    glBindVertexArray(m_VA);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_meshIndexBuffer);
-    glDrawElements(GL_TRIANGLES, totalIndices, GL_UNSIGNED_INT, nullptr);
 }
 
 bool Renderer::addMouseSelectionToGroup(const int id){
