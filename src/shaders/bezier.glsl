@@ -104,8 +104,7 @@ float computeTess(ControlPoints b, float halfExt) {
 VertexOut makePoint(vec3 p, vec3 N, vec3 B, vec2 h, ivec2 cor, vec4 col, bool end, int i) {
     vec3 world = p + h.x * cor.x * N + h.y * cor.y * B;
     vec4 c = col;
-    if (end)       c.rgb *= 0.95;
-    else if (i%2==0) c.rgb *= 0.9;
+    if (i%2==0) c.rgb *= 0.9;
     return VertexOut(MVP * vec4(world, 1.0), c);
 }
 
@@ -154,7 +153,7 @@ void main() {
 
     // data for index buffer
     uint nRings = uint(numSegs) + 1; //shared seams
-    uint myVerts = 4 + 4*nRings + 4; // start cap + body + end cap
+    uint myVerts = 4*nRings; // start cap + body + end cap
     uint myIdx = 6 + 24*uint(numSegs) + 6; // caps + body tris + caps
 
     uint vOff = atomicAdd(vertCount, myVerts);
@@ -163,16 +162,14 @@ void main() {
     uint lv = 0; // local vertex offset inside this curve
     uint li = 0; // local index offset inside this curve
 
-    // start cap
-    for (int c = 0; c < 4; c++)
-        emitVert(vOff, lv, makePoint(prevPos, prevN, prevB, a.halfExt, endCorners[c], prevColor, true, 0));
-    emitIdx(iOff, li, vOff+2, vOff+1, vOff+0);
-    emitIdx(iOff, li, vOff+3, vOff+2, vOff+0);
-
     // first ring
     for (int c = 0; c < 4; c++)
         emitVert(vOff, lv, makePoint(prevPos, prevN, prevB, a.halfExt, corners[c], prevColor, false, c));
-    uint prevRing = 4; // local vertex index where the previous ring starts
+
+    emitIdx(iOff, li, vOff+2, vOff+1, vOff+0);
+    emitIdx(iOff, li, vOff+3, vOff+2, vOff+0);
+
+    uint prevRing = 0; // local vertex index where the previous ring starts
 
     // body segments + end cap
     for (int seg = 0; seg < numSegs; seg++) {
@@ -197,7 +194,7 @@ void main() {
             }
         }
 
-        uint nextRing = prevRing + 4;
+        uint nextRing = lv;
         for (int c = 0; c < 4; c++)
             emitVert(vOff, lv, makePoint(pos, N, B, a.halfExt, corners[c], ptCol, false, c));
 
@@ -219,10 +216,6 @@ void main() {
         prevPos = pos; prevN = N; prevB = B; prevColor = ptCol;
     }
 
-    uint capBase = vOff + lv; // local offset where cap starts
-    for (int c = 0; c < 4; c++)
-        emitVert(vOff, lv, makePoint(prevPos, prevN, prevB, a.halfExt, endCorners[c], prevColor, true, 0));
-
-    emitIdx(iOff, li, capBase+0, capBase+1, capBase+2);
-    emitIdx(iOff, li, capBase+2, capBase+3, capBase+0);
+    emitIdx(iOff, li, vOff+prevRing+0, vOff+prevRing+1, vOff+prevRing+2);
+    emitIdx(iOff, li, vOff+prevRing+2, vOff+prevRing+3, vOff+prevRing+0);
 }
