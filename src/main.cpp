@@ -12,12 +12,15 @@
 //
 // V 1.1 "The Graphics update" Roadmap:
 // [x] - Adding curve segmentation
-// [] - Replace Geometry shaders with Compute shaders
+// [x] - Replace Geometry shaders with Compute shaders
 // [] - Switch graphics backend to Vulkan
 // [] - Mac support
+// [] - Add compute shaders for calculating which boxes need not be drawn at all
 // [] - Adding compute shaders for RMF calculations
 // [] - Add Maxent as default layout
 // [] - 2D control scheme
+// [] - Replace realtime gpu side hover highlighting with cpu side highlighting
+// [] - Rethink the selection mechanism to be always active
 //
 // V 1.2 "The GFA1 update" Roadmap:
 // [] - Adding Fuzzy search
@@ -31,6 +34,8 @@
 // [] - More graph info (like in Bandage), also can be turned into subgraph info
 // [] - Modify GFA data stored in tags
 // [] - Tag based coloring
+// [] - Sequence reading from external files
+// [] - File descriptions (like in bandageng)
 //
 // Other planned features
 // [] - Export image of view
@@ -40,6 +45,8 @@
 // [] - Moving segments and links (like in Bandage)
 // [] - Memory optimizations
 // [] - Changeable debug timestamp precision (save in .ini)
+// [] - Layout time estimates
+// [] - Kofi
 
 int main()
 {

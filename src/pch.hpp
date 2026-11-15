@@ -34,6 +34,7 @@
 #include <iterator>
 #include <unordered_map>
 #include <unordered_set>
+#include <initializer_list>
 
 #include <cctype>
 #include <limits>

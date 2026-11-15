@@ -1,61 +1,43 @@
 #include "GLProgram.hpp"
 
-GLuint GLProgram::loadShader(const GLuint type)
-{   
+GLuint GLProgram::loadShader(ShaderType type) {
     const char* code = nullptr;
-    
-    if (type == GL_VERTEX_SHADER) code = vertexShaderSource;
-    else if (type == GL_TESS_CONTROL_SHADER) code = tcsShaderSource;
-    else if (type == GL_TESS_EVALUATION_SHADER) code = tesShaderSource;
-    else if (type == GL_GEOMETRY_SHADER) code = geometryShaderSource;
-    else if (type == GL_FRAGMENT_SHADER) code = fragmentShaderSource;
-    else spdlog::warn("Shader type '{}' is not allowed", type);
-
-    GLuint shader = glCreateShader(type);
-    if (shader == GL_INVALID_ENUM)
-        spdlog::warn("Shader type '{}' is invalid", type);
-
-    glShaderSource(shader, 1, &code, nullptr);
-    glCompileShader(shader);
-
-    GLint success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success){
-        std::array<char, 512> infolog;
-        glGetShaderInfoLog(shader, infolog.size(), nullptr, infolog.data());
-        spdlog::error("Shader fail: {}", infolog.data());
+    GLuint GLshaderType;
+    switch (type) {
+        case VERT_SHADER: code = vertexShaderSource; GLshaderType = GL_VERTEX_SHADER; break;
+        case FRAG_SHADER: code = fragmentShaderSource; GLshaderType = GL_FRAGMENT_SHADER; break;
+        case BEZIER_SHADER: code = computeShaderBezierSource; GLshaderType = GL_COMPUTE_SHADER; break;
+        default: spdlog::warn("Shader type '{}' not allowed", static_cast<int>(type)); break;
     }
+    GLuint s = glCreateShader(GLshaderType);
+    glShaderSource(s, 1, &code, nullptr);
+    glCompileShader(s);
 
-    return shader;
+    GLint ok; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+    if (!ok) {
+        std::array<char, 512> log;
+        glGetShaderInfoLog(s, log.size(), nullptr, log.data());
+        spdlog::error("Shader fail: {}", log.data());
+    }
+    return s;
 }
 
-GLProgram::GLProgram()
-{
+
+GLProgram::GLProgram(std::initializer_list<ShaderType> stages) {
     id = glCreateProgram();
-    
-    GLuint shaders[] = {
-        loadShader(GL_VERTEX_SHADER),
-        loadShader(GL_TESS_CONTROL_SHADER),
-        loadShader(GL_TESS_EVALUATION_SHADER),
-        loadShader(GL_GEOMETRY_SHADER),
-        loadShader(GL_FRAGMENT_SHADER)
-    };
-    
-    for (GLuint shader : shaders) glAttachShader(id, shader);
-
-    glLinkProgram(id);
-
-    GLint success;
-    glGetProgramiv(id, GL_LINK_STATUS, &success);
-    if (!success){
-        std::array<char, 512> infolog;
-        glGetProgramInfoLog(id, infolog.size(), nullptr, infolog.data());
-        spdlog::error("Shader fail: {}", infolog.data());
+    std::vector<GLuint> attached;
+    for (auto t : stages) {
+        GLuint s = loadShader(t);
+        if (s) { glAttachShader(id, s); attached.push_back(s); }
     }
-
-    // we dont need shaders after compilation
-    for (GLuint shader : shaders) glDeleteShader(shader);
-
+    glLinkProgram(id);
+    GLint ok; glGetProgramiv(id, GL_LINK_STATUS, &ok);
+    if (!ok) {
+        std::array<char, 512> log;
+        glGetProgramInfoLog(id, log.size(), nullptr, log.data());
+        spdlog::error("Link fail: {}", log.data());
+    }
+    for (auto s : attached) glDeleteShader(s);
     use();
 }
 
@@ -66,28 +48,30 @@ GLProgram::~GLProgram(){
 
 GLint GLProgram::getUniformLocation(const std::string& param)
 {
-    if (uniformLocationCache.find(param) != uniformLocationCache.end()) return uniformLocationCache[param];
-
-    GLint location = glGetUniformLocation(id, param.c_str());
-    
-    if (location == -1) spdlog::warn("uniform {} doesnt exist", param);
-    
-    uniformLocationCache[param] = location;
-    return location;
+    auto it = uniformLocationCache.find(param);
+    if (it != uniformLocationCache.end()) return it->second;
+    GLint loc = glGetUniformLocation(id, param.c_str());
+    if (loc == -1) spdlog::warn("Uniform '{}' missing", param);
+    uniformLocationCache[param] = loc;
+    return loc;
 }
 
 void GLProgram::setUniformMat4f(const std::string& param, const glm::mat4& matrix){
+    use();
     glUniformMatrix4fv(this->getUniformLocation(param), 1, false, &matrix[0][0]);
 }
 
 void GLProgram::setUniformVec3f(const std::string& param, const glm::vec3& vector){
+    use();
     glUniform3fv(this->getUniformLocation(param), 1, &vector[0]);
 }
 
 void GLProgram::setUniform1f(const std::string& param, float num){
+    use();
     glUniform1f(this->getUniformLocation(param), num);
 }
 
 void GLProgram::setUniform1i(const std::string& param, int num){
+    use();
     glUniform1i(this->getUniformLocation(param), num);
 }

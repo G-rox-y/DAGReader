@@ -371,7 +371,7 @@ Graph simplify_graph(Graph& G, Graph& S, float prune_tolerance, float bezier_tol
             size_t segLid = R.edges.size();
             Edge ne(G.edges.at(plid).gid, rid0, rid1);
             ne.segPart = true;
-            ne.length  = std::max(1, G.edges.at(plid).length / static_cast<int>(chunks.size()));
+            ne.length = std::max(1, G.edges.at(plid).length / static_cast<int>(chunks.size()));
             ne.parent_lid = plid;
             ne.lid = segLid;
             R.edges.push_back(std::move(ne));

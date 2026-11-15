@@ -158,6 +158,12 @@ void Renderer::removeEntryFromGroup(const IndexRange& entry, const int id){
     }
 }
 
+Renderer::Renderer() {
+    m_bezier = std::make_unique<GLProgram>(std::initializer_list<ShaderType>{BEZIER_SHADER});
+    m_graphics = std::make_unique<GLProgram>(std::initializer_list<ShaderType>{VERT_SHADER, FRAG_SHADER});
+}
+
+
 void Renderer::addID2Group(const size_t id, const int groupID){
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     auto elit = m_externalID2RendererID.find(id);
@@ -244,15 +250,22 @@ void Renderer::updateBuffers()
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB0);
         glBufferData(GL_SHADER_STORAGE_BUFFER, m_indexSize * arrsize, m_controlPoints.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_VB0);
+
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB1);
         glBufferData(GL_SHADER_STORAGE_BUFFER, m_indexSize * appsize, m_appearances.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_VB1);
+        
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
         glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(selections), nullptr, GL_DYNAMIC_READ);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_VB2);
+        
         glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
         glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
+        
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshCounter);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshCounter);
 
         while(!m_needUpdating.empty()) m_needUpdating.pop();
         m_resizeHappened = false;
@@ -269,47 +282,75 @@ void Renderer::updateBuffers()
     }
 }
 
-void Renderer::draw()
-{
-    std::unique_lock lk(m_ownership, std::try_to_lock); // try to lock the ownership mutex
-    if (!lk.owns_lock()) return; // if you fail, its ok to skip the frame(s)
+void Renderer::draw() {
+    std::unique_lock lk(m_ownership, std::try_to_lock);
+    if (!lk.owns_lock()) return;
 
     if (!m_needUpdating.empty() || m_resizeHappened)
         updateBuffers();
 
-    
-    if (m_indexSize){
-        // reset ac0
-        GLuint zero = 0;
-        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
-        glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
-        
-        glBindVertexArray(m_VA);
-        glPatchParameteri(GL_PATCH_VERTICES, 1);
-        glDrawArraysInstanced(GL_PATCHES, 0, 1, m_indexSize);
+    if (m_indexSize == 0) return;
 
-        // read shader output (closest point to mouse vector)
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
-    
-        GLuint count;
-        glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
-        glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &count);
-        count = std::min<int>(count, MAX_SELECTIONS);
-        
-        selections results;
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
-    
-        int bestID = -1; float bestDist = 1e10;
-        for(GLuint i = 0; i < count; i++){
-            if (results.dists[i] < bestDist){
-                bestID = results.ids[i];
-                bestDist = results.dists[i];
-            }
-        }
-        m_selectionID = bestID;
+    // ── COMPUTE PASS ──
+    m_bezier->use();
+
+    // reset counters
+    GLuint zero = 0;
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
+    glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &zero);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshCounter);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), &zero);
+
+    // grow mesh buffer if needed: worst case 64 segs × 24 + caps 12 + selection 195 ≈ 1.7k verts/curve
+    size_t maxVerts = m_indexSize * 1743;
+    if (maxVerts > m_meshCapacity) {
+        m_meshCapacity = std::max<size_t>(maxVerts * 2, 65536);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshBuffer);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, m_meshCapacity * sizeof(VertexOut),
+                     nullptr, GL_DYNAMIC_DRAW);
     }
 
+    // bind all buffers to the slots the shader expects
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_VB0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_VB1);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_VB2);
+    glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, m_AC0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, m_meshBuffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, m_meshCounter);
+
+    // one thread per curve
+    glDispatchCompute((m_indexSize + 63) / 64, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_ATOMIC_COUNTER_BARRIER_BIT);
+
+    // ── SELECTION READBACK (unchanged logic) ──
+    GLuint count;
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_AC0);
+    glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &count);
+    count = std::min<int>(count, MAX_SELECTIONS);
+
+    selections results;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_VB2);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(selections), &results);
+
+    int bestID = -1; float bestDist = 1e10;
+    for (GLuint i = 0; i < count; i++) {
+        if (results.dists[i] < bestDist) {
+            bestID = results.ids[i];
+            bestDist = results.dists[i];
+        }
+    }
+    m_selectionID = bestID;
+
+    // ── DRAW PASS ──
+    GLuint totalVerts;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_meshCounter);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(GLuint), &totalVerts);
+    m_lastMeshNum = totalVerts;
+
+    m_graphics->use();
+    glBindVertexArray(m_VA); // dummy VAO, no attribs bound
+    glDrawArrays(GL_TRIANGLES, 0, totalVerts);
 }
 
 bool Renderer::addMouseSelectionToGroup(const int id){

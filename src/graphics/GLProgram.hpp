@@ -4,6 +4,10 @@
 #include "pch.hpp"
 #include "shaders/shaderEmbed.hpp"
 
+enum ShaderType{
+    FRAG_SHADER, VERT_SHADER, BEZIER_SHADER
+};
+
 // class used to manage gl programs (shaders)
 class GLProgram{
 private:
@@ -13,10 +17,10 @@ private:
     std::unordered_map<std::string, GLint> uniformLocationCache;
 
     // loads a shader into a program
-    GLuint loadShader(const GLuint type);
+    GLuint loadShader(const ShaderType type);
 
 public:
-    GLProgram(); // constructor loads and compiles shaders into the program
+    explicit GLProgram(std::initializer_list<ShaderType> stages); // constructor loads and compiles shaders into the program
     ~GLProgram();
     // dont copy!
     GLProgram(const GLProgram&) = delete;

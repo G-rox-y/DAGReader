@@ -354,7 +354,6 @@ void Window::run()
 
         // pass the camera view matrix through uniform
         channel->renderer->program().setUniformMat4f("MVP", channel->cam->getMat());
-        channel->renderer->program().setUniform1f("Scale", channel->cam->getScale());
         channel->renderer->program().setUniform1i("Selection", channel->selection_mode.load());
         channel->renderer->program().setUniformVec3f("CamPos", channel->cam->getPos());
         channel->renderer->program().setUniform1f("PxPerRad", (float)m_fb_height / channel->cam->getFOV());

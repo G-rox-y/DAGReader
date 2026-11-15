@@ -29,6 +29,8 @@ void info::draw()
     auto nums = channel->cam->getPos();
     std::string posn = fmt::format("X: {}; Y: {}; Z: {}", nums.x, nums.y, nums.z);
 
+    std::string meshSize = "Vertices drawn: " + std::to_string(channel->renderer->getMeshElNum());
+
     float maxWidth = ImGui::CalcTextSize(version.c_str()).x;
     if (!selText.empty())
         maxWidth = std::max(maxWidth, ImGui::CalcTextSize(selText.c_str()).x);
@@ -37,6 +39,7 @@ void info::draw()
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(fps.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(speed.c_str()).x);
     maxWidth = std::max(maxWidth, ImGui::CalcTextSize(posn.c_str()).x);
+    maxWidth = std::max(maxWidth, ImGui::CalcTextSize(meshSize.c_str()).x);
 
     float winW = maxWidth + ImGui::GetStyle().WindowPadding.x * 2.f;
 
@@ -71,6 +74,10 @@ void info::draw()
         w = ImGui::CalcTextSize(fps.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
         ImGui::Text("%s", fps.c_str());
+
+        w = ImGui::CalcTextSize(meshSize.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));
+        ImGui::Text("%s", meshSize.c_str());
 
         w = ImGui::CalcTextSize(speed.c_str()).x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (avail - w));

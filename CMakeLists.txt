@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # project init
-project(DAGReader VERSION 1.0.2)
+project(DAGReader VERSION 1.0.3)
 
 # default build type is debug
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -128,18 +128,14 @@ add_custom_command(
         ${CMAKE_BINARY_DIR}/src/shaderEmbed.cpp
     COMMAND ${CMAKE_COMMAND} 
         -DINPUT_VERT=${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
-        -DINPUT_TCS=${CMAKE_SOURCE_DIR}/src/shaders/tcs.glsl
-        -DINPUT_TES=${CMAKE_SOURCE_DIR}/src/shaders/tes.glsl
-        -DINPUT_GEOM=${CMAKE_SOURCE_DIR}/src/shaders/geometry.glsl
         -DINPUT_FRAG=${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
+        -DINPUT_BEZIER=${CMAKE_SOURCE_DIR}/src/shaders/bezier.glsl
         -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/src/shaderEmbed.cpp
         -P ${CMAKE_SOURCE_DIR}/src/shaders/shaderEmbed.cmake
     DEPENDS 
         ${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
-        ${CMAKE_SOURCE_DIR}/src/shaders/tcs.glsl
-        ${CMAKE_SOURCE_DIR}/src/shaders/tes.glsl
-        ${CMAKE_SOURCE_DIR}/src/shaders/geometry.glsl
         ${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
+        ${CMAKE_SOURCE_DIR}/src/shaders/bezier.glsl
 )
 
 # Embed the license into the code

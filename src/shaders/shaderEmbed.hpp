@@ -1,10 +1,8 @@
 #pragma once
 
 extern const char* vertexShaderSource;
-extern const char* tcsShaderSource;
-extern const char* tesShaderSource;
-extern const char* geometryShaderSource;
 extern const char* fragmentShaderSource;
+extern const char* computeShaderBezierSource;
 
 // thats all for this file, now you may wonder where are these ShaderSource-s defined?
 // the file in this folder called shaderEmbed.cmake will upon building the project create respective ShaderSource.cpp files

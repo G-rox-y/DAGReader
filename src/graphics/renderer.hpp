@@ -75,6 +75,14 @@ private:
     // VB0 and VB1 are for control points and appearances
     // VB2 is for selection retrieval data and AC0 is its atomic counter
     GLBuffer m_VB0, m_VB1, m_VB2, m_AC0;
+
+    // output buffers for bezier shader
+    struct VertexOut { glm::vec4 pos; glm::vec4 color; };
+    GLBuffer m_meshBuffer;
+    GLBuffer m_meshCounter;
+    size_t m_meshCapacity = 0;
+    size_t m_lastMeshNum = 0;
+
     GLVertexArray m_VA; // id of the vertex array
 
     // --- shader info return
@@ -93,8 +101,10 @@ private:
     // this function is going to fill the vertex buffer object with data and properly assign its vertex array
     void updateBuffers();
 
-    GLProgram m_program; // the shaders
-    
+    // shader programs
+    std::unique_ptr<GLProgram> m_bezier;
+    std::unique_ptr<GLProgram> m_graphics;
+
     mutable std::mutex m_ownership; // ownership mutex to keep the renderer thread safe
     mutable std::recursive_mutex m_group_lock; // group modification mutex
 
@@ -104,7 +114,7 @@ private:
 
     std::optional<std::tuple<glm::vec3, float>> getOrbitData(const std::vector<IndexRange>& ranges) const ;
 public:
-    Renderer() = default;
+    Renderer();
     ~Renderer() = default;
     // but not meant to be copied!!
     Renderer(const Renderer&) = delete;
@@ -139,7 +149,7 @@ public:
     bool addMouseSelectionToGroup(const int id);
 
     // reach shaders
-    GLProgram& program() { return m_program; }
+    GLProgram& program() { return *m_bezier; }
 
     // this function returns the IDs of all elements of a group
     std::vector<size_t> getGroupIDs(int ID) const;
@@ -148,4 +158,7 @@ public:
     // first element is the point around which the camera will orbit, and second is the distance
     std::optional<std::tuple<glm::vec3, float>> getGroupOrbitData(int ID) const;
     std::optional<std::tuple<glm::vec3, float>> getIDOrbitData(int externalID) const;
+
+    // get mesh element number (as debug info)
+    size_t getMeshElNum() { return m_lastMeshNum; }
 };
