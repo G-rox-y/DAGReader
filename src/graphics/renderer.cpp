@@ -369,7 +369,7 @@ std::vector<size_t> Renderer::getGroupIDs(int ID) const {
     auto it = m_groupIndices.find(ID);
     if (it == m_groupIndices.end()) return ret;
     
-    std::vector<Renderer::IndexRange> indicePairs = {it->second.begin(), it->second.end()};
+    std::vector<Renderer::IndexRange> indicePairs(it->second.begin(), it->second.end());
     for (auto& el:indicePairs)
         for(size_t i = el.first; i <= el.second; i++)
             ret.emplace_back(m_rendererID2ExternalID.at(i));
@@ -383,23 +383,34 @@ std::vector<size_t> Renderer::getGroupIDs(int ID) const {
 }
 
 std::optional<std::tuple<glm::vec3, float>> Renderer::getOrbitData(const std::vector<IndexRange>& ranges) const {
-    glm::vec4 pos(0.f);
+    if (ranges.empty()) return std::nullopt;
+
+    glm::vec3 pos(0.f);
     size_t ctr = 0;
-    float dist = FLT_MIN;
+    float dist = 0.0f;
 
-    for (auto& el:ranges){
+    for (const auto& el : ranges) {
+        if (el.second < el.first) continue;   // paranoia
         ctr += el.second - el.first + 1;
-        for(size_t i = el.first; i <= el.second; i++)
-            pos += m_controlPoints[i][0] + m_controlPoints[i][3];
+        for (size_t i = el.first; i <= el.second; i++) {
+            pos += glm::vec3(m_controlPoints[i][0]);
+            pos += glm::vec3(m_controlPoints[i][3]);
+        }
     }
-    pos /= ctr*2;
 
-    for (auto& el:ranges)
-        for(size_t i = el.first; i <= el.second; i++)
-            dist = std::max<float>(dist, 
-                std::max<float>(glm::distance(m_controlPoints[i][0], pos), glm::distance(m_controlPoints[i][3], pos))
-            );
+    if (ctr == 0) return std::nullopt;
+    pos /= static_cast<float>(ctr * 2);
 
+    for (const auto& el : ranges) {
+        if (el.second < el.first) continue;
+        for (size_t i = el.first; i <= el.second; i++) {
+            dist = std::max(dist,
+                std::max(glm::distance(glm::vec3(m_controlPoints[i][0]), pos),
+                         glm::distance(glm::vec3(m_controlPoints[i][3]), pos)));
+        }
+    }
+
+    if (dist <= 0.0f) dist = 0.001f;
     return std::make_tuple(pos, dist);
 }
 
@@ -415,7 +426,9 @@ std::optional<std::tuple<glm::vec3, float>> Renderer::getIDOrbitData(int externa
     std::lock_guard<std::recursive_mutex> lk2(m_group_lock);
     auto it = m_externalID2RendererID.find(externalID);
     if (it == m_externalID2RendererID.end()) return std::nullopt;
-    auto id = *it->second.begin();
-    std::vector<Renderer::IndexRange> indicePairs = {IndexRange(id, id)};
+
+    std::vector<Renderer::IndexRange> indicePairs;
+    for (size_t rid : it->second) indicePairs.emplace_back(rid, rid);
+
     return getOrbitData(indicePairs);
 }

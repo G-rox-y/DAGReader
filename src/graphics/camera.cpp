@@ -96,15 +96,20 @@ void Camera::engageOrbit(const glm::vec3& center, const float distance){
     
     glm::vec3 C2P = m_orbitPoint - m_position;
     glm::vec3 PNProj = glm::dot(C2P, m_orbitPointNormal) * m_orbitPointNormal;
-    C2P = glm::normalize(C2P - PNProj);
+    
+    glm::vec3 flatDir = C2P - PNProj;
+    if (glm::length2(flatDir) < 1e-12f) flatDir = glm::vec3(0.f, 0.f, 1.f);
+    C2P = glm::normalize(flatDir);
+    
     m_position = m_orbitPoint - C2P * m_orbitDistance;
     
-    glm::vec3 right = -glm::normalize(glm::cross(m_orbitPointNormal, C2P));
+    glm::vec3 right = glm::normalize(glm::cross(m_orbitPointNormal, C2P));
     glm::vec3 newUp = glm::cross(C2P, right);
     glm::mat3 rotMat(right, newUp, C2P);
     m_rot = glm::quat_cast(rotMat);
 
     m_orbitingActive = true;
+    m_shouldRecalculate = true;
 }
 
 void Camera::disengageOrbit() { m_orbitingActive = false; }

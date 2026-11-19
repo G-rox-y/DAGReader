@@ -424,12 +424,12 @@ void sidePanel::drawSearch(float availX, float w)
                     if (ImGui::BeginPopup("Actions")) {
                         if (edgeId.has_value()){
                             if (ImGui::MenuItem("Focus on item")) {
-                                if (auto ret = channel->renderer->getIDOrbitData(edgeId.value())){
-                                    auto[pos, d] = ret.value();
-                                    channel->cam->engageOrbit(pos, d*5);
+                                if (auto ret = channel->renderer->getIDOrbitData(edgeId.value())) {
+                                    auto [pos, d] = ret.value();
+                                    channel->cam->engageOrbit(pos, std::max(d * 2.5f, 0.001f));
                                     channel->cam->disengageOrbit();
-                                    channel->cam->shouldRecalc(); // 31337 |-|4><
-                                } 
+                                    channel->cam->shouldRecalc();
+                                }
                             }
                             if (ImGui::MenuItem("Add to selection")){
                                 channel->renderer->addID2Group(edgeId.value(), groups::rendererGroup::SELECTION);

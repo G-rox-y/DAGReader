@@ -147,6 +147,7 @@ void menuBar::draw()
                 if (auto res = channel->renderer->getGroupOrbitData(groups::SELECTION)){
                     auto [centerPos, maxDist] = res.value();
                     channel->cam->engageOrbit(centerPos, maxDist * 2.5f);
+                    channel->cam->shouldRecalc();
                 }
             }
 

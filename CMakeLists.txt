@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # project init
-project(DAGReader VERSION 1.0.3)
+project(DAGReader VERSION 1.0.4)
 
 # default build type is debug
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -63,6 +63,7 @@ FetchContent_MakeAvailable(glew)
 FetchContent_Declare(glm
     GIT_REPOSITORY https://github.com/g-truc/glm
     GIT_TAG 1.0.3
+    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(glm)
 
@@ -70,6 +71,7 @@ FetchContent_MakeAvailable(glm)
 FetchContent_Declare(imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
     GIT_TAG v1.92.8
+    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(imgui)
 
@@ -78,6 +80,7 @@ FetchContent_MakeAvailable(imgui)
 FetchContent_Declare(nfd
     GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
     GIT_TAG v1.3.0
+    GIT_SHALLOW TRUE
 )
 # Disable installation of NFD library to the system
 set(NFD_INSTALL OFF CACHE BOOL "")
@@ -87,6 +90,7 @@ FetchContent_MakeAvailable(nfd)
 FetchContent_Declare(spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
     GIT_TAG v1.15.2
+    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(spdlog)
 
@@ -94,6 +98,7 @@ FetchContent_MakeAvailable(spdlog)
 FetchContent_Declare(inipp
     GIT_REPOSITORY https://github.com/mcmtroffaes/inipp
     GIT_TAG 3f224f1eed7a67d5d7e5fc8cab72de02a056b966 # develop branch 2 Aug 2025
+    GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(inipp)
 
