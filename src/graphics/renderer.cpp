@@ -350,7 +350,7 @@ void Renderer::draw() {
 
 bool Renderer::addMouseSelectionToGroup(const int id){
     std::lock_guard lk(m_ownership);
-    if (m_selectionID == -1) return false;
+    if (m_selectionID < 0 || static_cast<size_t>(m_selectionID) > m_rendererID2ExternalID.size()) return false;
     auto ids = m_externalID2RendererID.at(m_rendererID2ExternalID.at(m_selectionID));
     for (auto el:ids){
         auto entry = std::make_pair(el, el);

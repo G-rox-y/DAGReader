@@ -341,7 +341,8 @@ void Window::run()
     spdlog::debug("Starting the window loop");
     while(!glfwWindowShouldClose(m_window)) // window is running
     {
-        glfwWaitEventsTimeout(1.0 / static_cast<double>(channel->max_fps.load()));
+        // no FPS enforcement rn, we will re-add this when vulkan arrives
+        glfwPollEvents();
 
         // clear the buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

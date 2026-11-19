@@ -446,7 +446,7 @@ void Controller::layoutGraph(){
             for(auto& e:G.edges)
                 if (maxSize < e.originalLength) maxSize = e.originalLength;
 
-        long long int segLen = maxSize / channel->max_seg_segmentation_degree.load();
+        long long int segLen = maxSize / (channel->max_seg_segmentation_degree.load() + 1);
 
         // adjust the segment lengths
         for (auto& G:gc.graphs)
