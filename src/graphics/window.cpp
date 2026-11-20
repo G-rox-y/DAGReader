@@ -1,34 +1,30 @@
 #include "window.hpp"
 #include "Roboto_Medium.hpp"
 
+#include "frameLimiter.cpp"
+
 void Window::manageInputs()
 {
     if (ImGui::GetIO().WantCaptureKeyboard) return;
 
-    bool moveUp = false, moveLeft = false, moveDown = false, moveRight = false, moveIn = false, moveOut = false, moveFast = false;
-    if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) moveUp = true;
-    if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS) moveLeft = true;
-    if (glfwGetKey(m_window, GLFW_KEY_C) == GLFW_PRESS) moveDown = true;
-    if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS) moveRight = true;
-    if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS) moveIn = true;
-    if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS) moveOut = true;
-    if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) moveFast = true;
+    auto keyDown = [this](int key) { return glfwGetKey(m_window, key) == GLFW_PRESS; };
+
+    bool moveFast = keyDown(GLFW_KEY_LEFT_SHIFT);
+
+    bool moveUp = keyDown(GLFW_KEY_SPACE), moveLeft = keyDown(GLFW_KEY_A), moveDown = keyDown(GLFW_KEY_C);
+    bool moveRight = keyDown(GLFW_KEY_D), moveIn = keyDown(GLFW_KEY_W), moveOut = keyDown(GLFW_KEY_S); 
+    
     if (moveUp || moveLeft || moveDown || moveRight || moveIn || moveOut)
         channel->cam->move(moveUp, moveLeft, moveDown, moveRight, moveIn, moveOut, moveFast);
 
-    bool rotUp = false, rotLeft = false, rotDown = false, rotRight = false, yawCw = false, yawCcw = false;
-    if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) rotUp = true;
-    if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS) rotLeft = true;
-    if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) rotDown = true;
-    if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS) rotRight = true;
-    if (glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS) yawCw = true;
-    if (glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS) yawCcw = true;
+    bool rotUp = keyDown(GLFW_KEY_UP), rotLeft = keyDown(GLFW_KEY_LEFT), rotDown = keyDown(GLFW_KEY_DOWN);
+    bool rotRight = keyDown(GLFW_KEY_RIGHT), yawCw = keyDown(GLFW_KEY_E), yawCcw = keyDown(GLFW_KEY_Q);
+    
     if (rotUp || rotLeft || rotDown || rotRight || yawCw || yawCcw)
         channel->cam->rotate(rotUp, rotLeft, rotDown, rotRight, yawCw, yawCcw, moveFast);
 
-    bool scaleIn = false, scaleOut = false;
-    if (glfwGetKey(m_window, GLFW_KEY_I) == GLFW_PRESS) scaleIn = true;
-    if (glfwGetKey(m_window, GLFW_KEY_O) == GLFW_PRESS) scaleOut = true;
+    bool scaleIn = keyDown(GLFW_KEY_I), scaleOut = keyDown(GLFW_KEY_O);
+    
     if (scaleIn || scaleOut)
         channel->cam->scale(scaleIn, scaleOut);
 
@@ -62,68 +58,54 @@ void Window::drawStuff()
                 ImGui::GetMainViewport()->WorkPos.y + 20.0f), 10, IM_COL32(255, 100, 100, 200
         ));
 
-    // colors
-    ImVec4 c0(1.f, 0.65f, 0.65f, 0.85f);
-    ImVec4 c1(1.f, 0.65f, 0.65f, 0.7f);
-    ImVec4 c2(1.f, 0.65f, 0.65f, 0.4f);
-    ImVec4 c3(1.f, 0.65f, 0.65f, 0.2f);
+    // Theme colors
+    struct ThemeColor { ImGuiCol_ idx; ImVec4 dark; ImVec4 light; };
+    static constexpr ThemeColor themeColors[] = {
+        { ImGuiCol_WindowBg,      ImVec4(0.05f, 0.05f, 0.05f, 0.4f), ImVec4(0.8f, 0.8f, 0.8f, 0.4f) },
+        { ImGuiCol_Header,        ImVec4(0.05f, 0.05f, 0.05f, 0.0f), ImVec4(0.8f, 0.8f, 0.8f, 0.0f) },
+        { ImGuiCol_TableHeaderBg, ImVec4(0.05f, 0.05f, 0.05f, 0.4f), ImVec4(0.8f, 0.8f, 0.8f, 0.4f) },
+    };
 
-    if (channel->light_mode.load()){
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.8f, 0.8f, 0.8f, 0.4f));
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.8f, 0.8f, 0.8f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_TableHeaderBg,  ImVec4(0.8f, 0.8f, 0.8f, 0.4f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  c1);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, c2);
-        ImGui::PushStyleColor(ImGuiCol_Button,  c1);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered,  c2);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  c3);
-        ImGui::PushStyleColor(ImGuiCol_CheckMark,  c1);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg,  c3);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  c1);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,  c2);
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab,  c1);
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive,  c0);
-        ImGui::PushStyleColor(ImGuiCol_TitleBg,  c1);
-        ImGui::PushStyleColor(ImGuiCol_TitleBgActive,  c1);
-    }
-    else{
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 0.4f));
-        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.05f, 0.05f, 0.05f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_TableHeaderBg,  ImVec4(0.05f, 0.05f, 0.05f, 0.4f));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, c1);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, c2);
-        ImGui::PushStyleColor(ImGuiCol_Button, c1);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, c2);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, c3);
-        ImGui::PushStyleColor(ImGuiCol_CheckMark, c1);
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, c3);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, c1);
-        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, c2);
-        ImGui::PushStyleColor(ImGuiCol_SliderGrab, c1);
-        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, c0);
-        ImGui::PushStyleColor(ImGuiCol_TitleBg, c1);
-        ImGui::PushStyleColor(ImGuiCol_TitleBgActive, c1);
-    }
+    const bool light = channel->light_mode.load();
+    for (const auto& t : themeColors)
+        ImGui::PushStyleColor(t.idx, light ? t.light : t.dark);
 
-    // set background color
+    // Common colors
+    ImVec4 c0(1.f, 0.65f, 0.65f, 0.85f), c1(1.f, 0.65f, 0.65f, 0.7f);
+    ImVec4 c2(1.f, 0.65f, 0.65f, 0.4f), c3(1.f, 0.65f, 0.65f, 0.2f);
+    struct CommonColor { ImGuiCol_ idx; ImVec4 col; };
+    static const CommonColor commonColors[] = { {ImGuiCol_HeaderHovered, c1},
+        {ImGuiCol_HeaderActive, c2}, {ImGuiCol_Button, c1}, {ImGuiCol_ButtonHovered, c2},
+        {ImGuiCol_ButtonActive, c3}, {ImGuiCol_CheckMark, c1}, {ImGuiCol_FrameBg, c3},
+        {ImGuiCol_FrameBgActive, c1}, {ImGuiCol_FrameBgHovered, c2}, {ImGuiCol_SliderGrab, c1},
+        {ImGuiCol_SliderGrabActive, c0}, {ImGuiCol_TitleBg, c1}, {ImGuiCol_TitleBgActive, c1},
+    };
+    for (const auto& c : commonColors)
+        ImGui::PushStyleColor(c.idx, c.col);
+
+    // Background color
     if (channel->update_window_vars.load()){
         if (channel->light_mode.load()) glClearColor(1.f, 1.f, 1.f, 1.f);
         else glClearColor(0.1f, 0.1f, 0.1f, 1.f);
         channel->update_window_vars.store(false);
     }
 
-    channel->renderer->draw();
+    channel->renderer->draw(); // draw the graph stuff
 
     for(auto& win:m_imguis) win->draw(); // draw all imgui windows
     ImGui::PopStyleColor(16);
 
-    //ImGui::ShowDemoWindow(); // will compile only if build type is debug
-    
     // render imgui things
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+namespace {
+    template<typename... Ts>
+    void addWindows(std::vector<std::unique_ptr<imguiWindow>>& vec, infoExchange* ch) {
+        (vec.emplace_back(std::make_unique<Ts>(ch)), ...);
+    }
+}
 Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_height(H)
 {
     spdlog::info("GLFW version: {}.{}.{}", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION);
@@ -186,7 +168,6 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
 
     glEnable(GL_CULL_FACE); // dont draw the side of a vertex that cant be seen
     glCullFace(GL_BACK); // the back side cant be seen
-    glFrontFace(GL_CCW); // front is where the points of a triangle are connected counterclockwise
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -232,13 +213,7 @@ Window::Window(infoExchange* c, int W, int H) : channel(c), m_w_width(W), m_w_he
     ImGui_ImplOpenGL3_Init("#version 430"); //glsl version
 #endif
     // add custom imgui windows
-    m_imguis.emplace_back(std::make_unique<menuBar>(channel));
-    m_imguis.emplace_back(std::make_unique<sidePanel>(channel));
-    m_imguis.emplace_back(std::make_unique<about>(channel));
-    m_imguis.emplace_back(std::make_unique<controls>(channel));
-    m_imguis.emplace_back(std::make_unique<info>(channel));
-    m_imguis.emplace_back(std::make_unique<selectionWindow>(channel));
-    m_imguis.emplace_back(std::make_unique<license>(channel));
+    addWindows<menuBar, sidePanel, about, controls, info, selectionWindow, license>(m_imguis, channel);
 }
 
 Window::~Window()
@@ -339,9 +314,10 @@ void Window::run()
     glfwShowWindow(m_window);
     glfwFocusWindow(m_window);
     spdlog::debug("Starting the window loop");
+    FrameLimiter limiter(channel->max_fps.load());
     while(!glfwWindowShouldClose(m_window)) // window is running
     {
-        // no FPS enforcement rn, we will re-add this when vulkan arrives
+        limiter.changeFPS(channel->max_fps.load());
         glfwPollEvents();
 
         // clear the buffer
@@ -367,6 +343,9 @@ void Window::run()
 
         glfwSwapBuffers(m_window);
         glFlush();
+
+        // Frame limiter: sleep until the target frame time has elapsed
+        limiter.wait();
     }
     spdlog::debug("Window Closed, notifiyng file controller to close...");
     channel->addControllerTask(tasks::EXIT);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "imguiIncludes.hpp"
+#include "imgui_windows/imguiIncludes.hpp"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -12,12 +12,13 @@
 #include "imgui_windows/about.hpp"
 #include "imgui_windows/controls.hpp"
 #include "imgui_windows/info.hpp"
+#include "imgui_windows/selection.hpp"
+#include "imgui_windows/license.hpp"
+
 #include "GLProgram.hpp"
 #include "camera.hpp"
 #include "renderer.hpp"
 #include "infoExchange.hpp"
-#include "selection.hpp"
-#include "license.hpp"
 
 // the class that controls the graphical window of the program
 class Window{

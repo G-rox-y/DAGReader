@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # project init
-project(DAGReader VERSION 1.0.4)
+project(DAGReader VERSION 1.0.5)
 
 # default build type is debug
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -19,128 +19,96 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -finput-charset=UTF-8")
 if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "DebugRelease")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Og -fno-omit-frame-pointer")
 endif()
 
 # -------------------- DEPENDENCIES
-
-# i want dependencies to be built as release, so i will just change the build type not to interfere
 set(root_build_type "${CMAKE_BUILD_TYPE}")
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-
-# some also throw so many compiler warnings, they are not related to this project so best to silence them
 set(root_cxx_flags "${CMAKE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w") 
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+string(APPEND CMAKE_CXX_FLAGS " -w")
 
 include(FetchContent)
 
-# add glfw
-FetchContent_Declare(glfw
-    GIT_REPOSITORY https://github.com/glfw/glfw
-    GIT_TAG 3.3.8
-)
+macro(fetch_dep name repo tag)
+    FetchContent_Declare(${name}
+        GIT_REPOSITORY ${repo}
+        GIT_TAG ${tag}
+        GIT_SHALLOW TRUE
+    )
+endmacro()
+
 set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "" FORCE)
 set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "" FORCE)
 set(GLFW_INSTALL OFF CACHE INTERNAL "" FORCE)
 set(ONLY_LIBS ON CACHE INTERNAL "" FORCE)
-FetchContent_MakeAvailable(glfw)
-
-# add glew-cmake
-FetchContent_Declare(glew
-    GIT_REPOSITORY https://github.com/Perlmint/glew-cmake
-    GIT_TAG 8dd35fa470769374da27b93a8e9ab6de45e6a49e # master branch May 19 2026
-)
-# if no debugging is happening i can turn off the building of utility programs (glewinfo and visualinfo)
-# this is because glewinfo is used to list extensions and visualinfo to list visual/pixel formats
-if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(BUILD_UTILS OFF CACHE BOOL "")
-endif()
 set(glew-cmake_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
-FetchContent_MakeAvailable(glew)
+set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
 
-# add glm
-FetchContent_Declare(glm
-    GIT_REPOSITORY https://github.com/g-truc/glm
-    GIT_TAG 1.0.3
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(glm)
+if(NOT root_build_type STREQUAL "Debug")
+    set(BUILD_UTILS OFF CACHE BOOL "" FORCE)
+endif()
 
-# add imgui
-FetchContent_Declare(imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui
-    GIT_TAG v1.92.8
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(imgui)
+fetch_dep(glfw https://github.com/glfw/glfw 3.3.8)
+fetch_dep(glew https://github.com/Perlmint/glew-cmake a88b7d7f009abc89c6e25299e6f9a13ca134f7c0)
+fetch_dep(glm https://github.com/g-truc/glm 1.0.3)
+fetch_dep(imgui https://github.com/ocornut/imgui v1.92.8)
+fetch_dep(nfd https://github.com/btzy/nativefiledialog-extended v1.3.0)
+fetch_dep(spdlog https://github.com/gabime/spdlog v1.15.2)
+fetch_dep(inipp https://github.com/mcmtroffaes/inipp 3f224f1eed7a67d5d7e5fc8cab72de02a056b966)
+fetch_dep(rapidcsv https://github.com/d99kris/rapidcsv v8.83)
 
-# add nfd-extended
-# TODO: test for dependencies and their availlability (same goes for other packages)
-FetchContent_Declare(nfd
-    GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended
-    GIT_TAG v1.3.0
-    GIT_SHALLOW TRUE
-)
-# Disable installation of NFD library to the system
-set(NFD_INSTALL OFF CACHE BOOL "")
-FetchContent_MakeAvailable(nfd)
+FetchContent_MakeAvailable(glfw glew glm imgui nfd spdlog inipp rapidcsv)
 
-# add speedlog (header only)
-FetchContent_Declare(spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog
-    GIT_TAG v1.15.2
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(spdlog)
-
-# add inipp
-FetchContent_Declare(inipp
-    GIT_REPOSITORY https://github.com/mcmtroffaes/inipp
-    GIT_TAG 3f224f1eed7a67d5d7e5fc8cab72de02a056b966 # develop branch 2 Aug 2025
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(inipp)
-
-# and return stuff to normal
-set(CMAKE_BUILD_TYPE "${root_build_type}" CACHE STRING "Build type" FORCE)
+set(CMAKE_BUILD_TYPE "${root_build_type}" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS "${root_cxx_flags}")
 
-# OpenMP
 find_package(OpenMP)
 if(NOT OpenMP_CXX_FOUND)
-    message(WARNING "OpenMP not found. Building without multithreading support for layout algorithms.")
+    message(WARNING "OpenMP not found. Building without CPU multithreading support.")
 endif()
-
-# rapidcsv
-FetchContent_Declare(rapidcsv
-    GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-    GIT_TAG v8.83
-)
-FetchContent_MakeAvailable(rapidcsv)
 
 # -------------------- END OF DEPENDENCIES
 
 # create executable
 add_executable(${PROJECT_NAME})
 
-# add code
-add_subdirectory("src")
+# ----- take care of the source code
+file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/src/*.cpp")
+target_sources(${PROJECT_NAME} PUBLIC ${SRC_FILES})
+
+target_precompile_headers(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src/pch.hpp")
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+    "${PROJECT_BINARY_DIR}/src"
+    "${CMAKE_SOURCE_DIR}/src"
+    "${CMAKE_SOURCE_DIR}/src/filetypes"
+    "${CMAKE_SOURCE_DIR}/src/graphics"
+    "${CMAKE_SOURCE_DIR}/src/layout"
+)
+
+set(DAGReader_VERSION_STRING "${DAGReader_VERSION_MAJOR}.${DAGReader_VERSION_MINOR}")
+if(DEFINED DAGReader_VERSION_PATCH)
+  string(APPEND DAGReader_VERSION_STRING ".${DAGReader_VERSION_PATCH}")
+endif()
+configure_file("${CMAKE_SOURCE_DIR}/src/cmakevars.hpp.in" "${PROJECT_BINARY_DIR}/src/cmakevars.hpp")
+# ------ 
 
 # add shaders
 add_custom_command(
     OUTPUT
         ${CMAKE_BINARY_DIR}/src/shaderEmbed.cpp
     COMMAND ${CMAKE_COMMAND} 
-        -DINPUT_VERT=${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
-        -DINPUT_FRAG=${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
-        -DINPUT_BEZIER=${CMAKE_SOURCE_DIR}/src/shaders/bezier.glsl
+        -DINPUT_VERT=${CMAKE_SOURCE_DIR}/src/graphics/shaders/vertex.glsl
+        -DINPUT_FRAG=${CMAKE_SOURCE_DIR}/src/graphics/shaders/fragment.glsl
+        -DINPUT_BEZIER=${CMAKE_SOURCE_DIR}/src/graphics/shaders/bezier.glsl
         -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/src/shaderEmbed.cpp
-        -P ${CMAKE_SOURCE_DIR}/src/shaders/shaderEmbed.cmake
+        -P ${CMAKE_SOURCE_DIR}/src/graphics/shaders/shaderEmbed.cmake
     DEPENDS 
-        ${CMAKE_SOURCE_DIR}/src/shaders/vertex.glsl
-        ${CMAKE_SOURCE_DIR}/src/shaders/fragment.glsl
-        ${CMAKE_SOURCE_DIR}/src/shaders/bezier.glsl
+        ${CMAKE_SOURCE_DIR}/src/graphics/shaders/vertex.glsl
+        ${CMAKE_SOURCE_DIR}/src/graphics/shaders/fragment.glsl
+        ${CMAKE_SOURCE_DIR}/src/graphics/shaders/bezier.glsl
 )
 
 # Embed the license into the code

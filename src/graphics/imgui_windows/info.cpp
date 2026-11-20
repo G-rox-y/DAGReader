@@ -22,7 +22,7 @@ void info::draw()
     q.push(std::chrono::steady_clock::now());
     while (std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::steady_clock::now() - q.front()).count() > 1000) q.pop();
-    std::string fps = "FPS: " + std::to_string(q.size());
+    std::string fps = "FPS: " + std::to_string(q.size() - 1);
 
     static std::string prevspeed = "";
     std::string speed = "Camera speed: " + fmt::format("{} units/frame", channel->cam->getMovementSpeed());

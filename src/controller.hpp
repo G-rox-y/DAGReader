@@ -3,10 +3,10 @@
 #include <nfd.hpp>
 #include "pch.hpp"
 #include "gfa/GFA.hpp"
-#include "Graphs.hpp"
-#include "GRIP.hpp"
+#include "layout/Graphs.hpp"
+#include "layout/GRIP.hpp"
 #include "infoExchange.hpp"
-#include "datatype.hpp"
+#include "filetypes/datatype.hpp"
 #include "csv/CSV.hpp"
 #include "rapidcsv.h"
 

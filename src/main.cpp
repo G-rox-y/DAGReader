@@ -4,7 +4,7 @@
 
 #include "cmakevars.hpp"
 
-#include "window.hpp"
+#include "graphics/window.hpp"
 #include "controller.hpp"
 #include "infoExchange.hpp"
 
@@ -21,6 +21,10 @@
 // [] - 2D control scheme
 // [] - Replace realtime gpu side hover highlighting with cpu side highlighting
 // [] - Rethink the selection mechanism to be always active
+// [] - Draw faraway segments as lines
+// [] - Adjust CMake to try to search for modules instead of just fetching by default
+// [] - add CMake install
+// [] - Automatic scale selection when moving and focusing
 //
 // V 1.2 "The GFA1 update" Roadmap:
 // [] - Adding Fuzzy search
@@ -31,11 +35,14 @@
 // [] - Jump visualization
 // [] - GC content coloring
 // [] - Determining contiguity and coloring based on it
-// [] - More graph info (like in Bandage), also can be turned into subgraph info
+// [] - Logarithm segment length scaling
+// [] - Coverage coloring
+// [] - More graph info (like in Bandage), also should shown individually for subgraph info
 // [] - Modify GFA data stored in tags
 // [] - Tag based coloring
 // [] - Sequence reading from external files
 // [] - File descriptions (like in bandageng)
+// [] - Fetching files from servers
 //
 // Other planned features
 // [] - Export image of view
@@ -47,6 +54,8 @@
 // [] - Changeable debug timestamp precision (save in .ini)
 // [] - Layout time estimates
 // [] - Kofi
+// [] - cli
+// [] - When focusing, instead of telerporting give a trajectory to the camera so it animates
 
 int main()
 {

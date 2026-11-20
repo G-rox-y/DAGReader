@@ -6,7 +6,7 @@
 #include "gfa/GFA_segment.hpp"
 #include "gfa/GFA_containment.hpp"
 #include "gfa/GFA_path.hpp"
-#include "Graphs.hpp"
+#include "layout/Graphs.hpp"
 #include "parser.hpp"
 #include "datatype.hpp"
 #include "csv/CSV.hpp"
